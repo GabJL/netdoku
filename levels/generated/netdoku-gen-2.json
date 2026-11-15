@@ -71,6 +71,11 @@
       ]
     ]
   },
+  "rules": {
+    "onePacketPerCell": true,
+    "onePacketPerRow": true,
+    "onePacketPerColumn": true
+  },
   "networks": [
     {
       "id": "net1",
@@ -481,13 +486,38 @@
     }
   ],
   "packets": {
-    "victimId": "F",
+    "victimId": "B",
     "attackerId": "E",
     "items": [
       {
         "id": "A",
+        "color": "#1fa3a3",
+        "colorName": "turquesa",
+        "solution": {
+          "position": [
+            4,
+            2
+          ],
+          "network": "net3"
+        }
+      },
+      {
+        "id": "B",
         "color": "#d6519b",
         "colorName": "rosa",
+        "role": "victim",
+        "solution": {
+          "position": [
+            5,
+            6
+          ],
+          "network": "net2"
+        }
+      },
+      {
+        "id": "C",
+        "color": "#3b6fd6",
+        "colorName": "azul",
         "solution": {
           "position": [
             6,
@@ -497,73 +527,48 @@
         }
       },
       {
-        "id": "B",
+        "id": "D",
         "color": "#e08a1e",
         "colorName": "naranja",
         "solution": {
           "position": [
-            5,
-            3
+            3,
+            4
           ],
-          "network": "net4"
-        }
-      },
-      {
-        "id": "C",
-        "color": "#3b6fd6",
-        "colorName": "azul",
-        "solution": {
-          "position": [
-            5,
-            1
-          ],
-          "network": "net3"
-        }
-      },
-      {
-        "id": "D",
-        "color": "#8a4fd0",
-        "colorName": "morado",
-        "solution": {
-          "position": [
-            5,
-            5
-          ],
-          "network": "net4"
+          "network": "net1"
         }
       },
       {
         "id": "E",
-        "color": "#2e9e5b",
-        "colorName": "verde",
+        "color": "#d64545",
+        "colorName": "rojo",
         "role": "attacker",
         "solution": {
           "position": [
-            5,
-            6
+            2,
+            5
           ],
           "network": "net2"
         }
       },
       {
         "id": "F",
-        "color": "#d64545",
-        "colorName": "rojo",
-        "role": "victim",
+        "color": "#8a5a33",
+        "colorName": "marrón",
         "solution": {
           "position": [
-            4,
-            6
+            1,
+            1
           ],
-          "network": "net2"
+          "network": "net1"
         }
       }
     ]
   },
   "objective": {
     "type": "identify_attacker",
-    "text": "Coloca los paquetes e identifica al atacante. La víctima es el paquete F: en su red solo había otro paquete, el atacante.",
-    "victimPacketId": "F",
+    "text": "Coloca los paquetes e identifica al atacante. En cada fila y en cada columna hay como mucho un paquete. La víctima es el paquete B: en su red solo había otro paquete, el atacante.",
+    "victimPacketId": "B",
     "packetsInVictimNetwork": 2,
     "observableAnswer": {
       "attackerPacketId": "E"
@@ -574,109 +579,73 @@
       "id": "C1",
       "packet": "A",
       "type": "node.unique_adjacent_to_node",
-      "text": "El paquete A era el único paquete situado junto al equipo de usuario de la red Desarrollo.",
+      "text": "El paquete A era el único paquete situado junto al servidor web de la red Investigación.",
       "parameters": {
-        "nodeId": "N6"
+        "nodeId": "N5"
       }
     },
     {
       "id": "C2",
-      "packet": "A",
+      "packet": "C",
       "type": "router.adjacent_to_router",
-      "text": "El paquete A estaba junto al router que une Investigación y Desarrollo.",
+      "text": "El paquete C estaba junto al router que une Investigación y Desarrollo.",
       "parameters": {
         "routerId": "R2"
       }
     },
     {
       "id": "C3",
-      "packet": "B",
+      "packet": "D",
       "type": "network.in_network",
-      "text": "El paquete B estaba en la red Desarrollo (10.79.0.0/24).",
+      "text": "El paquete D estaba en la red Administración (172.16.31.0/24).",
       "parameters": {
-        "networkId": "net4"
+        "networkId": "net1"
       }
     },
     {
       "id": "C4",
-      "packet": "C",
-      "type": "spatial.in_row",
-      "text": "El paquete C estaba en la fila 5.",
+      "packet": "E",
+      "type": "router.adjacent_to_router",
+      "text": "El paquete E estaba junto al router que une Administración y Invitados.",
       "parameters": {
-        "row": 5
+        "routerId": "R4"
       }
     },
     {
       "id": "C5",
-      "packet": "D",
-      "type": "router.adjacent_to_router",
-      "text": "El paquete D estaba junto al router que une Invitados y Desarrollo.",
-      "parameters": {
-        "routerId": "R3"
-      }
-    },
-    {
-      "id": "C6",
-      "packet": "D",
-      "type": "network.in_network",
-      "text": "El paquete D estaba en la red Desarrollo (10.79.0.0/24).",
-      "parameters": {
-        "networkId": "net4"
-      }
-    },
-    {
-      "id": "C7",
-      "packet": "E",
-      "type": "node.unique_adjacent_to_node",
-      "text": "El paquete E era el único paquete situado junto al servidor de correo.",
-      "parameters": {
-        "nodeId": "N7"
-      }
-    },
-    {
-      "id": "C8",
       "packet": "F",
-      "type": "spatial.in_row",
-      "text": "El paquete F estaba en la fila 4.",
+      "type": "node.adjacent_to_node",
+      "text": "El paquete F estaba junto al equipo de usuario de la red Administración.",
       "parameters": {
-        "row": 4
-      }
-    },
-    {
-      "id": "C9",
-      "packet": "F",
-      "type": "spatial.in_column",
-      "text": "El paquete F estaba en la columna 6.",
-      "parameters": {
-        "column": 6
+        "nodeId": "N2"
       }
     }
   ],
   "solution": {
     "placements": {
       "A": [
-        6,
-        3
+        4,
+        2
       ],
       "B": [
         5,
-        3
+        6
       ],
       "C": [
-        5,
-        1
+        6,
+        3
       ],
       "D": [
-        5,
-        5
+        3,
+        4
       ],
       "E": [
-        5,
-        6
+        2,
+        5
       ],
       "F": [
-        4,
-        6
+        1,
+        1
       ]
     },
     "victimNetwork": "net2",
@@ -685,13 +654,12 @@
   "generation": {
     "generator": "netdoku_gen v0",
     "attempt": 1,
-    "clueCount": 9,
+    "clueCount": 5,
     "cluesByType": {
-      "node.unique_adjacent_to_node": 2,
+      "node.unique_adjacent_to_node": 1,
       "router.adjacent_to_router": 2,
-      "network.in_network": 2,
-      "spatial.in_row": 2,
-      "spatial.in_column": 1
+      "network.in_network": 1,
+      "node.adjacent_to_node": 1
     },
     "maxReservationSize": 0
   }

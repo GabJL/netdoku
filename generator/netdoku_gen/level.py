@@ -6,7 +6,7 @@ from .board import generate_board
 from .content import place_nodes, place_packets
 from .rules import KNOWLEDGE, TOPIC, Context, generate_instances
 from .selection import Selector
-from .solver import count_solutions, initial_domains, propagate
+from .solver import Rules, count_solutions, initial_domains, propagate
 
 SCHEMA_VERSION = "0.1"
 DEFAULTS = {
@@ -45,7 +45,8 @@ def _attempt(rng, seed, cfg, attempt):
     pool = generate_instances(ctx, cfg["enabledRuleSubtypes"])
     victim = next(p for p in packets if p.role == "victim")
     attacker = next(p for p in packets if p.role == "attacker")
-    selector = Selector(rng, ctx, pool, victim.id, cfg["maxSubset"])
+    rules = Rules(board.height, board.width, len(packets), cfg["maxSubset"])
+    selector = Selector(rng, ctx, pool, victim.id, rules)
     # Varias selecciones sobre el mismo tablero; se queda la que menos se apoya
     # en filas y columnas (y, sobre todo, en dar coordenadas).
     candidates = []
@@ -63,7 +64,7 @@ def _attempt(rng, seed, cfg, attempt):
     domains = initial_domains(ctx.free_cells, ids, clues)
     if count_solutions(domains, limit=2) != 1:
         raise RuntimeError("El nivel no tiene solución única")
-    solved, max_subset = propagate(domains, cfg["maxSubset"], exclude_from_subsets={victim.id})
+    solved, max_subset = propagate(domains, rules, exclude_from_subsets={victim.id})
     if any(solved[p.id] != {p.cell} for p in packets):
         raise RuntimeError("La propagación no llega a la solución generada")
     in_victim_net = [p for p in packets if board.network_of(p.cell) == victim_net]
@@ -101,6 +102,7 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
             "coordinateSystem": {"origin": "top-left", "rowIndexStartsAt": 1, "columnIndexStartsAt": 1},
             "networkGrid": board.grid,
         },
+        "rules": {"onePacketPerCell": True, "onePacketPerRow": True, "onePacketPerColumn": True},
         "networks": [
             {"id": n.id, "name": n.name, "prefix": n.prefix,
              "cellCount": len(n.cells), "cells": [one_based(c) for c in n.cells]}
@@ -138,8 +140,9 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
         },
         "objective": {
             "type": "identify_attacker",
-            "text": (f"Coloca los paquetes e identifica al atacante. La víctima es el paquete {victim.id}: "
-                     "en su red solo había otro paquete, el atacante."),
+            "text": ("Coloca los paquetes e identifica al atacante. En cada fila y en cada columna hay "
+                     f"como mucho un paquete. La víctima es el paquete {victim.id}: en su red solo había "
+                     "otro paquete, el atacante."),
             "victimPacketId": victim.id,
             "packetsInVictimNetwork": 2,
             "observableAnswer": {"attackerPacketId": attacker.id},

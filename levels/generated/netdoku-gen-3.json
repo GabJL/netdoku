@@ -71,6 +71,11 @@
       ]
     ]
   },
+  "rules": {
+    "onePacketPerCell": true,
+    "onePacketPerRow": true,
+    "onePacketPerColumn": true
+  },
   "networks": [
     {
       "id": "net1",
@@ -447,7 +452,7 @@
   ],
   "packets": {
     "victimId": "B",
-    "attackerId": "D",
+    "attackerId": "C",
     "items": [
       {
         "id": "A",
@@ -455,10 +460,10 @@
         "colorName": "rosa",
         "solution": {
           "position": [
-            5,
-            3
+            1,
+            5
           ],
-          "network": "net4"
+          "network": "net2"
         }
       },
       {
@@ -468,41 +473,17 @@
         "role": "victim",
         "solution": {
           "position": [
-            1,
-            5
+            3,
+            2
           ],
-          "network": "net2"
+          "network": "net3"
         }
       },
       {
         "id": "C",
-        "color": "#8a5a33",
-        "colorName": "marrón",
-        "solution": {
-          "position": [
-            4,
-            2
-          ],
-          "network": "net4"
-        }
-      },
-      {
-        "id": "D",
-        "color": "#1fa3a3",
-        "colorName": "turquesa",
+        "color": "#d64545",
+        "colorName": "rojo",
         "role": "attacker",
-        "solution": {
-          "position": [
-            2,
-            5
-          ],
-          "network": "net2"
-        }
-      },
-      {
-        "id": "E",
-        "color": "#2e9e5b",
-        "colorName": "verde",
         "solution": {
           "position": [
             5,
@@ -512,26 +493,50 @@
         }
       },
       {
-        "id": "F",
+        "id": "D",
         "color": "#3b6fd6",
         "colorName": "azul",
         "solution": {
           "position": [
-            1,
-            2
+            6,
+            4
           ],
-          "network": "net1"
+          "network": "net4"
+        }
+      },
+      {
+        "id": "E",
+        "color": "#8a5a33",
+        "colorName": "marrón",
+        "solution": {
+          "position": [
+            2,
+            6
+          ],
+          "network": "net2"
+        }
+      },
+      {
+        "id": "F",
+        "color": "#2e9e5b",
+        "colorName": "verde",
+        "solution": {
+          "position": [
+            4,
+            3
+          ],
+          "network": "net4"
         }
       }
     ]
   },
   "objective": {
     "type": "identify_attacker",
-    "text": "Coloca los paquetes e identifica al atacante. La víctima es el paquete B: en su red solo había otro paquete, el atacante.",
+    "text": "Coloca los paquetes e identifica al atacante. En cada fila y en cada columna hay como mucho un paquete. La víctima es el paquete B: en su red solo había otro paquete, el atacante.",
     "victimPacketId": "B",
     "packetsInVictimNetwork": 2,
     "observableAnswer": {
-      "attackerPacketId": "D"
+      "attackerPacketId": "C"
     }
   },
   "clues": [
@@ -539,135 +544,116 @@
       "id": "C1",
       "packet": "A",
       "type": "node.adjacent_to_node",
-      "text": "El paquete A estaba junto al equipo de usuario de la red Administración.",
-      "parameters": {
-        "nodeId": "N6"
-      }
-    },
-    {
-      "id": "C2",
-      "packet": "A",
-      "type": "spatial.in_row",
-      "text": "El paquete A estaba en la fila 5.",
-      "parameters": {
-        "row": 5
-      }
-    },
-    {
-      "id": "C3",
-      "packet": "B",
-      "type": "node.adjacent_to_node",
-      "text": "El paquete B estaba junto a un servidor web.",
+      "text": "El paquete A estaba junto a un servidor web.",
       "parameters": {
         "nodeType": "server",
         "service": "web"
       }
     },
     {
-      "id": "C4",
-      "packet": "B",
-      "type": "spatial.in_row",
-      "text": "El paquete B estaba en la fila 1.",
+      "id": "C2",
+      "packet": "C",
+      "type": "node.adjacent_to_node",
+      "text": "El paquete C estaba junto a un servidor de ficheros.",
       "parameters": {
-        "row": 1
+        "nodeType": "server",
+        "service": "storage"
+      }
+    },
+    {
+      "id": "C3",
+      "packet": "D",
+      "type": "node.adjacent_to_node",
+      "text": "El paquete D estaba junto al equipo de usuario de la red Administración.",
+      "parameters": {
+        "nodeId": "N6"
+      }
+    },
+    {
+      "id": "C4",
+      "packet": "D",
+      "type": "spatial.in_column",
+      "text": "El paquete D estaba en la columna 4.",
+      "parameters": {
+        "column": 4
       }
     },
     {
       "id": "C5",
-      "packet": "C",
+      "packet": "E",
+      "type": "node.adjacent_to_node",
+      "text": "El paquete E estaba junto al servidor web de la red Biblioteca.",
+      "parameters": {
+        "nodeId": "N3"
+      }
+    },
+    {
+      "id": "C6",
+      "packet": "E",
+      "type": "spatial.in_column",
+      "text": "El paquete E estaba en la columna 6.",
+      "parameters": {
+        "column": 6
+      }
+    },
+    {
+      "id": "C7",
+      "packet": "F",
       "type": "network.in_network",
-      "text": "El paquete C estaba en la red Administración (192.168.146.0/26).",
+      "text": "El paquete F estaba en la red Administración (192.168.146.0/26).",
       "parameters": {
         "networkId": "net4"
       }
     },
     {
-      "id": "C6",
-      "packet": "C",
-      "type": "router.adjacent_to_router",
-      "text": "El paquete C estaba junto al router que une Desarrollo y Administración.",
-      "parameters": {
-        "routerId": "R2"
-      }
-    },
-    {
-      "id": "C7",
-      "packet": "D",
-      "type": "spatial.in_row",
-      "text": "El paquete D estaba en la fila 2.",
-      "parameters": {
-        "row": 2
-      }
-    },
-    {
       "id": "C8",
-      "packet": "D",
-      "type": "spatial.in_column",
-      "text": "El paquete D estaba en la columna 5.",
-      "parameters": {
-        "column": 5
-      }
-    },
-    {
-      "id": "C9",
-      "packet": "E",
-      "type": "node.unique_adjacent_to_node",
-      "text": "El paquete E era el único paquete situado junto al servidor de ficheros de la red Desarrollo.",
-      "parameters": {
-        "nodeId": "N5"
-      }
-    },
-    {
-      "id": "C10",
       "packet": "F",
-      "type": "node.adjacent_to_node",
-      "text": "El paquete F estaba junto al equipo de usuario de la red Secretaría.",
+      "type": "router.adjacent_to_router",
+      "text": "El paquete F estaba junto al router que une Secretaría y Administración.",
       "parameters": {
-        "nodeId": "N1"
+        "routerId": "R3"
       }
     }
   ],
   "solution": {
     "placements": {
       "A": [
-        5,
-        3
-      ],
-      "B": [
         1,
         5
       ],
-      "C": [
-        4,
+      "B": [
+        3,
         2
       ],
-      "D": [
-        2,
-        5
-      ],
-      "E": [
+      "C": [
         5,
         1
       ],
+      "D": [
+        6,
+        4
+      ],
+      "E": [
+        2,
+        6
+      ],
       "F": [
-        1,
-        2
+        4,
+        3
       ]
     },
-    "victimNetwork": "net2",
-    "attackerPacketId": "D"
+    "victimNetwork": "net3",
+    "attackerPacketId": "C"
   },
   "generation": {
     "generator": "netdoku_gen v0",
     "attempt": 1,
-    "clueCount": 10,
+    "clueCount": 8,
     "cluesByType": {
-      "node.adjacent_to_node": 3,
-      "spatial.in_row": 3,
+      "node.adjacent_to_node": 4,
+      "spatial.in_column": 2,
       "network.in_network": 1,
-      "router.adjacent_to_router": 1,
-      "spatial.in_column": 1,
-      "node.unique_adjacent_to_node": 1
+      "router.adjacent_to_router": 1
     },
     "maxReservationSize": 0
   }

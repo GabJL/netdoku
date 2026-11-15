@@ -71,6 +71,11 @@
       ]
     ]
   },
+  "rules": {
+    "onePacketPerCell": true,
+    "onePacketPerRow": true,
+    "onePacketPerColumn": true
+  },
   "networks": [
     {
       "id": "net1",
@@ -471,246 +476,209 @@
     }
   ],
   "packets": {
-    "victimId": "E",
-    "attackerId": "F",
+    "victimId": "A",
+    "attackerId": "B",
     "items": [
       {
         "id": "A",
-        "color": "#2e9e5b",
-        "colorName": "verde",
+        "color": "#d6519b",
+        "colorName": "rosa",
+        "role": "victim",
         "solution": {
           "position": [
-            5,
-            3
+            3,
+            5
           ],
-          "network": "net3"
+          "network": "net2"
         }
       },
       {
         "id": "B",
-        "color": "#d6519b",
-        "colorName": "rosa",
-        "solution": {
-          "position": [
-            4,
-            5
-          ],
-          "network": "net4"
-        }
-      },
-      {
-        "id": "C",
         "color": "#d64545",
         "colorName": "rojo",
+        "role": "attacker",
         "solution": {
           "position": [
-            5,
-            4
-          ],
-          "network": "net4"
-        }
-      },
-      {
-        "id": "D",
-        "color": "#e08a1e",
-        "colorName": "naranja",
-        "solution": {
-          "position": [
-            2,
+            1,
             6
           ],
           "network": "net2"
         }
       },
       {
-        "id": "E",
-        "color": "#8a4fd0",
-        "colorName": "morado",
-        "role": "victim",
+        "id": "C",
+        "color": "#3b6fd6",
+        "colorName": "azul",
         "solution": {
           "position": [
-            1,
-            4
+            6,
+            2
+          ],
+          "network": "net3"
+        }
+      },
+      {
+        "id": "D",
+        "color": "#2e9e5b",
+        "colorName": "verde",
+        "solution": {
+          "position": [
+            2,
+            1
           ],
           "network": "net1"
         }
       },
       {
-        "id": "F",
-        "color": "#8a5a33",
-        "colorName": "marrón",
-        "role": "attacker",
+        "id": "E",
+        "color": "#1fa3a3",
+        "colorName": "turquesa",
         "solution": {
           "position": [
-            3,
+            4,
             3
           ],
-          "network": "net1"
+          "network": "net4"
+        }
+      },
+      {
+        "id": "F",
+        "color": "#e08a1e",
+        "colorName": "naranja",
+        "solution": {
+          "position": [
+            5,
+            4
+          ],
+          "network": "net4"
         }
       }
     ]
   },
   "objective": {
     "type": "identify_attacker",
-    "text": "Coloca los paquetes e identifica al atacante. La víctima es el paquete E: en su red solo había otro paquete, el atacante.",
-    "victimPacketId": "E",
+    "text": "Coloca los paquetes e identifica al atacante. En cada fila y en cada columna hay como mucho un paquete. La víctima es el paquete A: en su red solo había otro paquete, el atacante.",
+    "victimPacketId": "A",
     "packetsInVictimNetwork": 2,
     "observableAnswer": {
-      "attackerPacketId": "F"
+      "attackerPacketId": "B"
     }
   },
   "clues": [
     {
       "id": "C1",
-      "packet": "A",
-      "type": "node.adjacent_to_node",
-      "text": "El paquete A estaba junto a un servidor de correo.",
+      "packet": "B",
+      "type": "node.unique_adjacent_to_node",
+      "text": "El paquete B era el único paquete situado junto al servidor de ficheros.",
       "parameters": {
-        "nodeType": "server",
-        "service": "mail"
+        "nodeId": "N2"
       }
     },
     {
       "id": "C2",
-      "packet": "A",
-      "type": "spatial.in_column",
-      "text": "El paquete A estaba en la columna 3.",
+      "packet": "C",
+      "type": "node.adjacent_to_node",
+      "text": "El paquete C estaba junto a un servidor.",
       "parameters": {
-        "column": 3
+        "nodeType": "server"
       }
     },
     {
       "id": "C3",
-      "packet": "B",
+      "packet": "C",
       "type": "network.in_network",
-      "text": "El paquete B estaba en la red Biblioteca (172.16.22.0/25).",
+      "text": "El paquete C estaba en la red Aulas (172.16.6.0/24).",
+      "parameters": {
+        "networkId": "net3"
+      }
+    },
+    {
+      "id": "C4",
+      "packet": "D",
+      "type": "router.adjacent_to_router",
+      "text": "El paquete D estaba junto al router que une Laboratorio y Aulas.",
+      "parameters": {
+        "routerId": "R1"
+      }
+    },
+    {
+      "id": "C5",
+      "packet": "E",
+      "type": "router.adjacent_to_router",
+      "text": "El paquete E estaba junto al router que une Laboratorio y Biblioteca.",
+      "parameters": {
+        "routerId": "R3"
+      }
+    },
+    {
+      "id": "C6",
+      "packet": "E",
+      "type": "network.in_network",
+      "text": "El paquete E estaba en la red Biblioteca (172.16.22.0/25).",
       "parameters": {
         "networkId": "net4"
       }
     },
     {
-      "id": "C4",
-      "packet": "B",
-      "type": "router.adjacent_to_router",
-      "text": "El paquete B estaba junto al router que une Desarrollo y Biblioteca.",
-      "parameters": {
-        "routerId": "R4"
-      }
-    },
-    {
-      "id": "C5",
-      "packet": "C",
-      "type": "spatial.in_row",
-      "text": "El paquete C estaba en la fila 5.",
-      "parameters": {
-        "row": 5
-      }
-    },
-    {
-      "id": "C6",
-      "packet": "C",
+      "id": "C7",
+      "packet": "F",
       "type": "spatial.in_column",
-      "text": "El paquete C estaba en la columna 4.",
+      "text": "El paquete F estaba en la columna 4.",
       "parameters": {
         "column": 4
       }
     },
     {
-      "id": "C7",
-      "packet": "D",
-      "type": "spatial.in_column",
-      "text": "El paquete D estaba en la columna 6.",
-      "parameters": {
-        "column": 6
-      }
-    },
-    {
       "id": "C8",
-      "packet": "D",
-      "type": "spatial.in_row",
-      "text": "El paquete D estaba en la fila 2.",
-      "parameters": {
-        "row": 2
-      }
-    },
-    {
-      "id": "C9",
-      "packet": "E",
-      "type": "router.adjacent_to_router",
-      "text": "El paquete E estaba junto al router que une Laboratorio y Desarrollo.",
-      "parameters": {
-        "routerId": "R2"
-      }
-    },
-    {
-      "id": "C10",
-      "packet": "E",
-      "type": "network.in_network",
-      "text": "El paquete E estaba en la red Laboratorio (172.16.8.0/24).",
-      "parameters": {
-        "networkId": "net1"
-      }
-    },
-    {
-      "id": "C11",
       "packet": "F",
       "type": "network.in_network",
-      "text": "El paquete F estaba en la red Laboratorio (172.16.8.0/24).",
+      "text": "El paquete F estaba en la red Biblioteca (172.16.22.0/25).",
       "parameters": {
-        "networkId": "net1"
-      }
-    },
-    {
-      "id": "C12",
-      "packet": "F",
-      "type": "router.adjacent_to_router",
-      "text": "El paquete F estaba junto al router que une Laboratorio y Biblioteca.",
-      "parameters": {
-        "routerId": "R3"
+        "networkId": "net4"
       }
     }
   ],
   "solution": {
     "placements": {
       "A": [
-        5,
-        3
-      ],
-      "B": [
-        4,
+        3,
         5
       ],
+      "B": [
+        1,
+        6
+      ],
       "C": [
-        5,
-        4
+        6,
+        2
       ],
       "D": [
         2,
-        6
+        1
       ],
       "E": [
-        1,
-        4
+        4,
+        3
       ],
       "F": [
-        3,
-        3
+        5,
+        4
       ]
     },
-    "victimNetwork": "net1",
-    "attackerPacketId": "F"
+    "victimNetwork": "net2",
+    "attackerPacketId": "B"
   },
   "generation": {
     "generator": "netdoku_gen v0",
     "attempt": 1,
-    "clueCount": 12,
+    "clueCount": 8,
     "cluesByType": {
+      "node.unique_adjacent_to_node": 1,
       "node.adjacent_to_node": 1,
-      "spatial.in_column": 3,
       "network.in_network": 3,
-      "router.adjacent_to_router": 3,
-      "spatial.in_row": 2
+      "router.adjacent_to_router": 2,
+      "spatial.in_column": 1
     },
-    "maxReservationSize": 0
+    "maxReservationSize": 2
   }
 }

@@ -24,6 +24,9 @@ packets:
   allowAdjacentToRouters: true
   allowOnNetworkBoundary: true
   requireUniqueCell: true
+  # Regla básica: como mucho un paquete por fila y por columna.
+  onePerRow: true
+  onePerColumn: true
 
 features:
   spatial: true

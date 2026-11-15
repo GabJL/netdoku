@@ -103,18 +103,11 @@ def place_nodes(rng, board, min_free_ratio=0.4, client_prob=0.35):
     return nodes
 
 
-def _weighted_sample(rng, cells, weights, k):
-    cells, weights, chosen = list(cells), list(weights), []
-    for _ in range(k):
-        i = rng.choices(range(len(cells)), weights=weights)[0]
-        chosen.append(cells.pop(i))
-        weights.pop(i)
-    return chosen
-
-
 def place_packets(rng, board, nodes, count=6, near_node_weight=4.0):
-    """Escenario same_network_attacker: la red de la víctima tiene exactamente
-    dos paquetes (víctima y atacante); los demás van a otras redes.
+    """Coloca los paquetes con como mucho uno por fila y por columna.
+
+    Escenario same_network_attacker: la víctima está en una red con
+    exactamente dos paquetes (víctima y atacante).
 
     Las casillas junto a un nodo de su red pesan más, para que haya pistas de
     nodos con las que localizar los paquetes.
@@ -127,17 +120,37 @@ def place_packets(rng, board, nodes, count=6, near_node_weight=4.0):
     def weight(cell):
         return near_node_weight if cell in near else 1.0
 
-    free = {net.id: [c for c in net.cells if c not in node_cells] for net in board.networks}
-    victim_net = rng.choice([nid for nid, cells in free.items() if len(cells) >= 2])
-    victim_cell, attacker_cell = _weighted_sample(rng, free[victim_net],
-                                                  [weight(c) for c in free[victim_net]], 2)
-    others_pool = [c for nid, cells in free.items() if nid != victim_net for c in cells]
-    if len(others_pool) < count - 2:
-        raise RuntimeError("No hay casillas suficientes para los paquetes")
-    other_cells = _weighted_sample(rng, others_pool, [weight(c) for c in others_pool], count - 2)
+    if count > min(board.height, board.width):
+        raise ValueError("Con un paquete por fila y columna no caben tantos paquetes")
+    cells = None
+    for _ in range(500):
+        # Un paquete por fila y por columna: se recorren filas al azar y se
+        # elige una columna libre en cada una.
+        rows = rng.sample(range(board.height), count)
+        used_cols, chosen = set(), []
+        for r in rows:
+            options = [(r, c) for c in range(board.width) if c not in used_cols and (r, c) not in node_cells]
+            if not options:
+                break
+            cell = rng.choices(options, weights=[weight(x) for x in options])[0]
+            chosen.append(cell)
+            used_cols.add(cell[1])
+        if len(chosen) != count:
+            continue
+        per_net = {}
+        for cell in chosen:
+            per_net.setdefault(board.network_of(cell), []).append(cell)
+        pairs = [nid for nid, cs in per_net.items() if len(cs) == 2]
+        if pairs:
+            victim_net = rng.choice(pairs)
+            victim_cell, attacker_cell = rng.sample(per_net[victim_net], 2)
+            other_cells = [c for c in chosen if c not in (victim_cell, attacker_cell)]
+            cells = [victim_cell, attacker_cell] + other_cells
+            break
+    if cells is None:
+        raise RuntimeError("No se han podido colocar los paquetes")
 
     roles = ["victim", "attacker"] + ["other"] * (count - 2)
-    cells = [victim_cell, attacker_cell] + other_cells
     order = list(range(count))
     rng.shuffle(order)
     colors = rng.sample(PACKET_COLORS, count)

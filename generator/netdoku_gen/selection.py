@@ -3,9 +3,10 @@
 1. Se eligen pistas de los paquetes que no son la víctima hasta que la
    propagación los coloca a todos. La víctima no interviene: su dominio son
    todas las casillas libres.
-2. Se añaden pistas de la víctima hasta que su casilla queda determinada. Se
-   prefieren pistas que, por sí solas, no la coloquen: así la víctima se
-   resuelve al final.
+2. Si la víctima no queda ya determinada por descarte (con tantos paquetes
+   como filas, le queda la única fila y columna libres), se añaden pistas suyas
+   hasta que lo esté. Se prefieren pistas que, por sí solas, no la coloquen:
+   así la víctima se resuelve al final.
 3. Se quitan las pistas redundantes, manteniendo que los demás paquetes se
    resuelvan sin las pistas de la víctima.
 """
@@ -27,18 +28,18 @@ SUBTYPE_WEIGHTS = {
 
 
 class Selector:
-    def __init__(self, rng, ctx, pool, victim_id, max_subset=4):
+    def __init__(self, rng, ctx, pool, victim_id, rules):
         self.rng = rng
         self.ctx = ctx
         self.pool = pool
         self.victim = victim_id
         self.packet_ids = [p.id for p in ctx.packets]
         self.others = [p for p in self.packet_ids if p != victim_id]
-        self.max_subset = max_subset
+        self.rules = rules
 
     def solve(self, clues):
         d = initial_domains(self.ctx.free_cells, self.packet_ids, clues)
-        return propagate(d, self.max_subset, exclude_from_subsets={self.victim})
+        return propagate(d, self.rules, exclude_from_subsets={self.victim})
 
     def others_solved(self, clues):
         d, _ = self.solve([c for c in clues if c.packet != self.victim])

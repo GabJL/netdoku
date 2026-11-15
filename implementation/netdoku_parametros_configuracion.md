@@ -83,7 +83,7 @@ Solo cuenta lo que el jugador ve o necesita para resolver: las pistas, los datos
 - **Carácter:** obligatorio.
 - **Dominio:** entero mayor que `2`.
 - **Valor por defecto:** `10`.
-- **Descripción:** número total de paquetes del nivel, incluida la víctima.
+- **Descripción:** número total de paquetes del nivel, incluida la víctima. Con la regla de un paquete por fila y por columna, no puede superar el ancho ni el alto del tablero; lo habitual es que coincida con ellos (por ejemplo, 6 paquetes en un 6×6), para que la víctima se localice por descarte.
 
 ### `packets.identifiers`
 
@@ -158,6 +158,13 @@ Solo cuenta lo que el jugador ve o necesita para resolver: las pistas, los datos
 - **Dominio:** booleano.
 - **Valor por defecto:** `true`.
 - **Descripción:** exige que cada paquete ocupe una casilla diferente.
+
+### `packets.onePerRow` y `packets.onePerColumn`
+
+- **Carácter:** opcional.
+- **Dominio:** booleano.
+- **Valor por defecto:** `true`.
+- **Descripción:** regla básica del juego, como en Murdoku: como mucho un paquete por fila y por columna. Con tantos paquetes como filas (o columnas), cada fila (o columna) tiene exactamente uno, y eso permite localizar a la víctima por descarte. Obliga a que `packets.count` no supere el número de filas ni de columnas del tablero. El nivel la declara en su bloque `rules` para que el motor la muestre y la aplique.
 
 ## 3. Familias de propiedades y reglas
 
@@ -1132,7 +1139,7 @@ Las rutas no se sortean paquete a paquete. Como en la asignatura, cada router de
 - **Carácter:** opcional.
 - **Dominio:** booleano.
 - **Valor por defecto:** `true`.
-- **Descripción:** las pistas de la víctima no se eligen mientras queden otros paquetes por colocar. La víctima sí recibe pistas al final, porque sin la regla de fila y columna de Murdoku no podría localizarse solo por descarte (véase «Tratamiento del paquete víctima» en el documento del generador).
+- **Descripción:** las pistas de la víctima no se eligen mientras queden otros paquetes por colocar. Con tantos paquetes como filas y columnas, la víctima se localiza por descarte sin pistas propias; si hay menos, puede recibir pistas al final (véase «Tratamiento del paquete víctima» en el documento del generador).
 
 ### `victim.excludeFromDomainSingletons`
 

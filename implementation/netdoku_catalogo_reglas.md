@@ -156,7 +156,7 @@ Este catálogo recoge solo las reglas que ayudan a **colocar** paquetes. La info
 - **Generación de instancias:** una de cada por paquete.
 - **Dominio:** `D = Libres(m) ∩ Fila(row)` (o `Columna(column)`).
 - **Anulación común:** `A = ∅`.
-- **Compatibilidad:** no tienen significado de red. Sin una regla global de «un paquete por fila y columna», sirven para fijar una casilla concreta dentro de un dominio pequeño (por ejemplo, junto a un nodo). El generador prefiere las pistas de red, nodos y routers, permite como mucho una pista espacial por paquete y solo da fila **y** columna (las coordenadas) como último recurso.
+- **Compatibilidad:** no tienen significado de red. Con la regla de un paquete por fila y por columna, «estaba en la fila 3» también descarta esa fila para todos los demás paquetes una vez colocado. El generador prefiere las pistas de red, nodos y routers, permite como mucho una pista espacial por paquete y solo da fila **y** columna (las coordenadas) como último recurso.
 - **Bloque mínimo:** `T3.dispositivos`.
 - **Conocimiento:** `basic`.
 

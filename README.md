@@ -23,11 +23,11 @@ python -m http.server 8000
 
 Después, abrir <http://localhost:8000/engine/> en el navegador. Con `?level=netdoku-gen-3.json` se abre un nivel concreto.
 
-Mecánica: arrastra cada paquete a su casilla (o selecciónalo y pulsa la casilla). Si aciertas, queda fijo; si fallas, vuelve al panel y pierdes una vida. Con todos colocados, identifica al atacante: el único otro paquete en la red de la víctima.
+Mecánica: como mucho un paquete por fila y por columna. Arrastra cada paquete a su casilla (o selecciónalo y pulsa la casilla). Si aciertas, queda fijo; si fallas, vuelve al panel y pierdes una vida. Con todos colocados, identifica al atacante: el único otro paquete en la red de la víctima.
 
 ## Alcance de la v0
 
 - Tablero 6×6 con 4 redes, routers de grado 2 en las fronteras, clientes y servidores con etiqueta.
 - Pistas: `network.in_network`, `node.adjacent_to_node`, `node.unique_adjacent_to_node`, `router.adjacent_to_router`, `spatial.in_row` y `spatial.in_column` (véase `implementation/netdoku_catalogo_reglas.md`).
-- La víctima tiene pistas, pero solo se resuelve después de los demás paquetes.
+- Regla básica: como mucho un paquete por fila y por columna. Con 6 paquetes en un 6×6, la víctima se localiza por descarte, sin pistas propias.
 - Selección de pistas voraz con colocación directa y reservas; se comprueba por fuerza bruta que la solución es única. Aún no hay protocolos, rutas, TTL ni evaluación de dificultad.

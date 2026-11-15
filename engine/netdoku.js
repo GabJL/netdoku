@@ -268,7 +268,9 @@
       } else {
         const none = document.createElement("div");
         none.className = "no-clues";
-        none.textContent = "Sin pistas propias.";
+        none.textContent = p.id === level.objective.victimPacketId
+          ? "Sin pistas: se localiza por descarte."
+          : "Sin pistas propias.";
         card.appendChild(none);
       }
       el.appendChild(card);
@@ -333,11 +335,26 @@
     return other ? `el paquete ${other[0]}` : null;
   }
 
+  // Regla básica: como mucho un paquete por fila y por columna.
+  function lineConflict(r, c) {
+    const rules = level.rules || {};
+    for (const [id, [pr, pc]] of Object.entries(state.placed)) {
+      if (rules.onePacketPerRow !== false && pr === r) return `En la fila ${r} ya está el paquete ${id}.`;
+      if (rules.onePacketPerColumn !== false && pc === c) return `En la columna ${c} ya está el paquete ${id}.`;
+    }
+    return null;
+  }
+
   function tryPlace(id, r, c) {
     if (state.over || id in state.placed) return;
     const busy = occupied(r, c);
     if (busy) {
       say(`Esa casilla ya está ocupada por ${busy}.`, "bad");
+      return;
+    }
+    const conflict = lineConflict(r, c);
+    if (conflict) {
+      say(`${conflict} Solo puede haber un paquete por fila y por columna.`, "bad");
       return;
     }
     const [sr, sc] = packetById(id).solution.position;

@@ -62,6 +62,8 @@ Los routers no ocupan casillas. Se sitúan en la frontera entre casillas de rede
 
 Los paquetes solo pueden estar en casillas vacías o en su nodo origen o destino.
 
+**Regla básica:** como en Murdoku, en cada fila y en cada columna hay como mucho un paquete. Si hay tantos paquetes como filas, cada fila y cada columna tiene exactamente uno. Esto permite localizar al último paquete (la víctima) por descarte.
+
 ## Los paquetes
 
 Las piezas del juego son **paquetes** (nivel 3, red). Para el resto de niveles se usa siempre el mismo nombre: **trama** (nivel 2), **segmento** (TCP) o **datagrama** (UDP) en el nivel 4, y **mensaje** (nivel 5) para el contenido de aplicación que lleva el paquete.

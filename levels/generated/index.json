@@ -4,61 +4,61 @@
       "file": "netdoku-gen-1.json",
       "id": "netdoku-gen-1",
       "name": "Nivel generado 1",
-      "clues": 12
+      "clues": 8
     },
     {
       "file": "netdoku-gen-10.json",
       "id": "netdoku-gen-10",
       "name": "Nivel generado 10",
-      "clues": 12
+      "clues": 6
     },
     {
       "file": "netdoku-gen-2.json",
       "id": "netdoku-gen-2",
       "name": "Nivel generado 2",
-      "clues": 9
+      "clues": 5
     },
     {
       "file": "netdoku-gen-3.json",
       "id": "netdoku-gen-3",
       "name": "Nivel generado 3",
-      "clues": 10
+      "clues": 8
     },
     {
       "file": "netdoku-gen-4.json",
       "id": "netdoku-gen-4",
       "name": "Nivel generado 4",
-      "clues": 11
+      "clues": 5
     },
     {
       "file": "netdoku-gen-5.json",
       "id": "netdoku-gen-5",
       "name": "Nivel generado 5",
-      "clues": 10
+      "clues": 6
     },
     {
       "file": "netdoku-gen-6.json",
       "id": "netdoku-gen-6",
       "name": "Nivel generado 6",
-      "clues": 12
+      "clues": 6
     },
     {
       "file": "netdoku-gen-7.json",
       "id": "netdoku-gen-7",
       "name": "Nivel generado 7",
-      "clues": 10
+      "clues": 8
     },
     {
       "file": "netdoku-gen-8.json",
       "id": "netdoku-gen-8",
       "name": "Nivel generado 8",
-      "clues": 10
+      "clues": 6
     },
     {
       "file": "netdoku-gen-9.json",
       "id": "netdoku-gen-9",
       "name": "Nivel generado 9",
-      "clues": 12
+      "clues": 6
     }
   ]
 }

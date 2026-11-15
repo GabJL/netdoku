@@ -279,6 +279,7 @@ Las posiciones deben cumplir las restricciones generales:
 
 - cada paquete ocupa una única casilla;
 - una casilla no puede contener más de un paquete;
+- **como mucho un paquete por fila y por columna** (regla básica del juego, como en Murdoku). Con tantos paquetes como filas, cada fila y cada columna tiene exactamente uno;
 - solo pueden utilizarse casillas válidas y accesibles;
 - debe quedar garantizada la mecánica final del nivel.
 
@@ -486,10 +487,10 @@ La víctima tampoco se considera un paquete pendiente a efectos de buscar conjun
 
 Su posición se determina únicamente al final, una vez colocados todos los demás paquetes. Para aceptar el nivel, deberá quedar una única casilla válida para la víctima y esta deberá coincidir con la solución generada.
 
-**La víctima también recibe pistas.** En Murdoku la víctima se localiza por puro descarte gracias a la regla de «una persona por fila y columna»: al colocar a los demás solo le queda una casilla. Netdoku no tiene esa regla, así que, sin pistas propias, la víctima podría estar en cualquier casilla libre y el nivel no tendría solución única. Por eso:
+Gracias a la regla de un paquete por fila y por columna, si hay tantos paquetes como filas y columnas, la víctima queda en la única fila y la única columna libres, sin pistas propias, como en Murdoku. Si hay menos paquetes, puede quedar más de una casilla posible; solo entonces la víctima recibe pistas:
 
 1. Primero se eligen pistas para los demás paquetes, sin contar con la víctima, hasta que todos quedan colocados.
-2. Después se añaden pistas de la víctima hasta que su casilla queda determinada. Se prefieren pistas que por sí solas no la colocan (`|D| > 1`), de modo que solo se resuelve gracias a las casillas ya ocupadas por los demás.
+2. Si la víctima no queda determinada por descarte, se añaden pistas suyas hasta que lo esté. Se prefieren pistas que por sí solas no la colocan (`|D| > 1`), de modo que solo se resuelve gracias a las casillas, filas y columnas ya ocupadas por los demás.
 3. Al quitar pistas redundantes se mantiene que los demás paquetes se resuelvan sin las pistas de la víctima.
 
 ### Evaluación de la dificultad
