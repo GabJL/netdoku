@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Netdoku</title>
+  <link rel="stylesheet" href="netdoku.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Netdoku</h1>
+    <div class="level-picker">
+      <select id="level-select" aria-label="Nivel"></select>
+      <label class="button secondary">
+        Abrir nivel…
+        <input type="file" id="level-file" accept=".json,application/json" hidden>
+      </label>
+      <button id="restart" class="button secondary" type="button">Reiniciar</button>
+    </div>
+    <div id="lives" class="lives" aria-label="Vidas"></div>
+  </header>
+
+  <main class="layout">
+    <section class="board-area">
+      <p id="objective" class="objective"></p>
+      <div id="board-wrap" class="board-wrap"></div>
+      <div id="legend" class="legend"></div>
+      <p class="hint">Arrastra cada paquete a su casilla (o selecciónalo y pulsa la casilla). Clic derecho en una casilla para marcarla con una ✕. Pulsa una pista para tacharla.</p>
+    </section>
+
+    <aside class="side">
+      <div id="message" class="message" role="status"></div>
+      <div id="final" class="final" hidden></div>
+      <div id="packets" class="packets"></div>
+    </aside>
+  </main>
+
+  <div id="drag-ghost" class="token ghost" hidden></div>
+
+  <script src="netdoku.js"></script>
+</body>
+</html>

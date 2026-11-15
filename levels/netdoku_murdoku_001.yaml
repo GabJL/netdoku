@@ -1,0 +1,204 @@
+schemaVersion: "0.1"
+
+level:
+  id: netdoku-murdoku-001
+  name: "El paquete infiltrado"
+  language: es
+  difficulty: 2
+  scenario: same_network_attacker
+  seed: null
+  description: >
+    Nivel introductorio inspirado en la estructura de un Murdoku. El jugador
+    debe colocar seis paquetes en el tablero y descubrir cuál es el atacante.
+    El paquete víctima es F y el atacante es el único otro paquete situado en
+    su misma red.
+
+# Lo que exige entender el nivel: pistas, datos visibles y etiquetas de nodos.
+# Los protocolos de los paquetes no se muestran ni los usa ninguna pista.
+requirements:
+  topic: T3.dispositivos
+  knowledge: basic
+
+board:
+  width: 6
+  height: 6
+  coordinateSystem:
+    origin: top-left
+    rowIndexStartsAt: 1
+    columnIndexStartsAt: 1
+  trimEmptyBorders: false
+  cellOccupation:
+    allowPacketAndNodeInSameCell: false
+    allowMultiplePacketsInSameCell: false
+  networkGrid:
+    - [A, A, B, B, B, B]
+    - [A, A, B, B, B, B]
+    - [A, A, D, D, D, D]
+    - [C, C, D, D, D, D]
+    - [C, C, D, D, D, D]
+    - [C, C, D, D, D, D]
+  asciiPreview: |
+      +---+---+---+---+---+---+
+      | A | A | B | B | B | B |
+      +---+---+---+---+---+---+
+      | A | A | B | B | B | B |
+      +---+---+---+---+---+---+
+      | A | A | D | D | D | D |
+      +---+---+---+---+---+---+
+      | C | C | D | D | D | D |
+      +---+---+---+---+---+---+
+      | C | C | D | D | D | D |
+      +---+---+---+---+---+---+
+      | C | C | D | D | D | D |
+      +---+---+---+---+---+---+
+
+networks:
+  - id: A
+    name: "Administración"
+    prefix: "192.168.10.0/24"
+    cellCount: 6
+    cells: [[1,1], [1,2], [2,1], [2,2], [3,1], [3,2]]
+  - id: B
+    name: "Servicios"
+    prefix: "10.20.0.0/16"
+    cellCount: 8
+    cells: [[1,3], [1,4], [1,5], [1,6], [2,3], [2,4], [2,5], [2,6]]
+  - id: C
+    name: "Laboratorio"
+    prefix: "172.16.30.0/24"
+    cellCount: 6
+    cells: [[4,1], [4,2], [5,1], [5,2], [6,1], [6,2]]
+  - id: D
+    name: "Desarrollo"
+    prefix: "192.168.40.0/23"
+    cellCount: 16
+    cells: [[3,3], [3,4], [3,5], [3,6], [4,3], [4,4], [4,5], [4,6], [5,3], [5,4], [5,5], [5,6], [6,3], [6,4], [6,5], [6,6]]
+
+routers:
+  - id: R1
+    name: "Router de Administración y Servicios"
+    connectedNetworks: [A, B]
+    degree: 2
+    position:
+      kind: edge
+      between: [[2,2], [2,3]]
+    orientation: vertical
+  - id: R2
+    name: "Router de Administración y Desarrollo"
+    connectedNetworks: [A, D]
+    degree: 2
+    position:
+      kind: edge
+      between: [[3,2], [3,3]]
+    orientation: vertical
+  - id: R3
+    name: "Router de Laboratorio y Desarrollo"
+    connectedNetworks: [C, D]
+    degree: 2
+    position:
+      kind: edge
+      between: [[5,2], [5,3]]
+    orientation: vertical
+
+topology:
+  bipartite: true
+  connected: true
+  networkNodes: [A, B, C, D]
+  routerNodes: [R1, R2, R3]
+  edges:
+    - [A, R1]
+    - [B, R1]
+    - [A, R2]
+    - [D, R2]
+    - [C, R3]
+    - [D, R3]
+
+nodes:
+  - {id: N1, type: server, services: [storage], label: "Servidor de ficheros", network: A, position: [1,2]}
+  - {id: N2, type: client, label: "Equipo de usuario", network: A, position: [3,1]}
+  - {id: N3, type: server, services: [dns], label: "Servidor DNS", network: B, position: [1,3]}
+  - {id: N4, type: server, services: [web], label: "Servidor web", network: B, position: [1,5]}
+  - {id: N5, type: client, label: "Equipo de usuario", network: B, position: [2,4]}
+  - {id: N6, type: server, services: [storage], label: "Servidor de ficheros", network: C, position: [5,1]}
+  - {id: N7, type: server, services: [mail], label: "Servidor de correo", network: C, position: [6,2]}
+  - {id: N8, type: server, services: [mail], label: "Servidor de correo", network: D, position: [3,5]}
+  - {id: N9, type: server, services: [storage], label: "Servidor de ficheros", network: D, position: [5,3]}
+  - {id: N10, type: server, services: [multimedia], label: "Servidor multimedia", network: D, position: [5,6]}
+  - {id: N11, type: server, services: [dns], label: "Servidor DNS", network: D, position: [6,3]}
+
+packets:
+  victimId: F
+  attackerId: E
+  items:
+    - {id: A, protocol: ssh, solution: {position: [1,1], network: A}}
+    - {id: B, protocol: dns, solution: {position: [2,2], network: A}}
+    - {id: C, protocol: https, solution: {position: [3,6], network: D}}
+    - {id: D, protocol: smtp, solution: {position: [5,2], network: C}}
+    - {id: E, protocol: http, role: attacker, solution: {position: [2,5], network: B}}
+    - {id: F, protocol: https, role: victim, solution: {position: [2,3], network: B}}
+
+objective:
+  type: identify_attacker
+  text: >
+    Identifica el paquete atacante. La víctima es el paquete F y estaba en una
+    red en la que solo había otro paquete.
+  victimText: "La víctima era el paquete F. En su red solo estaba el atacante junto a ella."
+  victimPacketId: F
+  packetsInVictimNetwork: 2
+  observableAnswer:
+    attackerPacketId: E
+
+clues:
+  - id: C1
+    packet: A
+    type: node.adjacent_to_node
+    text: "El paquete A estaba junto a un servidor de ficheros."
+    parameters: {nodeType: server, service: storage}
+  - id: C2
+    packet: B
+    type: network.in_network
+    text: "El paquete B estaba en la red de Administración (192.168.10.0/24)."
+    parameters: {networkId: A}
+  - id: C3
+    packet: C
+    type: node.unique_adjacent_to_node
+    text: "El paquete C era el único paquete situado junto al servidor de correo de la red de Desarrollo."
+    parameters: {nodeId: N8}
+  - id: C4
+    packet: D
+    type: network.in_network
+    text: "El paquete D estaba en la red de Laboratorio (172.16.30.0/24)."
+    parameters: {networkId: C}
+  - id: C5
+    packet: E
+    type: node.adjacent_to_node
+    text: "El paquete E estaba junto al servidor web."
+    parameters: {nodeId: N4}
+
+solution:
+  placements:
+    A: [1,1]
+    B: [2,2]
+    C: [3,6]
+    D: [5,2]
+    E: [2,5]
+    F: [2,3]
+  victimNetwork: B
+  attackerPacketId: E
+  explanation: >
+    F ocupa una casilla de la red B. La única otra posición ocupada por un
+    paquete en esa red corresponde a E, por lo que E es el atacante.
+
+validation:
+  expected:
+    boardArea: 36
+    networkCellCount: 36
+    networkCount: 4
+    routerCount: 3
+    packetCount: 6
+    nodeCount: 11
+    uniquePacketPositions: true
+    uniqueNodePositions: true
+    packetsDoNotOverlapNodes: true
+    allNetworksConnected: true
+    victimNetworkContainsExactlyTwoPackets: true

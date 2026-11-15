@@ -1,0 +1,218 @@
+:root {
+  --bg: #f5f3ee;
+  --panel: #ffffff;
+  --ink: #23262b;
+  --muted: #6b7078;
+  --line: #d9d5cc;
+  --accent: #2f5fb3;
+  --danger: #c0392b;
+  --ok: #27864a;
+  --wall: #3a3d42;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 12px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  letter-spacing: 0.02em;
+}
+
+.level-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+select, .button {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.lives {
+  margin-left: auto;
+  font-size: 1.3rem;
+  letter-spacing: 2px;
+  color: var(--danger);
+}
+
+.lives .lost { color: var(--line); }
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  gap: 20px;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; padding: 12px 16px; }
+}
+
+.objective {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+}
+
+.board-wrap svg {
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  display: block;
+  touch-action: none;
+  user-select: none;
+}
+
+.cell { cursor: pointer; }
+.cell:hover { filter: brightness(0.95); }
+.cell.wrong { animation: flash 0.6s; }
+
+@keyframes flash {
+  0%, 100% { filter: none; }
+  30% { filter: sepia(1) saturate(6) hue-rotate(-40deg) brightness(0.9); }
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 12px;
+  font-size: 0.88rem;
+}
+
+.legend span.swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  margin-right: 6px;
+  vertical-align: -2px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 12px;
+}
+
+.side { display: flex; flex-direction: column; gap: 12px; }
+
+.message {
+  min-height: 1.4em;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.message.bad { color: var(--danger); }
+.message.good { color: var(--ok); }
+
+.packets { display: flex; flex-direction: column; gap: 10px; }
+
+.packet-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  align-items: start;
+}
+
+.packet-card.selected { outline: 3px solid var(--accent); }
+.packet-card.placed { opacity: 0.6; }
+
+.packet-card .title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  margin-left: 6px;
+  background: #f3dede;
+  color: var(--danger);
+  vertical-align: 1px;
+}
+
+.packet-card ul {
+  grid-column: 2;
+  margin: 2px 0 0;
+  padding-left: 18px;
+  font-size: 0.88rem;
+}
+
+.packet-card li { cursor: pointer; margin: 2px 0; }
+.packet-card li.done { text-decoration: line-through; color: var(--muted); }
+.packet-card .no-clues { grid-column: 2; font-size: 0.85rem; color: var(--muted); }
+
+.token {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  grid-row: span 2;
+}
+
+.token.placed { cursor: default; }
+
+.ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 10;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.final {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.final p { margin: 0 0 10px; }
+.final .choices { display: flex; flex-wrap: wrap; gap: 8px; }

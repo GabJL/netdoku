@@ -1,0 +1,342 @@
+# Configuración global por defecto de Netdoku
+
+level:
+  id: null
+  name: null
+  seed: null
+  difficulty: 3
+  scenario: same_network_attacker
+  maxGenerationAttempts: 100
+  # Bloques temáticos (T3.dispositivos ... T6) mínimo y máximo que puede usar el nivel.
+  minTopic: null
+  maxTopic: null
+
+packets:
+  count: 10
+  identifiers: null
+  victim: random
+  minPerNetwork: 0
+  maxPerNetwork: null
+  minOccupiedNetworks: null
+  distribution: auto
+  minDistance: 0
+  allowAdjacentToNodes: true
+  allowAdjacentToRouters: true
+  allowOnNetworkBoundary: true
+  requireUniqueCell: true
+
+features:
+  spatial: true
+  networks: true
+  nodes: true
+  protocols: true
+  origins: false
+  destinations: false
+  routes: false
+  hops: false
+  ttl: false
+  enabledRuleTypes: null
+  enabledRuleSubtypes: null
+  disabledRuleSubtypes: []
+  requiredRuleSubtypes: []
+
+topology:
+  networks:
+    min: null
+    max: null
+    target: null
+  connected: true
+  allowCycles: true
+  cycles:
+    min: 0
+    max: null
+  alternativePaths:
+    min: 0
+    max: null
+  diameter:
+    min: null
+    max: null
+  allowTerminalNetworks: true
+  allowArticulationPoints: true
+  allowParallelConnections: false
+  symmetry: avoid
+
+geometry:
+  networkSize:
+    min: 6
+    max: null
+    targetMean: null
+    variation: 0.25
+  minThickness: 2
+  compactness:
+    min: null
+  aspectRatio:
+    max: 3.0
+  concavities:
+    max: null
+  corners:
+    max: null
+  allowInternalHoles: false
+  allowNarrowCorridors: false
+  narrowCorridorMaxLength: 0
+  minInteriorCells: 1
+  maxBoundaryCellRatio: null
+  externalMargin: 0
+
+board:
+  width: null
+  height: null
+  maxWidth: null
+  maxHeight: null
+  maxArea: null
+  maxAspectRatio: 2.0
+  trimEmptyBorders: true
+
+routers:
+  count:
+    min: null
+    max: null
+    target: null
+  degree:
+    min: 2
+    max: 4
+    weights:
+      2: 0.75
+      3: 0.20
+      4: 0.05
+  allowCornerRouters: true
+  allowAdjacentRouters: false
+  minDistance: 1
+  maxPerSharedBoundary: 1
+  requireAccessFromAllConnectedNetworks: true
+  allowSingleAccessNetworks: true
+
+nodes:
+  density: auto
+  count:
+    min: 0
+    max: null
+    target: null
+  perNetwork:
+    min: 1
+    max: null
+  # Redes de tránsito (sin equipos): solo con features.routes, hops o ttl activas.
+  allowEmptyNetworks: false
+  emptyNetworks:
+    max: 1
+    requireTransit: true
+  # Tipos de nodo: client, server (con lista de servicios) e infraestructura
+  # (firewall, switch, access_point), desactivada por defecto.
+  enabledTypes:
+    - client
+    - server
+  requiredTypes: []
+  typeLimits: {}
+  enabledServices:
+    - web
+    - dns
+    - mail
+    - storage
+    - multimedia
+  # dhcp también es un servicio válido, pero no se activa por defecto.
+  requiredServices: []
+  allowMultipleServices: true
+  minDistance: 1
+  minDistanceFromRouters: 0
+  allowAdjacentToRouters: true
+  allowOnNetworkBoundary: true
+  minFreeCellsAfterPlacement: 0
+  minFreeCellRatioAfterPlacement: 0.40
+  preserveInternalConnectivity: true
+
+protocols:
+  enabled:
+    - http
+    - https
+    - dns
+    - ssh
+    - smtp
+  required: []
+  distribution: weighted
+  weights:
+    http: 0.25
+    https: 0.30
+    dns: 0.20
+    ssh: 0.15
+    smtp: 0.10
+  requireCompatibleDestinationService: true
+  requireCompatibleOriginNode: true
+  # Catálogo de protocolos de aplicación conocidos. Solo se usan los de `enabled`.
+  # originNodes / destinationNodes: nodos que pueden ser origen / destino.
+  #   client -> cliente; web, dns, mail... -> servidor con ese servicio;
+  #   any_server -> cualquier servidor; any_node -> cualquier nodo.
+  # transport: null indica que el protocolo no usa capa de transporte (ICMP).
+  # sameNetworkOnly: origen y destino deben estar en la misma red (difusión).
+  # knowledge / portKnowledge: cuánto se ve en la asignatura el protocolo / su puerto
+  #   (basic, advanced, additional, extra). Si falta portKnowledge, vale lo de knowledge.
+  # topic: bloque temático en que se ve el protocolo (véase el documento de parámetros).
+  catalog:
+    # Básicos: teoría de la asignatura.
+    http:   {originNodes: [client], destinationNodes: [web], transport: tcp, port: 80, knowledge: basic, topic: T5.web}
+    https:  {originNodes: [client], destinationNodes: [web], transport: tcp, port: 443, knowledge: basic, topic: T5.web}
+    dns:    {originNodes: [client, dns], destinationNodes: [dns], transport: udp, port: 53, knowledge: basic, topic: T5.dns}
+    smtp:   {originNodes: [client, mail], destinationNodes: [mail], transport: tcp, port: 25, knowledge: basic, topic: T5.ficheros_correo}
+    pop3:   {originNodes: [client], destinationNodes: [mail], transport: tcp, port: 110, knowledge: basic, topic: T5.ficheros_correo}
+    imap:   {originNodes: [client], destinationNodes: [mail], transport: tcp, port: 143, knowledge: basic, topic: T5.ficheros_correo}
+    ssh:    {originNodes: [client], destinationNodes: [any_server], transport: tcp, port: 22, knowledge: basic, topic: T5.dns}
+    telnet: {originNodes: [client], destinationNodes: [any_server], transport: tcp, port: 23, knowledge: basic, topic: T5.dns}
+    ftp:    {originNodes: [client], destinationNodes: [storage], transport: tcp, port: 21, knowledge: basic, topic: T5.ficheros_correo}
+    dhcp:   {originNodes: [client], destinationNodes: [dhcp], transport: udp, port: 67, sameNetworkOnly: true, knowledge: basic, topic: T3.vlsm}
+    icmp:   {originNodes: [any_node], destinationNodes: [any_node], transport: null, port: null, knowledge: basic, topic: T3.ip}
+    rtsp:   {originNodes: [client], destinationNodes: [multimedia], transport: tcp, port: 554, knowledge: basic, portKnowledge: extra, topic: T6}
+    # Avanzados: aparecen en la asignatura, pero en segundo plano (puertos seguros, variantes).
+    smtps:  {originNodes: [client, mail], destinationNodes: [mail], transport: tcp, port: 465, knowledge: advanced, topic: T5.ficheros_correo}
+    pop3s:  {originNodes: [client], destinationNodes: [mail], transport: tcp, port: 995, knowledge: advanced, topic: T5.ficheros_correo}
+    imaps:  {originNodes: [client], destinationNodes: [mail], transport: tcp, port: 993, knowledge: advanced, topic: T5.ficheros_correo}
+    ftps:   {originNodes: [client], destinationNodes: [storage], transport: tcp, port: 990, knowledge: advanced, topic: T5.ficheros_correo}
+    ftp-data: {originNodes: [storage], destinationNodes: [client], transport: tcp, port: 20, knowledge: advanced, topic: T5.ficheros_correo}
+    tftp:   {originNodes: [client], destinationNodes: [storage], transport: udp, port: 69, knowledge: advanced, portKnowledge: extra, topic: T5.ficheros_correo}
+    # Adicionales: vistos en clase como ampliación.
+    smb:    {originNodes: [client], destinationNodes: [storage], transport: tcp, port: 445, knowledge: additional, portKnowledge: extra, topic: T5.ficheros_correo}
+
+endpoints:
+  # Estos valores pueden recalcularse dinámicamente según las features activadas.
+  originAssignmentRatio: 0.0
+  destinationAssignmentRatio: 0.0
+  allowSameNode: false
+  allowSameNetwork: true
+  requireProtocolCompatibility: true
+  originNodeTypes: null
+  destinationNodeTypes: null
+
+routes:
+  # Se recalcula a 1.0 cuando se activa routes, hops o ttl.
+  assignmentRatio: 0.0
+  # Las rutas se derivan de tablas de encaminamiento calculadas una vez por nivel.
+  policy: routing_tables
+  tables:
+    metric: hops
+    tieBreak: random
+    hostGateway: shortest
+    store: true
+  minHops: 0
+  maxHops: null
+  finalPositionPolicy: weighted
+  finalPositionWeights:
+    origin: 0.15
+    intermediate: 0.60
+    destination: 0.25
+  storeRepresentation: routers
+  requireFinalPositionOnRoute: true
+
+ttl:
+  initialValues:
+    - 32
+    - 64
+    - 128
+    - 255
+  initialValuePolicy: weighted
+  initialValueWeights:
+    32: 0.10
+    64: 0.55
+    128: 0.25
+    255: 0.10
+  fixedInitialValue: null
+  decrementPerRouter: 1
+  minRemaining: 1
+  requireConsistency: true
+
+properties:
+  generateAllTrueProperties: true
+  minCandidatesPerPacket: 3
+  minRuleTypesPerLevel: 2
+  minCandidatesPerSubtype: 0
+  rejectIfInsufficientCandidates: true
+  directlyVisibleRatio: auto
+  hiddenRatio: auto
+
+clues:
+  targetCount: null
+  minCount: null
+  maxCount: null
+  maxPerSubtype: null
+  maxPerType: null
+  subtypeWeights: {}
+  avoidRedundant: true
+  avoidSemanticallyEquivalent: true
+  requireLogicalSolvability: true
+  requireUniqueSolution: true
+  consumeUnselectedSingletonRules: true
+  singletonSelection:
+    min: 1
+    max: 2
+  subsetReasoning:
+    maxSize: 4
+  allowBacktrackingDuringGeneration: true
+  allowBacktrackingForPlayerSolution: false
+
+victim:
+  excludeFromClueSelection: true
+  excludeFromDomainSingletons: true
+  excludeFromAnnullations: true
+  excludeFromSubsetReasoning: true
+  requirePlacementByElimination: true
+  requireUniqueFinalCell: true
+
+difficulty:
+  topology: auto
+  logic: auto
+  visual: auto
+  knowledge: auto
+  maxDirectRuleRatio: auto
+  minDeductionSteps: auto
+  maxDeductionSteps: auto
+  minDependencyDepth: auto
+  maxDependencyDepth: auto
+  evaluateMultipleRuleOrders: true
+  ruleOrderSamples: 50
+  scorePolicy: easiest_valid_order
+
+validation:
+  requireConnectedTopology: true
+  requireValidNetworkGeometry: true
+  requireRouterAccessibility: true
+  requireNodeAccessibility: true
+  requirePacketAccessibility: true
+  requireRouteConsistency: true
+  requireProtocolConsistency: true
+  requireEnoughProperties: true
+  requireUniqueFinalAnswer: true
+  requireVictimByElimination: true
+  requireDifficultyWithinTolerance: true
+  difficultyTolerance: 0.5
+
+repair:
+  enabled: true
+  maxLocalAttempts: 20
+  order:
+    - clues
+    - packets
+    - routes
+    - nodes
+    - routers
+    - networks
+    - full
+  regenerateClues: true
+  regeneratePackets: true
+  regenerateRoutes: true
+  regenerateNodes: true
+  regenerateRouters: true
+  regenerateNetworks: true
+
+limits:
+  maxNetworks: 20
+  maxRouters: 30
+  maxNodes: 50
+  maxPackets: 30
+  maxCandidateRules: 5000
+  maxEvaluatedRoutes: 1000
+  maxRouteLength: 100
+  maxBacktrackingDepth: 100
+  maxSearchStates: 100000
+  maxGenerationTimeMs: null
