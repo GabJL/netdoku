@@ -9,6 +9,7 @@ Requiere Python 3.10 o superior, sin dependencias externas.
 ```
 python generator/generate.py --seed 1 -n 10     # niveles con semillas 1 a 10
 python generator/generate.py --seed 7 --print   # muestra además la solución y las pistas
+python generator/generate.py --stats -n 100     # reparto de dificultad, sin guardar niveles
 ```
 
 Los niveles se guardan en `levels/generated/` como JSON, junto con `index.json`, que es la lista que lee el motor. Opciones: `--packets` (6 por defecto) y `--networks` (4 por defecto).
@@ -29,7 +30,7 @@ Un interruptor (o la tecla A) cambia entre **Colocar** paquetes y **Anotar**, qu
 
 A la izquierda del tablero está la ayuda del nivel, agrupada por colores (cómo jugar, reglas, pistas de este nivel e iconos), y la leyenda de redes; al pulsar una etiqueta se abre su explicación con un ejemplo. En la barra superior se elige el tema, y el botón «⚙ Apariencia» abre una ventana para combinar opciones independientes: modo (automático, claro u oscuro), colores de las redes (pastel, intensos, aptos para daltonismo, grises), fondo de las casillas (liso, puntos, rayas, baldosas o una textura por red), estilo de los equipos (dibujos, texto o ambos) y si se muestran los números de fila y columna y los nombres de las redes. Cada combinación se puede guardar como tema con nombre; se guardan en el navegador. El botón «Ayuda» abre en otra pestaña la página con todas (`engine/ayuda.html`).
 
-El progreso de cada nivel (paquetes colocados, vidas, marcas y si está resuelto) se guarda en el navegador y se recupera al volver a abrirlo; «Reiniciar» lo borra. Los niveles resueltos aparecen con ✓ en la lista.
+El progreso de cada nivel (paquetes colocados, vidas, marcas y si está resuelto) se guarda en el navegador y se recupera al volver a abrirlo; «Reiniciar» (↺) lo borra. Al resolver un nivel por primera vez se obtienen tres estrellas menos una por fallo, contando los fallos de todos los intentos anteriores (reiniciar no borra los fallos). Desde ese momento las estrellas quedan fijas: repetir el nivel ya no las cambia. La lista de niveles muestra las estrellas de cada uno.
 
 ## Alcance de la v0
 

@@ -38,6 +38,56 @@
     return (level && level.level && level.level.id) || "sin-id";
   }
 
+  // Puntuación de cada nivel. Solo cuenta hasta la primera vez que se resuelve:
+  // los fallos se acumulan entre reinicios (reiniciar no da vidas «gratis» para
+  // probar casillas), y al resolverlo por primera vez las estrellas quedan fijas
+  // (repetirlo con la solución ya vista no las mejora). Se guarda aparte del
+  // progreso para que «Reiniciar» no lo borre.
+  const scoreKey = (id) => `netdoku:score:${id}`;
+
+  function readScore(id) {
+    try {
+      const raw = localStorage.getItem(scoreKey(id));
+      if (raw) return JSON.parse(raw);
+      // Resultados anteriores: el registro de mejor resultado o un nivel ya resuelto.
+      const old = Number(localStorage.getItem(`netdoku:best:${id}`));
+      const progress = readProgress(id);
+      const stars = old || (progress && progress.solved ? progress.lives : 0);
+      if (stars) {
+        // Se copia al registro nuevo para que reiniciar no lo pierda.
+        const score = { errors: START_LIVES - stars, stars };
+        writeScore(id, score);
+        return score;
+      }
+    } catch (err) {
+      // Sin almacenamiento o datos corruptos.
+    }
+    return { errors: 0, stars: null };
+  }
+
+  function writeScore(id, score) {
+    try {
+      localStorage.setItem(scoreKey(id), JSON.stringify(score));
+    } catch (err) {
+      // Sin almacenamiento: la puntuación no se recuerda.
+    }
+  }
+
+  function recordError(id) {
+    const score = readScore(id);
+    if (score.stars === null) writeScore(id, { ...score, errors: score.errors + 1 });
+  }
+
+  // Devuelve true si esta resolución es la que puntúa (la primera).
+  function recordSolve(id) {
+    const score = readScore(id);
+    if (score.stars !== null) return false;
+    writeScore(id, { ...score, stars: Math.max(0, START_LIVES - score.errors) });
+    return true;
+  }
+
+  const starText = (n) => "★".repeat(n) + "☆".repeat(START_LIVES - n);
+
   function readProgress(id) {
     try {
       const raw = localStorage.getItem(storageKey(id));
@@ -118,18 +168,35 @@
     await loadFromUrl(LEVEL_DIR + select.value);
   }
 
+  // Dificultad 1-5 como puntos: ●●●○○.
+  const dots = (n) => "●".repeat(n) + "○".repeat(5 - n);
+
+  // Niveles agrupados por dificultad; el número de nivel es su posición en el índice
+  // (no cambia al reagruparlos) y las flechas recorren los grupos en orden.
   function fillLevelSelect() {
     const select = $("level-select");
     const current = select.value;
     select.innerHTML = "";
+    const groups = new Map();
     levelIndex.forEach((item, i) => {
-      const opt = document.createElement("option");
-      opt.value = item.file;
-      const progress = readProgress(item.id);
-      opt.textContent = `Nivel ${i + 1}${progress && progress.solved ? " ✓" : ""}`;
-      opt.title = `${item.name} · ${item.clues} pistas`;
-      select.appendChild(opt);
+      const key = item.logic || 0;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({ item, number: i + 1 });
     });
+    for (const key of [...groups.keys()].sort((a, b) => a - b)) {
+      const group = document.createElement("optgroup");
+      group.label = key ? `${dots(key)} ${groups.get(key)[0].item.tier}` : "Sin dificultad";
+      for (const { item, number } of groups.get(key)) {
+        const opt = document.createElement("option");
+        opt.value = item.file;
+        const progress = readProgress(item.id);
+        const { stars } = readScore(item.id);
+        opt.textContent = `Nivel ${number}${stars !== null ? " " + starText(stars) : ""}`;
+        opt.title = `${item.name} · ${item.clues} pistas`;
+        group.appendChild(opt);
+      }
+      select.appendChild(group);
+    }
     if (current) select.value = current;
   }
 
@@ -178,6 +245,10 @@
       selected: null,
     };
     $("objective").textContent = level.objective.text;
+    const difficulty = level.level.difficulty;
+    $("level-meta").textContent = difficulty && difficulty.logic
+      ? `Dificultad ${dots(difficulty.logic)} ${difficulty.tier} · ${level.clues.length} pistas`
+      : `${level.clues.length} pistas`;
     renderHelpStrip();
     setMode("place");
     say(saved && !state.solved && !state.lost && Object.keys(state.placed).length ? "Se ha recuperado tu progreso en este nivel." : "");
@@ -240,6 +311,81 @@
 
   function packetById(id) {
     return level.packets.items.find((p) => p.id === id);
+  }
+
+  // ---------- Texto de las pistas con las redes y los equipos resaltados ----------
+
+  const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // Color de la insignia de un equipo: el de su servicio, o el de cliente.
+  function nodeDotColor(node) {
+    if (!node) return tv("--node-server");
+    if (node.type === "client") return tv("--node-client");
+    return SERVICE_COLORS[(node.services || [])[0]] || tv("--node-server");
+  }
+
+  function chip(text, background, dot) {
+    const span = document.createElement("span");
+    span.className = "clue-chip";
+    if (background) span.style.background = background;
+    if (dot) {
+      const d = document.createElement("span");
+      d.className = "dot";
+      d.style.background = dot;
+      span.appendChild(d);
+    }
+    span.appendChild(document.createTextNode(text));
+    return span;
+  }
+
+  // Trozos de la pista que se resaltan: nombres de red (con su prefijo, si lo
+  // lleva) en el color de la red, y el equipo nombrado en el color de su red
+  // con un punto del color de su servicio.
+  function cluePatterns(c) {
+    const params = c.parameters || {};
+    const patterns = [];
+    const word = (s) => `(?<![\\p{L}])${s}(?![\\p{L}])`;
+    if (params.nodeId) {
+      const node = level.nodes.find((n) => n.id === params.nodeId);
+      if (node) {
+        patterns.push({ re: new RegExp(word(escapeRe(node.label)), "iu"),
+          make: (t) => chip(t, networkColor(node.network), nodeDotColor(node)) });
+      }
+    } else if (params.nodeType) {
+      const sample = level.nodes.find((n) => n.type === params.nodeType
+        && (!params.service || (n.services || []).includes(params.service)));
+      const label = params.service || params.nodeType === "client" ? (sample ? sample.label : "") : "servidor";
+      if (label) {
+        patterns.push({ re: new RegExp(word(escapeRe(label)), "iu"),
+          make: (t) => chip(t, null, params.service || params.nodeType === "client" ? nodeDotColor(sample) : tv("--node-server")) });
+      }
+    }
+    for (const net of level.networks) {
+      patterns.push({ re: new RegExp(word(escapeRe(net.name)) + `(?:\\s\\(${escapeRe(net.prefix)}\\))?`, "u"),
+        make: (t) => chip(t, networkColor(net.id)) });
+    }
+    return patterns;
+  }
+
+  function clueContent(c) {
+    const frag = document.createDocumentFragment();
+    const patterns = cluePatterns(c);
+    let rest = c.text;
+    while (rest) {
+      let best = null;
+      for (const p of patterns) {
+        const m = p.re.exec(rest);
+        if (m && (!best || m.index < best.m.index)) best = { m, p };
+      }
+      if (!best) {
+        frag.appendChild(document.createTextNode(rest));
+        break;
+      }
+      if (best.m.index) frag.appendChild(document.createTextNode(rest.slice(0, best.m.index)));
+      frag.appendChild(best.p.make(best.m[0]));
+      rest = rest.slice(best.m.index + best.m[0].length);
+    }
+    return frag;
   }
 
   function networkColor(netId) {
@@ -583,7 +729,7 @@
         const ul = document.createElement("ul");
         for (const c of clues) {
           const li = document.createElement("li");
-          li.textContent = c.text;
+          li.appendChild(clueContent(c));
           if (state.struck.has(c.id)) li.className = "done";
           li.addEventListener("click", () => {
             state.struck.has(c.id) ? state.struck.delete(c.id) : state.struck.add(c.id);
@@ -621,11 +767,28 @@
       const victim = level.objective.victimPacketId;
       const net = level.networks.find((n) => n.id === level.solution.victimNetwork);
       box.classList.add("solved");
+      const score = readScore(levelId());
+      const starCount = score.stars === null ? 0 : score.stars;
+      const stars = document.createElement("div");
+      stars.className = "stars";
+      stars.textContent = starText(starCount);
+      stars.setAttribute("aria-label", `${starCount} de ${START_LIVES} estrellas`);
+      box.appendChild(stars);
+      const fallos = (n) => (n === 1 ? "un fallo" : `${n} fallos`);
+      if (state.scoredNow) {
+        para(score.errors === 0 ? "¡Perfecto: sin ningún fallo!"
+          : `Resuelto con ${fallos(score.errors)} en total (contando los intentos anteriores). Sin fallos se consiguen las ${START_LIVES} estrellas.`);
+      } else {
+        const now = START_LIVES - state.lives;
+        para(`Estrellas del nivel, fijadas la primera vez que lo resolviste. En esta partida: ${now ? fallos(now) : "ningún fallo"}.`);
+      }
       para(`El atacante es el paquete ${attacker}: el único otro paquete en la red ${net ? net.name : ""}, donde estaba la víctima ${victim}.`);
-      para("Pulsa «Reiniciar» para jugarlo de nuevo.");
+      para("Pulsa ↺ para jugarlo de nuevo.");
     } else if (state.lost) {
       box.classList.add("lost");
-      para("Te has quedado sin vidas. Pulsa «Reiniciar» para volver a intentarlo.");
+      para(readScore(levelId()).stars === null
+        ? "Te has quedado sin vidas. Pulsa ↺ para volver a intentarlo; los fallos siguen contando para las estrellas hasta que lo resuelvas."
+        : "Te has quedado sin vidas. Pulsa ↺ para volver a intentarlo.");
     } else {
       box.hidden = true;
       return;
@@ -801,7 +964,10 @@
       saveProgress();
       say(state.solved ? "¡Nivel resuelto!" : `El paquete ${id} está bien colocado.`, "good");
       render();
-      if (state.solved) fillLevelSelect();
+      if (state.solved) {
+        state.scoredNow = recordSolve(levelId());
+        fillLevelSelect();
+      }
     } else {
       loseLife(`El paquete ${id} no estaba en la fila ${r}, columna ${c}.`);
       const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
@@ -811,6 +977,7 @@
 
   function loseLife(message) {
     state.lives -= 1;
+    recordError(levelId());
     if (state.lives <= 0) state.lost = true;
     saveProgress();
     render();

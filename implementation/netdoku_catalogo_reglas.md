@@ -61,6 +61,7 @@ Cada subtipo define estos campos:
 | **Restringe** | `posición` (limita directamente las casillas posibles) o `propiedad` (limita una propiedad, como el protocolo o el TTL, que a su vez puede limitar la posición). |
 | **Parámetros** | Nombre, dominio y significado de cada parámetro. |
 | **Plantilla textual** | Texto de la pista con marcadores `{parámetro}`. Puede tener variantes. |
+| **Formas de nombrar** | Cómo puede referirse el texto a los elementos de sus parámetros (red, equipo, router…), elegidas de las [formas de nombrar](#formas-de-nombrar) comunes. No cambian `D` ni `A`. |
 | **Generación de instancias** | Cómo se obtienen todas las reglas verdaderas de este subtipo para una solución. |
 | **Dominio `D`** | Casillas compatibles con la regla en el estado actual. |
 | **Anulación común `A`** | Casillas descartadas para los demás paquetes (no para el propio `m`), sea cual sea la posición de `m` dentro de `D`: `A(r) = ⋂ CasillasAnuladas(r, c)` para `c ∈ D(r)`. |
@@ -71,6 +72,45 @@ Cada subtipo define estos campos:
 El generador usa el bloque mínimo y el conocimiento para descartar instancias que superen `level.maxTopic` o `difficulty.knowledge`, y para calcular el bloque `requirements` del nivel.
 
 Las reglas **relacionales** calculan `D` para cada paquete implicado, teniendo en cuenta las posiciones posibles de los demás. Las reglas que **restringen una propiedad** deben indicar también cómo se traduce esa propiedad en posiciones; si no se puede traducir con el estado actual, `D = Libres(m)`.
+
+### Formas de nombrar
+
+Una pista tiene dos partes independientes:
+
+- **Qué dice:** su dominio `D` y su anulación `A`. Es lo único que usan el solver, la selección de pistas y la [dificultad lógica](game_round_generation.md#evaluación-de-la-dificultad).
+- **Cómo lo dice:** la forma de nombrar cada elemento que menciona. Dos textos que nombran la misma red, uno por su nombre y otro por una dirección IP que cae en ella, dan la misma pista lógica, pero el segundo obliga a hacer un cálculo antes de saber qué casillas permite.
+
+Cada forma de nombrar tiene un **coste de lectura** (de 0 a 3), un **bloque mínimo** y un **conocimiento**. El coste mide el trabajo que hace el jugador para pasar del texto a las casillas:
+
+| Coste | Trabajo del jugador |
+|---|---|
+| 0 | Leerlo directamente en el tablero o en la leyenda. |
+| 1 | Buscar un dato visible y compararlo (un prefijo en la leyenda, una etiqueta). |
+| 2 | Hacer un cálculo con un dato visible (aplicar una máscara, contar direcciones). |
+| 3 | Encadenar varios pasos (calcular la red de una IP y luego localizar un equipo en ella). |
+
+El generador elige primero las pistas por su efecto lógico y después la forma de nombrar de cada una, según la dificultad de lectura y la categoría (bloques temáticos) que se busquen. Así, con un mismo tablero y las mismas pistas, cambiando solo los textos, se obtienen niveles de categorías y dificultades distintas. Solo se puede usar una forma si identifica el elemento sin ambigüedad en el nivel (por ejemplo, «la red con más direcciones» exige que no haya empate).
+
+**Redes:**
+
+| Forma | Ejemplo | Coste | Bloque mínimo | Conocimiento |
+|---|---|---|---|---|
+| `name` | «la red Aulas» | 0 | `T3.dispositivos` | `basic` |
+| `prefix` | «la red 10.147.0.0/16» | 1 | `T3.ip` (el prefijo como etiqueta) | `basic` |
+| `ip_member` | «la red de la dirección 10.147.3.5» | 2 | `T3.subredes` | `basic` |
+| `size_rank` | «la red con más direcciones» | 2 | `T3.subredes` | `basic` |
+| `router_side` | «la red que une el router de Aulas con …» (pendiente de definir) | 2 | `T3.dispositivos` | `basic` |
+
+**Equipos:**
+
+| Forma | Ejemplo | Coste | Bloque mínimo | Conocimiento |
+|---|---|---|---|---|
+| `label_network` | «el servidor web de la red Aulas» | 0 | `T3.dispositivos` | `basic` |
+| `label_prefix` | «el servidor web de la red 10.147.0.0/16» | 1 | `T3.ip` | `basic` |
+| `ip` | «el equipo 10.147.3.5» | 3 | `T3.subredes` | `basic` |
+| `service` | «el servidor que atiende el puerto 53» | 2 | `T4.udp` y el bloque del protocolo | el `portKnowledge` del protocolo |
+
+La v0 solo usa `name` (con el prefijo entre paréntesis, como etiqueta) y `label_network`. Las demás formas se implementarán con la categoría que las necesite.
 
 ### Reglas de colocación y objetivo
 
@@ -194,6 +234,7 @@ Salvo que se indique otra cosa, el conocimiento previsto es `basic`; las pistas 
   - `parámetro`: dominio y significado.
 - **Plantilla textual:**
   - «…{parámetro}…»
+- **Formas de nombrar:** qué formas comunes admite cada parámetro.
 - **Generación de instancias:**
 - **Dominio:** `D = …`
 - **Anulación común:** `A = …`
@@ -205,6 +246,6 @@ Salvo que se indique otra cosa, el conocimiento previsto es `basic`; las pistas 
 Al añadir un subtipo nuevo:
 
 1. Si su tipo no existe, añadirlo a la tabla de tipos con su familia de `features`.
-2. Completar todos los campos de la plantilla. `D` y `A` son obligatorios porque los usa el algoritmo de selección; el bloque mínimo y el conocimiento, porque los usa el filtro por temario. Ambos deben ser coherentes con el [resumen de la asignatura](netdoku_contenidos_asignatura.md).
+2. Completar todos los campos de la plantilla. `D` y `A` son obligatorios porque los usa el algoritmo de selección; el bloque mínimo y el conocimiento, porque los usa el filtro por temario. El bloque y el conocimiento de una instancia son los más altos entre los del subtipo y los de las formas de nombrar que use su texto. Ambos deben ser coherentes con el [resumen de la asignatura](netdoku_contenidos_asignatura.md).
 3. Quitarlo de la tabla de subtipos previstos, si estaba.
 4. Si necesita un concepto nuevo del tablero (por ejemplo, una distancia que atraviese routers), definirlo en la sección 1.

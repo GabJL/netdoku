@@ -33,7 +33,7 @@
       chip: "Cómo jugar",
       title: "Cómo jugar",
       text: [
-        "Colocar: arrastra un paquete a la casilla donde crees que está, o selecciónalo en el panel y pulsa la casilla. Si aciertas, queda fijo; si fallas, vuelve al panel y pierdes una de tus tres vidas.",
+        "Colocar: arrastra un paquete a la casilla donde crees que está, o selecciónalo en el panel y pulsa la casilla. Si aciertas, queda fijo; si fallas, vuelve al panel y pierdes una de tus tres vidas. Al resolverlo por primera vez ganas tres estrellas menos una por fallo, contando los intentos anteriores: reiniciar no borra los fallos.",
         "Anotar: activa el interruptor (o pulsa A), selecciona un paquete y pulsa las casillas donde podría estar. Aparece un circulito de su color; vuelve a pulsar para quitarlo.",
         "Descartar: clic derecho (o pulsación larga) marca una casilla con ✕ y borra sus notas. Pulsa una pista para tacharla cuando ya la hayas usado.",
         "El progreso se guarda en este navegador. «Reiniciar» empieza el nivel de cero.",
@@ -301,15 +301,21 @@
   }
 
   // Contenido de una ficha (título, texto, ejemplo) dentro de `container`.
+  // Ficha: texto (título y párrafos) y, si tiene, mini tablero. En la página de
+  // ayuda el texto va a la izquierda y el tablero a la derecha.
   function renderEntry(container, e) {
+    const body = document.createElement("div");
+    body.className = "entry-text";
     const h = document.createElement("h2");
     h.textContent = e.title;
-    container.appendChild(h);
+    body.appendChild(h);
     for (const p of e.text) {
       const para = document.createElement("p");
       para.textContent = p;
-      container.appendChild(para);
+      body.appendChild(para);
     }
+    container.appendChild(body);
+    container.classList.toggle("has-mini", !!e.mini);
     if (e.mini) {
       const fig = document.createElement("figure");
       fig.appendChild(renderMini(e.mini));

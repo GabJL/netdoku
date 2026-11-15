@@ -517,6 +517,46 @@ En una primera implementación, esta exploración podrá realizarse probando dis
 
 De este modo, la dificultad reflejará el razonamiento mínimo que un jugador puede seguir para resolver el puzle, evitando clasificaciones excesivamente optimistas o pesimistas debidas únicamente al orden de aplicación de las pistas.
 
+#### Implementación actual (`generator/netdoku_gen/difficulty.py`)
+
+No hace falta muestrear órdenes al azar. Las deducciones son monótonas (aplicar una nunca impide aplicar otra), así que basta con simular a un jugador que en cada paso busca todas las deducciones que le hacen avanzar y aplica una de la técnica más sencilla. Ese orden es la secuencia válida más sencilla: la técnica más difícil que aparece en él no se puede evitar con ningún otro orden.
+
+Técnicas, con su nivel:
+
+| Nivel | Técnica | Qué hace el jugador |
+|---|---|---|
+| 1 | Colocación directa | Un paquete solo cabe en una casilla; se coloca y su fila y su columna quedan descartadas para los demás. |
+| 2 | Fila o columna obligada | Solo un paquete puede ir en una fila o columna que debe tener uno. |
+| 2 | Anulación | Una pista «… y ningún otro paquete lo estaba» descarta casillas para los demás. |
+| 3 | Reserva de 2 | Dos paquetes solo caben en dos casillas, filas o columnas. |
+| 4 | Reserva de 3 | Ídem con tres. |
+| 5 | Reserva de 4 | Ídem con cuatro. |
+
+En cada paso se registra también cuántas deducciones tenía disponibles el jugador. Un **cuello de botella** es un paso con un único camino posible que no es una colocación directa: el jugador tiene que encontrar justo esa deducción para avanzar.
+
+La dificultad lógica (`level.difficulty.logic`, de 1 a 5) es el nivel de la técnica más difícil necesaria, más 1 si hay al menos dos cuellos de botella, o uno y al menos cuatro pasos no directos. Sus nombres son Muy fácil, Fácil, Media, Difícil y Muy difícil. El informe completo (pasos, técnicas usadas, cuellos de botella y la traza) se guarda en `generation.difficulty`.
+
+Esta fórmula es provisional: hay que calibrarla con partidas reales. Los datos de 700 niveles confirman que influye el número de pistas: con 5 pistas, el 36 % sale Media o más; con 8, el 7 %. Con la v0 (6×6, solo pistas de tablero) el reparto en 150 niveles fue: 19 % Muy fácil, 53 % Fácil, 23 % Media, 5 % Difícil y ninguno Muy difícil; nunca hicieron falta reservas de 3 o 4.
+
+#### Dificultad de lectura (prevista)
+
+La dificultad lógica supone que el jugador ya sabe qué casillas permite cada pista. Traducir el texto a casillas tiene su propio coste, que depende de cómo nombra la pista sus elementos: «en la red Aulas» se lee en la leyenda; «en la red de la dirección 10.147.3.5» obliga a aplicar máscaras. Son las [formas de nombrar](netdoku_catalogo_reglas.md#formas-de-nombrar) del catálogo, cada una con un coste de lectura de 0 a 3.
+
+La dificultad tendrá así dos ejes independientes:
+
+- **Lógica** (`difficulty.logic`): técnicas de deducción y cuellos de botella. Depende solo de los dominios `D` y las anulaciones `A`.
+- **Lectura** (`difficulty.reading`): esfuerzo de interpretar las pistas, a partir del coste de las formas de nombrar usadas (por ejemplo, el máximo y cuántas pistas tienen coste 2 o más).
+
+La dificultad global se calculará a partir de las dos, por ejemplo el máximo más un punto si ambas son altas, porque calcular máscaras dentro de un nivel que además exige reservas cuesta más que cada cosa por separado. Como la forma de nombrar no cambia el efecto lógico, el generador elige primero las pistas (eje lógico) y después los textos (eje de lectura), según la dificultad buscada.
+
+#### Organización de los niveles
+
+Los niveles se organizan en **categoría → dificultad → nivel**:
+
+1. **Categoría:** el conocimiento que exige el nivel, es decir, el bloque temático más alto entre los de sus pistas y formas de nombrar (`requirements.topic`). Son acumulativas: un nivel de una categoría puede usar todo lo de las anteriores. Por ejemplo: Tablero (`T3.dispositivos`, sin conocimientos previos), Direccionamiento (`T3.ip` a `T3.vlsm`), Encaminamiento (`T3.encaminamiento`), Transporte y aplicación (`T4` a `T6`).
+2. **Dificultad:** la global, de 1 a 5, a partir de la lógica y la de lectura.
+3. **Nivel:** varios por cada combinación, elegidos de un lote grande generado.
+
 ## Evaluación
 
 Cada partida generada debe comprobar:

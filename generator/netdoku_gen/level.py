@@ -4,6 +4,7 @@ import random
 
 from .board import generate_board
 from .content import place_nodes, place_packets
+from .difficulty import evaluate
 from .rules import KNOWLEDGE, TOPIC, Context, generate_instances
 from .selection import Selector
 from .solver import Rules, count_solutions, initial_domains, propagate
@@ -71,7 +72,8 @@ def _attempt(rng, seed, cfg, attempt):
     if sorted(p.id for p in in_victim_net) != sorted([victim.id, attacker.id]):
         raise RuntimeError("La red de la víctima no tiene exactamente dos paquetes")
 
-    return to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victim_net, max_subset)
+    report = evaluate(ctx.free_cells, ids, clues, rules, victim.id)
+    return to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victim_net, max_subset, report)
 
 
 def _spatial_score(clues):
@@ -80,7 +82,7 @@ def _spatial_score(clues):
     return len(spatial) + 4 * coordinates + 0.2 * len(clues)
 
 
-def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victim_net, max_subset):
+def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victim_net, max_subset, report):
     level_id = f"netdoku-gen-{seed}"
     by_type = {}
     for c in clues:
@@ -91,7 +93,7 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
             "id": level_id,
             "name": f"Nivel generado {seed}",
             "language": "es",
-            "difficulty": None,
+            "difficulty": {"logic": report["logic"], "tier": report["tier"], "knowledge": KNOWLEDGE},
             "scenario": "same_network_attacker",
             "seed": seed,
         },
@@ -162,5 +164,6 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
             "clueCount": len(clues),
             "cluesByType": by_type,
             "maxReservationSize": max_subset,
+            "difficulty": report,
         },
     }

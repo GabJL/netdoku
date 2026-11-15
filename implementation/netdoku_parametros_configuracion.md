@@ -1194,6 +1194,13 @@ Estos parámetros pueden configurarse manualmente, pero normalmente se derivan d
 - **Dominio:** entero entre `1` y `5` o `auto`.
 - **Valor por defecto:** `auto`.
 
+### `difficulty.reading`
+
+- **Carácter:** opcional.
+- **Dominio:** entero entre `1` y `5` o `auto`.
+- **Valor por defecto:** `auto`.
+- **Descripción:** dificultad de lectura de las pistas: cuánto cuesta pasar de su texto a casillas, según el coste de las [formas de nombrar](netdoku_catalogo_reglas.md#formas-de-nombrar) que use. Es independiente de `difficulty.logic`, que mide las deducciones necesarias una vez traducidas las pistas.
+
 ### `difficulty.knowledge`
 
 - **Carácter:** opcional.

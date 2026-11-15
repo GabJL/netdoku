@@ -1,5 +1,16 @@
 # Versiones de Netdoku
 
+## Sin publicar
+
+- Dificultad lógica de cada nivel (1 a 5, de Muy fácil a Muy difícil), calculada simulando la resolución más sencilla: técnica más difícil necesaria (colocación directa, fila o columna obligada, anulación, reservas de 2, 3 o 4) y cuellos de botella. Se guarda en el nivel y en el índice.
+- El selector de niveles los agrupa por dificultad, y el panel de ayuda muestra la del nivel.
+- `generate.py --stats` genera niveles sin guardarlos y muestra el reparto de dificultad.
+- Estrellas: al resolver un nivel por primera vez se obtienen tres menos una por fallo, contando los fallos de los intentos anteriores (reiniciar no los borra). Después quedan fijas, para que repetir el nivel con la solución ya vista no las mejore. La lista de niveles las muestra.
+- En el texto de las pistas, los nombres de red aparecen resaltados con el color de su red, y el equipo nombrado con el color de su red y un punto del color de su servicio.
+- Página de ayuda con dos fichas por fila, texto a la izquierda y mini tablero a la derecha.
+- `generate.py --seeds` genera semillas concretas, y el índice ordena los niveles por dificultad.
+- Nueva colección de niveles elegida de un lote de 700: tres por dificultad de la 1 a la 4 (con 5, 6 y 7 pistas o similar) y tres de la 5, que es muy rara con las pistas actuales (5 niveles en 2700 semillas).
+
 ## 0.1 (15 de noviembre de 2026)
 
 Primera versión jugable. Los niveles usan conceptos de redes (redes, equipos, servidores, routers), pero sus pistas no exigen conocimientos de la asignatura: basta con leer el tablero, así que cualquiera puede jugarlos.
