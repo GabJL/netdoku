@@ -4,17 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Netdoku</title>
-  <link rel="stylesheet" href="netdoku.css">
+  <link rel="stylesheet" href="netdoku.css?v=dev">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <script src="i18n.js"></script>
-  <script src="lang/es.js"></script>
-  <script src="lang/en.js"></script>
-  <script src="theme.js"></script>
+  <script src="i18n.js?v=dev"></script>
+  <script src="lang/es.js?v=dev"></script>
+  <script src="lang/en.js?v=dev"></script>
+  <script src="theme.js?v=dev"></script>
 </head>
 <body data-view="menu">
   <header class="topbar">
-    <button id="back" class="icon-button" type="button" data-i18n-title="ui.back" data-i18n-aria="ui.back" hidden>‹</button>
-    <a class="brand" href="#menu" data-i18n-title="ui.toMenu"><img src="icon.svg" alt="" width="30" height="30"><span>Netdoku</span></a>
+    <button id="back" class="icon-button" type="button" data-i18n-title="ui.back" data-i18n-aria="ui.back" hidden><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <a id="brand" class="brand" href="#menu" data-i18n-title="ui.toMenu"><img src="icon.svg" alt="" width="30" height="30"><span>Netdoku</span></a>
     <div id="game-title" class="game-title" hidden></div>
     <div id="game-tools" class="game-tools" hidden>
       <button id="category-info" class="icon-button" type="button" data-i18n-title="game.categoryInfo" data-i18n-aria="game.categoryInfo">i</button>
@@ -34,7 +34,8 @@
     <div class="menu-hero">
       <img src="icon.svg" alt="" width="84" height="84">
       <h1>Netdoku</h1>
-      <p data-i18n="ui.tagline"></p>
+      <p class="hook" data-i18n="ui.hook"></p>
+      <p class="tagline" data-i18n="ui.tagline"></p>
     </div>
     <nav class="menu-buttons">
       <a class="menu-button" href="#howto" data-i18n="ui.menu.howto"></a>
@@ -120,8 +121,8 @@
     <div id="info-body" class="help-body"></div>
   </dialog>
 
-  <script src="help.js"></script>
-  <script src="netdoku.js"></script>
-  <script src="app.js"></script>
+  <script src="help.js?v=dev"></script>
+  <script src="netdoku.js?v=dev"></script>
+  <script src="app.js?v=dev"></script>
 </body>
 </html>

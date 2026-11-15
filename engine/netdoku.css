@@ -741,6 +741,8 @@ figcaption {
   color: var(--cat);
 }
 
+.page h2.section + .intro { margin-top: 6px; }
+
 .help-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -748,23 +750,30 @@ figcaption {
   margin-top: 10px;
 }
 
-/* En la página de ayuda: texto a la izquierda y mini tablero a la derecha. */
-.help-card.has-mini {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 200px;
-  gap: 16px;
-  align-items: start;
+/* Tarjetas: el mini tablero flota a la derecha y el texto que queda por debajo
+   ocupa todo el ancho. En la ventana de ayuda (una sola columna) va al final. */
+.help-card .entry-text { display: flow-root; }
+
+.help-card.has-mini figure {
+  float: right;
+  width: 200px;
+  margin: 0 0 8px 16px;
 }
 
-.help-card.has-mini figure { margin: 0; }
+.help-body > .entry-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.help-body > .entry-text figure { order: 1; }
 
 @media (max-width: 1000px) {
   .help-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 520px) {
-  .help-card.has-mini { grid-template-columns: minmax(0, 1fr); }
-  .help-card.has-mini figure { margin-top: 6px; }
+  .help-card .entry-text { display: flex; flex-direction: column; }
+  .help-card.has-mini figure { float: none; width: auto; order: 1; margin: 6px 0 0; }
 }
 
 .help-card {
@@ -845,10 +854,17 @@ figcaption {
   letter-spacing: 0.03em;
 }
 
-.menu-hero p {
-  margin: 6px 0 0;
+.menu-hero .hook {
+  max-width: 34em;
+  margin: 14px auto 0;
+  font-size: 1.15rem;
+  line-height: 1.45;
+}
+
+.menu-hero .tagline {
+  margin: 10px 0 0;
   color: var(--muted);
-  font-size: 1.05rem;
+  font-size: 0.95rem;
 }
 
 .menu-buttons {
@@ -905,6 +921,29 @@ figcaption {
 
 .about p { line-height: 1.55; margin: 0 0 12px; }
 
+.about .credits {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.about a { color: var(--accent); }
+
+.about .university { display: inline-block; margin-bottom: 10px; }
+
+.about .university img { display: block; height: 64px; width: auto; }
+
+.about .university .on-dark { display: none; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .about .university .on-light { display: none; }
+  :root:not([data-theme="light"]) .about .university .on-dark { display: block; }
+}
+
+:root[data-theme="dark"] .about .university .on-light { display: none; }
+
+:root[data-theme="dark"] .about .university .on-dark { display: block; }
+
 /* Tarjetas de categoría (cómo se juega). */
 .category-cards {
   display: grid;
@@ -913,7 +952,11 @@ figcaption {
   margin-top: 10px;
 }
 
+/* El botón va abajo, alineado en todas las tarjetas de la fila. */
 .category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -922,6 +965,7 @@ figcaption {
 
 .category-card h3 { margin: 0 0 6px; font-size: 1.05rem; }
 .category-card p { margin: 0 0 12px; font-size: 0.9rem; line-height: 1.45; }
+.category-card .button { margin-top: auto; }
 
 /* Jugar: pestañas de categoría y dificultades de la elegida. */
 .category-tabs {

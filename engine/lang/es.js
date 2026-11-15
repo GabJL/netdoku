@@ -90,6 +90,7 @@
     ui: {
       language: "Idioma",
       tagline: "Un juego de deducción para aprender redes de computadores",
+      hook: "Administras estas redes y alguien ha manipulado un paquete. ¿Descubrirás al atacante antes de que el ataque se extienda?",
       back: "Volver",
       toMenu: "Menú principal",
       menu: {
@@ -127,7 +128,7 @@
       meta: ({ category, dots, tier, n }) => `${category} · Dificultad ${dots} ${tier} · ${n} ${plural(n, "pista", "pistas")}`,
       metaDetail: "lógica {logic}, interpretación {reading}",
       title: "{category} · {tier}",
-      objective: ({ victim }) => `Coloca los paquetes para descubrir al atacante. En cada fila y en cada columna hay como mucho un paquete. La víctima es el paquete ${victim}: en su red solo había otro paquete, el atacante.`,
+      objective: ({ victim }) => `¡Alerta! Alguien ha manipulado el paquete ${victim}. En su red solo había otro paquete: el atacante. Usa las pistas para averiguar dónde estaba cada paquete (como mucho uno por fila y por columna) y desenmascáralo antes de que el ataque se extienda.`,
       sizeNote: "Las casillas no indican el tamaño de una red: su tamaño es su número de direcciones.",
       routerName: ({ a, b }) => `Router de ${a} ${and(b)} ${b}`,
       resumed: "Se ha recuperado tu progreso en este nivel.",
@@ -146,8 +147,8 @@
       withErrors: ({ n }) => `Resuelto con ${n} ${plural(n, "fallo", "fallos")}. Sin fallos se consiguen las tres estrellas.`,
       best: ({ n }) => `Tu mejor resultado en esta dificultad: ${n} ${plural(n, "estrella", "estrellas")}.`,
       unlocked: "Has desbloqueado la dificultad siguiente.",
-      attacker: ({ attacker, net, victim }) => `El atacante es el paquete ${attacker}: el único otro paquete en la red ${net}, donde estaba la víctima ${victim}.`,
-      lost: "Te has quedado sin vidas. Prueba con otro nivel de esta dificultad.",
+      attacker: ({ attacker, net, victim }) => `¡Atrapado! El atacante es el paquete ${attacker}: el único otro paquete en la red ${net}, donde estaba la víctima ${victim}.`,
+      lost: "Te has quedado sin vidas y el atacante ha escapado. Prueba con otro nivel de esta dificultad.",
       newLevel: "Otro nivel",
       nextDifficulty: "Siguiente dificultad ›",
       backToCategory: "Volver a la categoría",
@@ -180,7 +181,7 @@
 
     howto: {
       title: "Cómo se juega",
-      intro: "Netdoku es un juego de deducción. El tablero es un conjunto de redes unidas por routers, y en él estaban varios paquetes. A partir de las pistas, descubre en qué casilla estaba cada uno y encontrarás al atacante.",
+      intro: "Administras un conjunto de redes unidas por routers y tus sistemas acaban de dar la alarma: alguien ha manipulado un paquete. Es la **víctima**, y en su red solo había otro paquete: el **atacante**. No sabes dónde estaba cada paquete, pero los registros te dan pistas. Reconstruye la posición de todos y descubre de dónde salió el ataque antes de que se extienda. ¿Serás capaz?",
       basics: "Objetivo y forma de jugar",
       common: "Reglas comunes a todas las categorías",
       clues: "Algunas pistas que verás desde el principio",
@@ -329,13 +330,14 @@
     categories: {
       inicial: {
         name: "Inicial",
-        short: "Redes, equipos y routers. Basta con leer el tablero.",
+        short: "Redes, equipos y routers. No requiere conocimiento de redes.",
         theory: [
-          "Una red es un conjunto de equipos que se comunican directamente a nivel de enlace, sin pasar por un router. Las redes están delimitadas por routers. En el tablero, cada zona de color es una red; en la leyenda aparece su prefijo (por ejemplo, 192.168.1.0/24), que la identifica.",
-          "Los equipos (nodos) pueden ser terminales o intermedios. Los terminales (hosts) originan y reciben los datos; los intermedios, como los switches y los routers, solo los reenvían. Un switch une equipos dentro de una misma red: no la divide.",
-          "La mayoría de los servicios siguen el modelo cliente/servidor: el cliente (el equipo de usuario) pide un servicio y el servidor lo ofrece. En el juego hay servidores web, DNS, de correo, de ficheros y multimedia.",
-          "Un router separa redes y las une entre sí: tiene una interfaz, con su dirección IP, en cada red que conecta. Por eso en el tablero está en el borde entre dos redes y pertenece a las dos.",
-          "Lo que viaja de una red a otra atravesando routers es un paquete, la unidad de datos del nivel de red.",
+          "Una **red** es un conjunto de equipos que se comunican directamente entre sí, sin pasar por un **router**. Seguramente los equipos de tu casa (el ordenador, los móviles, la tele…) forman una red, y los ordenadores de un laboratorio de la universidad, otra. En el tablero, cada zona de color es una red: su nombre aparece en el tablero y su **prefijo** (por ejemplo, 192.168.1.0/24), que la identifica, en la leyenda.",
+          "Las comunicaciones se organizan en **capas**, y cada una resuelve una parte del problema. La **capa de enlace** lleva los datos de un equipo a otro dentro de una misma red, por cable (Ethernet) o por WiFi: por eso se dice que los equipos de una red se comunican «a nivel de enlace». La **capa de red** los lleva de una red a otra a través de routers.",
+          "Un **router** (encaminador) separa redes y a la vez las une: recibe un paquete por una red y lo reenvía por otra, hacia su destino. Tiene una **interfaz** (una conexión, con su propia dirección IP) en cada red que une, así que pertenece a todas ellas; por eso en el tablero está en el borde entre dos redes. El router de tu casa, por ejemplo, une tu red con la de tu proveedor de Internet.",
+          "Lo que viaja de una red a otra atravesando routers es un **paquete**, la unidad de datos de la capa de red. Como un sobre, lleva la dirección de su **origen** y la de su **destino**.",
+          "Los **equipos** (o **nodos**) pueden ser **terminales** o **intermedios**. Los terminales, también llamados **hosts** (ordenadores, móviles, servidores), originan y reciben los datos; los intermedios (switches, puntos de acceso WiFi, routers) solo los reenvían. Un **switch** une equipos dentro de una red, pero no la divide: todos los ordenadores de un laboratorio conectados a sus switches siguen siendo una sola red.",
+          "Casi todos los servicios siguen el modelo **cliente/servidor**: el **cliente** pide algo y el **servidor** lo ofrece. Por ejemplo, tu navegador (cliente) pide una página a un **servidor web**. En el juego hay equipos de usuario (clientes) y servidores web, **DNS** (traducen nombres como www.uma.es a direcciones IP), de correo, de ficheros y multimedia.",
         ],
         rules: ["in_network", "adjacent_to_node", "unique_adjacent", "router", "spatial"],
       },
@@ -343,11 +345,13 @@
         name: "Direccionamiento",
         short: "Prefijos, máscaras y direcciones IP: calcula a qué red pertenece cada dirección.",
         theory: [
-          "Una dirección IPv4 tiene 32 bits y se escribe como cuatro números decimales separados por puntos (192.168.1.37). Se divide en dos partes: la red y el equipo (host).",
-          "El prefijo /n indica cuántos bits iniciales son de red. La máscara dice lo mismo con n unos seguidos: /24 es 255.255.255.0; /26, 255.255.255.192.",
-          "Una red /n tiene 2^(32−n) direcciones. La primera es el identificador de red y la última, la dirección de difusión; las demás (2^(32−n) − 2) se asignan a los equipos y a las interfaces de los routers.",
-          "Una dirección pertenece a una red si, al aplicarle la máscara (IP AND máscara), se obtiene el identificador de esa red.",
-          "Un bloque de direcciones se reparte en subredes cuyo tamaño es una potencia de dos y que empiezan en un múltiplo de su tamaño. Con VLSM (máscara de longitud variable) las subredes pueden tener tamaños distintos.",
+          "Cada equipo tiene una **dirección IP**, que es como su «nombre» en la red: lo identifica, y los paquetes llevan la dirección de su origen y la de su destino. En IPv4 son 32 bits que se escriben como cuatro números del 0 al 255 separados por puntos, por ejemplo **192.168.1.37**; cada número es un **octeto** (8 bits). En realidad la dirección es de cada **interfaz** (cada conexión a una red): por eso un router tiene una dirección en cada red que une.",
+          "Una dirección tiene dos partes: la **red** (los primeros bits, iguales en todos los equipos de esa red) y el **equipo** o **host** (el resto). El **prefijo** /n indica cuántos bits son de red: en 192.168.1.0/24, los 24 primeros bits (192.168.1) son la red y los 8 últimos, el equipo.",
+          "La **máscara** dice lo mismo que el prefijo, con n unos seguidos de ceros. /24 es **255.255.255.0**; /26 es **255.255.255.192**, porque el último octeto es 11000000 en binario, que es 192.",
+          "Una red /n tiene **2^(32−n) direcciones**: una /24 tiene 256 y una /26, 64. Cuanto más largo es el prefijo, menos direcciones tiene la red. La primera es el **identificador de red** (en 192.168.1.0/24, la 192.168.1.0) y la última, la de **difusión** (192.168.1.255), que sirve para enviar a todos los equipos de la red; las demás se asignan a los equipos y a las interfaces de los routers. El tamaño de una red es su número de direcciones, no sus casillas en el tablero.",
+          "Una dirección pertenece a una red si, al aplicarle la máscara (**IP AND máscara**), se obtiene el identificador de esa red. Por ejemplo, para 192.168.1.130 con máscara /26: 130 AND 192 = 128 (10000010 AND 11000000 = 10000000), así que es de la red **192.168.1.128/26**.",
+          "Un bloque de direcciones se reparte en **subredes**. Cada subred tiene un número de direcciones que es potencia de dos (4, 8, 16, 32, 64, 128…) y empieza en un múltiplo de ese número. Por ejemplo, una /24 se puede repartir en cuatro /26 de 64 direcciones, que empiezan en .0, .64, .128 y .192 (múltiplos de 64). **Truco**: para saber de qué /26 es 192.168.1.130, busca el múltiplo de 64 más cercano por debajo de 130, que es 128; la subred es 192.168.1.128/26 (de .128 a .191). Con prefijos más cortos que /24 se hace lo mismo en el octeto donde acaba el prefijo: por ejemplo, 10.0.37.5 en una /20 (bloques de 16 en el tercer octeto) es de la red 10.0.32.0/20.",
+          "Con **VLSM** (máscara de longitud variable), las subredes de un mismo bloque pueden tener tamaños distintos, según lo que necesite cada una: por ejemplo, una /25 (128 direcciones) para un laboratorio y una /27 (32) para una secretaría. En un nivel las redes nunca se solapan, así que cada dirección pertenece a una sola.",
         ],
         rules: ["named_by_address", "network_size", "ip_network", "prefix_length"],
       },
@@ -362,7 +366,10 @@
         "La dificultad de cada nivel tiene dos componentes: la lógica (qué deducciones hacen falta) y la de interpretación (qué hay que calcular para entender las pistas).",
         "Los niveles se generan automáticamente. Todos tienen una única solución, a la que se llega razonando, sin necesidad de adivinar.",
       ],
+      university: "Universidad de Málaga",
+      credits: "Desarrollado por Gabriel Luque con la ayuda de Claude (Anthropic).",
       license: "Código abierto con licencia MIT.",
+      source: "Código fuente:",
     },
 
     theme: {

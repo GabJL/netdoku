@@ -1,5 +1,17 @@
 # Versiones de Netdoku
 
+## 0.3.1 (16 de noviembre de 2026)
+
+Mejoras de textos y de presentación, sin cambios en los niveles ni en el generador.
+
+- Textos con historia: administras unas redes, alguien ha manipulado un paquete (la víctima) y hay que descubrir al atacante antes de que el ataque se extienda. Aparece en la pantalla inicial, en «Cómo se juega», en el objetivo de cada nivel y en los mensajes de nivel resuelto («¡Atrapado!») y perdido («el atacante ha escapado»).
+- Las URL de los scripts y del CSS llevan la versión publicada, para que tras una actualización el navegador no mezcle ficheros nuevos y viejos de su caché.
+- Botón de volver centrado (dibujado en SVG en lugar de con un carácter).
+- Fichas de ayuda con ejemplo: el mini tablero flota a la derecha y el texto que queda por debajo ocupa todo el ancho.
+- Tarjetas de categoría con el botón «Teoría y reglas» alineado abajo. La descripción de Inicial dice «No requiere conocimiento de redes».
+- Teoría de cada categoría más completa y autocontenida: palabras clave en negrita, ejemplos cotidianos (la red de casa, el router de casa) y, en Direccionamiento, ejemplos calculados de máscara, pertenencia de una dirección a una red y subredes.
+- «Sobre el juego» y el README indican la autoría (Gabriel Luque, con la ayuda de Claude), la licencia y el enlace al repositorio. «Sobre el juego» muestra el logotipo oficial de la Universidad de Málaga (versión positiva o negativa según el tema claro u oscuro), enlazado a su web; el README aclara que el logotipo no está bajo la licencia MIT y que Netdoku no es una aplicación oficial de la universidad.
+
 ## 0.3 (15 de noviembre de 2026)
 
 Primera categoría con conocimientos de la asignatura: Direccionamiento. Las mismas pistas pueden nombrar redes, equipos y routers por su prefijo, por una dirección IP o por su tamaño, y eso da una dificultad de interpretación independiente de la lógica. El juego pasa a tener menú, progresión por categoría y dificultad, y versión en inglés.

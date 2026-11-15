@@ -1,6 +1,8 @@
 # Netdoku
 
-Juego de deducción lógica inspirado en Murdoku para la asignatura Redes y Servicios (UMA). El diseño está en `description.md` y en `implementation/`. Licencia MIT.
+Juego de deducción lógica inspirado en Murdoku para la asignatura Redes y Servicios de la Universidad de Málaga. Se juega en <https://gabjl.github.io/netdoku/>. El diseño está en `description.md` y en `implementation/`.
+
+Desarrollado por Gabriel Luque con la ayuda de Claude (Anthropic). Código abierto con licencia MIT (`LICENSE`), salvo el logotipo de la Universidad de Málaga (`engine/img/uma-*.png`), que es marca de la universidad, se ha tomado de su web oficial y no está cubierto por esa licencia. Netdoku es un proyecto docente de la asignatura, no una aplicación oficial de la universidad.
 
 ## Jugar
 
@@ -36,6 +38,6 @@ Los lotes se guardan en `levels/<categoría>/<dificultad>/` como JSON, junto con
 ## Alcance actual
 
 - Tablero 6×6 con 4 redes, routers de grado 2 en las fronteras, clientes y servidores.
-- Categorías: Inicial (basta con leer el tablero) y Direccionamiento (prefijos, máscaras, pertenencia de una dirección a una red, VLSM).
+- Categorías: Inicial (no requiere conocimiento de redes) y Direccionamiento (prefijos, máscaras, pertenencia de una dirección a una red, VLSM).
 - Pistas: `network.in_network`, `network.prefix_length`, `node.adjacent_to_node`, `node.unique_adjacent_to_node`, `router.adjacent_to_router`, `spatial.in_row` y `spatial.in_column` (véase `implementation/netdoku_catalogo_reglas.md`), con varias formas de nombrar redes, equipos y routers.
 - Dificultad lógica y de interpretación (1 a 5) y dificultad global. Solución única comprobada por fuerza bruta.

@@ -12,6 +12,8 @@
   "use strict";
 
   const LEVELS = "../levels/";
+  const REPOSITORY = "https://github.com/GabJL/netdoku";
+  const UNIVERSITY = "https://www.uma.es/";
   const DIFFICULTIES = [1, 2, 3, 4, 5];
   const MAX_STARS = 3;
   const RECORD_KEY = "netdoku:record";
@@ -322,6 +324,17 @@
     return node;
   }
 
+  // Texto con palabras clave entre **dobles asteriscos**, que salen en negrita.
+  // Se crean los nodos uno a uno: el texto nunca se interpreta como HTML.
+  function rich(parent, text) {
+    text.split(/\*\*(.+?)\*\*/).forEach((part, i) => {
+      if (!part) return;
+      if (i % 2) el("strong", { text: part }, parent);
+      else parent.appendChild(document.createTextNode(part));
+    });
+    return parent;
+  }
+
   // Aviso pasajero bajo la barra superior.
   let noticeTimer = null;
   function notice(text) {
@@ -368,7 +381,7 @@
   function renderHowto() {
     const root = $("howto-body");
     root.innerHTML = "";
-    el("p", { className: "intro", text: t("howto.intro") }, root);
+    rich(el("p", { className: "intro" }, root), t("howto.intro"));
     sectionTitle(root, t("howto.basics"), "basic");
     helpCards(root, ["how_to_play", "objective"]);
     sectionTitle(root, t("howto.common"), "rules");
@@ -396,7 +409,13 @@
     const root = $("about-body");
     root.innerHTML = "";
     for (const p of I18n.get("about.paragraphs") || []) el("p", { text: p }, root);
-    el("p", { className: "muted", text: t("about.license") }, root);
+    const credits = el("div", { className: "credits" }, root);
+    const logo = el("a", { className: "university", href: UNIVERSITY, target: "_blank", rel: "noopener", title: t("about.university") }, credits);
+    el("img", { className: "on-light", src: "img/uma-positiva.png", alt: t("about.university") }, logo);
+    el("img", { className: "on-dark", src: "img/uma-negativa.png", alt: t("about.university") }, logo);
+    el("p", { text: t("about.credits") }, credits);
+    const source = el("p", { className: "muted", text: `${t("about.license")} ${t("about.source")} ` }, credits);
+    el("a", { href: REPOSITORY, target: "_blank", rel: "noopener", text: REPOSITORY.replace("https://", "") }, source);
   }
 
   function renderPlay() {
@@ -520,7 +539,7 @@
     el("p", { className: "intro", text: t(`categories.${cat}.short`) }, body);
     sectionTitle(body, t("info.theory"), "basic");
     const ul = el("ul", { className: "theory" }, body);
-    for (const p of I18n.get(`categories.${cat}.theory`) || []) el("li", { text: p }, ul);
+    for (const p of I18n.get(`categories.${cat}.theory`) || []) rich(el("li", {}, ul), p);
     sectionTitle(body, t("info.newRules"), "clues");
     helpCards(body, I18n.get(`categories.${cat}.rules`) || []);
   }

@@ -85,6 +85,7 @@
     ui: {
       language: "Language",
       tagline: "A deduction game for learning computer networks",
+      hook: "You run these networks and someone has tampered with a packet. Can you find the attacker before the attack spreads?",
       back: "Back",
       toMenu: "Main menu",
       menu: {
@@ -122,7 +123,7 @@
       meta: ({ category, dots, tier, n }) => `${category} · Difficulty ${dots} ${tier} · ${n} ${plural(n, "clue", "clues")}`,
       metaDetail: "logic {logic}, reading {reading}",
       title: "{category} · {tier}",
-      objective: ({ victim }) => `Place the packets to find the attacker. Each row and each column has at most one packet. The victim is packet ${victim}: there was only one other packet in its network, the attacker.`,
+      objective: ({ victim }) => `Alert! Someone has tampered with packet ${victim}. There was only one other packet in its network: the attacker. Use the clues to work out where each packet was (at most one per row and per column) and unmask the attacker before the attack spreads.`,
       sizeNote: "Cells do not show the size of a network: its size is its number of addresses.",
       routerName: ({ a, b }) => `Router between ${a} and ${b}`,
       resumed: "Your progress in this level has been restored.",
@@ -141,8 +142,8 @@
       withErrors: ({ n }) => `Solved with ${n} ${plural(n, "mistake", "mistakes")}. Without mistakes you get all three stars.`,
       best: ({ n }) => `Your best result in this difficulty: ${n} ${plural(n, "star", "stars")}.`,
       unlocked: "You have unlocked the next difficulty.",
-      attacker: ({ attacker, net, victim }) => `The attacker is packet ${attacker}: the only other packet in the ${net} network, where the victim ${victim} was.`,
-      lost: "You have run out of lives. Try another level of this difficulty.",
+      attacker: ({ attacker, net, victim }) => `Caught! The attacker is packet ${attacker}: the only other packet in the ${net} network, where the victim ${victim} was.`,
+      lost: "You have run out of lives and the attacker got away. Try another level of this difficulty.",
       newLevel: "Another level",
       nextDifficulty: "Next difficulty ›",
       backToCategory: "Back to the category",
@@ -175,7 +176,7 @@
 
     howto: {
       title: "How to play",
-      intro: "Netdoku is a deduction game. The board is a set of networks joined by routers, and several packets were on it. Use the clues to find out which cell each packet was in, and you will find the attacker.",
+      intro: "You run a set of networks joined by routers, and your systems have just raised the alarm: someone has tampered with a packet. It is the **victim**, and there was only one other packet in its network: the **attacker**. You don't know where each packet was, but the logs give you clues. Work out the position of every packet and find out where the attack came from before it spreads. Are you up to it?",
       basics: "Goal and how to play",
       common: "Rules common to all categories",
       clues: "Some clues you will see from the start",
@@ -324,13 +325,14 @@
     categories: {
       inicial: {
         name: "Getting started",
-        short: "Networks, devices and routers. Reading the board is enough.",
+        short: "Networks, devices and routers. No networking knowledge required.",
         theory: [
-          "A network is a set of devices that communicate directly at the link layer, without going through a router. Networks are bounded by routers. On the board, each coloured area is a network; the legend shows its prefix (for example, 192.168.1.0/24), which identifies it.",
-          "Devices (nodes) can be end or intermediate nodes. End nodes (hosts) send and receive data; intermediate nodes, such as switches and routers, only forward it. A switch joins devices within the same network: it does not split it.",
-          "Most services follow the client/server model: the client (the user computer) requests a service and the server provides it. The game has web, DNS, mail, file and multimedia servers.",
-          "A router separates networks and connects them: it has one interface, with its IP address, in each network it connects. That is why on the board it sits on the border between two networks and belongs to both.",
-          "What travels from one network to another through routers is a packet, the data unit of the network layer.",
+          "A **network** is a set of devices that communicate directly with each other, without going through a **router**. The devices in your home (computer, phones, TV…) most likely form a network, and the computers in a university lab form another. On the board, each coloured area is a network: its name appears on the board and its **prefix** (for example, 192.168.1.0/24), which identifies it, in the legend.",
+          "Communication is organised in **layers**, each solving one part of the problem. The **link layer** carries data from one device to another within the same network, over a cable (Ethernet) or over WiFi: that is why devices in a network are said to communicate “at the link level”. The **network layer** carries data from one network to another through routers.",
+          "A **router** separates networks and, at the same time, joins them: it receives a packet from one network and forwards it to another, towards its destination. It has an **interface** (a connection with its own IP address) in each network it joins, so it belongs to all of them; that is why it sits on the border between two networks on the board. Your home router, for example, joins your network with your Internet provider's.",
+          "What travels from one network to another through routers is a **packet**, the data unit of the network layer. Like an envelope, it carries the address of its **source** and that of its **destination**.",
+          "**Devices** (or **nodes**) can be **end devices** or **intermediate devices**. End devices, also called **hosts** (computers, phones, servers), send and receive the data; intermediate ones (switches, WiFi access points, routers) only forward it. A **switch** joins devices within a network but does not split it: all the computers in a lab connected to its switches are still a single network.",
+          "Most services follow the **client/server** model: the **client** asks for something and the **server** provides it. For example, your browser (client) asks a **web server** for a page. In the game there are user devices (clients) and web, **DNS** (they translate names such as www.uma.es into IP addresses), mail, file and multimedia servers.",
         ],
         rules: ["in_network", "adjacent_to_node", "unique_adjacent", "router", "spatial"],
       },
@@ -338,11 +340,13 @@
         name: "Addressing",
         short: "Prefixes, masks and IP addresses: work out which network each address belongs to.",
         theory: [
-          "An IPv4 address has 32 bits and is written as four decimal numbers separated by dots (192.168.1.37). It has two parts: the network and the host.",
-          "The prefix /n says how many leading bits belong to the network. The mask says the same with n consecutive ones: /24 is 255.255.255.0; /26, 255.255.255.192.",
-          "A /n network has 2^(32−n) addresses. The first is the network identifier and the last is the broadcast address; the rest (2^(32−n) − 2) are assigned to hosts and router interfaces.",
-          "An address belongs to a network if applying the mask to it (IP AND mask) gives that network's identifier.",
-          "An address block is split into subnets whose size is a power of two and which start at a multiple of their size. With VLSM (variable-length subnet masks) subnets can have different sizes.",
+          "Every device has an **IP address**, which is like its “name” on the network: it identifies the device, and packets carry the address of their source and that of their destination. In IPv4 it is 32 bits written as four numbers from 0 to 255 separated by dots, for example **192.168.1.37**; each number is an **octet** (8 bits). Strictly speaking, the address belongs to each **interface** (each connection to a network): that is why a router has one address in each network it joins.",
+          "An address has two parts: the **network** (the first bits, the same for every device in that network) and the **host** (the rest). The **prefix** /n says how many bits belong to the network: in 192.168.1.0/24, the first 24 bits (192.168.1) are the network and the last 8, the host.",
+          "The **mask** says the same as the prefix, with n ones followed by zeros. /24 is **255.255.255.0**; /26 is **255.255.255.192**, because the last octet is 11000000 in binary, which is 192.",
+          "A /n network has **2^(32−n) addresses**: a /24 has 256 and a /26, 64. The longer the prefix, the fewer addresses the network has. The first one is the **network identifier** (in 192.168.1.0/24, 192.168.1.0) and the last one is the **broadcast** address (192.168.1.255), used to send to every device in the network; the rest are assigned to devices and router interfaces. The size of a network is its number of addresses, not its cells on the board.",
+          "An address belongs to a network if applying the mask to it (**IP AND mask**) gives that network's identifier. For example, for 192.168.1.130 with a /26 mask: 130 AND 192 = 128 (10000010 AND 11000000 = 10000000), so it belongs to **192.168.1.128/26**.",
+          "An address block is split into **subnets**. Each subnet has a number of addresses that is a power of two (4, 8, 16, 32, 64, 128…) and starts at a multiple of that number. For example, a /24 can be split into four /26 subnets of 64 addresses, starting at .0, .64, .128 and .192 (multiples of 64). **Tip**: to find which /26 192.168.1.130 belongs to, look for the nearest multiple of 64 below 130, which is 128; the subnet is 192.168.1.128/26 (from .128 to .191). With prefixes shorter than /24, do the same in the octet where the prefix ends: for example, 10.0.37.5 in a /20 (blocks of 16 in the third octet) belongs to 10.0.32.0/20.",
+          "With **VLSM** (variable-length subnet masks), the subnets of a block can have different sizes, depending on what each one needs: for example, a /25 (128 addresses) for a lab and a /27 (32) for an office. In a level, networks never overlap, so each address belongs to just one.",
         ],
         rules: ["named_by_address", "network_size", "ip_network", "prefix_length"],
       },
@@ -357,7 +361,10 @@
         "The difficulty of each level has two parts: logic (which deductions are needed) and reading (which calculations are needed to understand the clues).",
         "Levels are generated automatically. Every level has a single solution that can be reached by reasoning, without guessing.",
       ],
+      university: "University of Málaga",
+      credits: "Developed by Gabriel Luque with the help of Claude (Anthropic).",
       license: "Open source under the MIT License.",
+      source: "Source code:",
     },
 
     theme: {

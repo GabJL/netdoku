@@ -277,21 +277,13 @@
     return root;
   }
 
-  // Contenido de una ficha (título, texto, ejemplo) dentro de `container`.
-  // Ficha: texto (título y párrafos) y, si tiene, mini tablero. En la página de
-  // ayuda el texto va a la izquierda y el tablero a la derecha.
+  // Contenido de una ficha (título, texto y, si tiene, mini tablero) dentro de
+  // `container`. El mini tablero va el primero para que, en las tarjetas, flote
+  // a la derecha y el texto que queda por debajo ocupe todo el ancho; en la
+  // ventana de ayuda, el CSS lo pone al final.
   function renderEntry(container, e) {
     const body = document.createElement("div");
     body.className = "entry-text";
-    const h = document.createElement("h2");
-    h.textContent = e.title;
-    body.appendChild(h);
-    for (const p of e.text) {
-      const para = document.createElement("p");
-      para.textContent = p;
-      body.appendChild(para);
-    }
-    container.appendChild(body);
     container.classList.toggle("has-mini", !!e.mini);
     if (e.mini) {
       const fig = document.createElement("figure");
@@ -301,8 +293,17 @@
         cap.textContent = e.caption;
         fig.appendChild(cap);
       }
-      container.appendChild(fig);
+      body.appendChild(fig);
     }
+    const h = document.createElement("h2");
+    h.textContent = e.title;
+    body.appendChild(h);
+    for (const p of e.text) {
+      const para = document.createElement("p");
+      para.textContent = p;
+      body.appendChild(para);
+    }
+    container.appendChild(body);
   }
 
   window.NetdokuHelp = { CATEGORIES, ENTRIES, entry, forLevel, renderEntry };
