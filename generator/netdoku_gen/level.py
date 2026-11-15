@@ -140,7 +140,7 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
         },
         "objective": {
             "type": "identify_attacker",
-            "text": ("Coloca los paquetes e identifica al atacante. En cada fila y en cada columna hay "
+            "text": ("Coloca los paquetes para descubrir al atacante. En cada fila y en cada columna hay "
                      f"como mucho un paquete. La víctima es el paquete {victim.id}: en su red solo había "
                      "otro paquete, el atacante."),
             "victimPacketId": victim.id,

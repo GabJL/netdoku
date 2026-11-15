@@ -88,7 +88,7 @@ def _unique_adjacent_to_node(ctx, p):
         ref = ctx.node_reference(n)
         if not others and ref:
             yield Clue(p.id, "node.unique_adjacent_to_node", {"nodeId": n.id},
-                       f"El paquete {p.id} era el único paquete situado junto {ref}.",
+                       f"El paquete {p.id} estaba junto {ref}, y ningún otro paquete lo estaba.",
                        ctx.adj[n.id], excluded=ctx.adj[n.id])
 
 

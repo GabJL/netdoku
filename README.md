@@ -23,7 +23,13 @@ python -m http.server 8000
 
 Después, abrir <http://localhost:8000/engine/> en el navegador. Con `?level=netdoku-gen-3.json` se abre un nivel concreto.
 
-Mecánica: como mucho un paquete por fila y por columna. Arrastra cada paquete a su casilla (o selecciónalo y pulsa la casilla). Si aciertas, queda fijo; si fallas, vuelve al panel y pierdes una vida. Con todos colocados, identifica al atacante: el único otro paquete en la red de la víctima.
+Mecánica: como mucho un paquete por fila y por columna. Arrastra cada paquete a su casilla (o selecciónalo y pulsa la casilla). Si aciertas, queda fijo; si fallas, vuelve al panel y pierdes una vida. Al colocar el último paquete, el nivel queda resuelto y se muestra el atacante: el único otro paquete en la red de la víctima.
+
+Un interruptor (o la tecla A) cambia entre **Colocar** paquetes y **Anotar**, que marca con un circulito del color del paquete las casillas donde el jugador cree que puede ir (como los candidatos del Sudoku; el juego nunca los rellena solo). En modo anotar, el tablero se rodea de un borde naranja. El clic derecho (o una pulsación larga en táctil) marca una casilla como descartada con ✕ y borra sus notas; anotar en una casilla descartada quita la ✕. Al colocar bien un paquete se borran sus notas y las de esa casilla.
+
+Encima del tablero aparecen las reglas que usa el nivel; al pulsar una se abre su explicación con un ejemplo. El botón «Ayuda» abre en otra pestaña la página con todas (`engine/ayuda.html`).
+
+El progreso de cada nivel (paquetes colocados, vidas, marcas y si está resuelto) se guarda en el navegador y se recupera al volver a abrirlo; «Reiniciar» lo borra. Los niveles resueltos aparecen con ✓ en la lista.
 
 ## Alcance de la v0
 

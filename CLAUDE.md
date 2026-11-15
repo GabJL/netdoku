@@ -15,8 +15,8 @@ Netdoku es un juego de deducción lógica inspirado en **Murdoku** para enseñar
 ## Código (v0)
 
 - `generator/netdoku_gen/`: `board.py` (redes por crecimiento de regiones, prefijos, routers de grado 2 sobre un árbol generador + ciclo opcional), `content.py` (nodos y paquetes), `rules.py` (subtipos de pista: cada uno genera instancias con `domain` = D y `excluded` = A), `solver.py` (dominios, propagación con colocación directa y reservas, recuento de soluciones), `selection.py` (selección voraz: primero los demás paquetes, luego la víctima, después quita redundancias), `level.py` (orquesta, valida y exporta).
-- `engine/`: `index.html`, `netdoku.js`, `netdoku.css`. Dibuja el tablero en SVG, arrastre con eventos de puntero (vale para ratón y táctil), vidas y pregunta final del atacante.
-- Al añadir un subtipo de pista: definirlo en `netdoku_catalogo_reglas.md`, implementarlo en `rules.py` y registrarlo en `SUBTYPES` (y su peso en `selection.SUBTYPE_WEIGHTS`).
+- `engine/`: `index.html`, `netdoku.js`, `netdoku.css`, `help.js` (fichas de ayuda con mini tablero de ejemplo, compartidas por la banda de reglas de cada nivel y por `ayuda.html`). Dibuja el tablero en SVG (nombres de red en la cuadrícula, iconos de cliente/servidor con insignia de servicio, routers en las fronteras), arrastre con eventos de puntero (vale para ratón y táctil), interruptor Colocar / Anotar (notas del jugador, nunca automáticas), ✕ con clic derecho o pulsación larga, vidas y resultado final (al colocar el último paquete se muestra el atacante, sin preguntar). El progreso de cada nivel se guarda en `localStorage` (clave `netdoku:progress:<id de nivel>`) hasta pulsar «Reiniciar».
+- Al añadir un subtipo de pista: definirlo en `netdoku_catalogo_reglas.md`, implementarlo en `rules.py` y registrarlo en `SUBTYPES` (y su peso en `selection.SUBTYPE_WEIGHTS`), y añadir su ficha en `engine/help.js` (`ENTRIES` y `TYPE_TO_ENTRY`). La ayuda no debe estorbar al juego: solo se abre a petición.
 
 **Terminología fija por nivel:** trama (2), **paquete** (3), segmento TCP / datagrama UDP (4), mensaje (5). Las piezas del tablero son paquetes (`packet`/`packets` en ficheros y código); no se les llama «mensaje» ni «datagrama».
 
@@ -37,7 +37,7 @@ Netdoku es un juego de deducción lógica inspirado en **Murdoku** para enseñar
 
 Dos componentes completamente desacoplados que solo comparten el formato de fichero de partida:
 
-1. **Motor del juego** (web): carga una partida ya creada y permite jugarla. No sabe cómo se generó. El jugador arrastra paquetes a casillas (acierto → se fija; fallo → vuelve al panel y pierde una vida) y al final identifica al atacante. Las tarjetas de paquete no tienen campos fijos: muestran solo lo que el nivel decide revelar.
+1. **Motor del juego** (web): carga una partida ya creada y permite jugarla. No sabe cómo se generó. El jugador arrastra paquetes a casillas (acierto → se fija; fallo → vuelve al panel y pierde una vida) y, al colocar el último, el nivel queda resuelto y se revela el atacante, que es evidente con el tablero completo. Las tarjetas de paquete no tienen campos fijos: muestran solo lo que el nivel decide revelar.
 2. **Generador de partidas**: programa independiente que produce niveles. Pipeline: grafo lógico → tablero → routers → nodos → posiciones de paquetes → rutas/TTL opcionales → validación → propiedades verdaderas → selección de pistas → evaluación de dificultad → guardar o reparar (pistas → solución → mapa completo).
 
 Conceptos del modelo que atraviesan varios documentos:

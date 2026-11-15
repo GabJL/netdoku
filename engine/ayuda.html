@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ayuda de Netdoku</title>
+  <link rel="stylesheet" href="netdoku.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Netdoku · Ayuda</h1>
+    <div class="level-picker">
+      <a class="button secondary" href="index.html">Volver al juego</a>
+    </div>
+  </header>
+  <main class="help-page">
+    <p>Netdoku es un juego de deducción inspirado en Murdoku. El tablero es un conjunto de redes unidas por routers. Coloca cada paquete en su casilla a partir de las pistas: si aciertas, queda fijo; si fallas, pierdes una vida. Cada nivel muestra encima del tablero solo las reglas que usa; aquí están todas.</p>
+    <div id="help-grid" class="help-grid"></div>
+  </main>
+  <script src="help.js"></script>
+  <script>
+    (function () {
+      const grid = document.getElementById("help-grid");
+      for (const entry of window.NetdokuHelp.ENTRIES) {
+        const card = document.createElement("section");
+        card.className = "help-card";
+        card.id = entry.id;
+        window.NetdokuHelp.renderEntry(card, entry);
+        grid.appendChild(card);
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -525,7 +525,7 @@
   },
   "objective": {
     "type": "identify_attacker",
-    "text": "Coloca los paquetes e identifica al atacante. En cada fila y en cada columna hay como mucho un paquete. La víctima es el paquete A: en su red solo había otro paquete, el atacante.",
+    "text": "Coloca los paquetes para descubrir al atacante. En cada fila y en cada columna hay como mucho un paquete. La víctima es el paquete A: en su red solo había otro paquete, el atacante.",
     "victimPacketId": "A",
     "packetsInVictimNetwork": 2,
     "observableAnswer": {
@@ -573,7 +573,7 @@
       "id": "C5",
       "packet": "E",
       "type": "node.unique_adjacent_to_node",
-      "text": "El paquete E era el único paquete situado junto al servidor web de la red Laboratorio.",
+      "text": "El paquete E estaba junto al servidor web de la red Laboratorio, y ningún otro paquete lo estaba.",
       "parameters": {
         "nodeId": "N1"
       }
@@ -582,7 +582,7 @@
       "id": "C6",
       "packet": "F",
       "type": "node.unique_adjacent_to_node",
-      "text": "El paquete F era el único paquete situado junto al servidor DNS.",
+      "text": "El paquete F estaba junto al servidor DNS, y ningún otro paquete lo estaba.",
       "parameters": {
         "nodeId": "N5"
       }

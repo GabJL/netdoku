@@ -122,7 +122,7 @@ Este catálogo recoge solo las reglas que ayudan a **colocar** paquetes. La info
 - **Restringe:** posición.
 - **Parámetros:**
   - `nodeId`: identificador de un nodo.
-- **Plantilla textual:** «El paquete {packet} era el único paquete situado junto a{l} {node.label}.»
+- **Plantilla textual:** «El paquete {packet} estaba junto a{l} {node.label}, y ningún otro paquete lo estaba.» Se evita «era el único paquete junto a…» porque es fácil olvidar que la restricción afecta también a los demás paquetes, incluida la víctima.
 - **Generación de instancias:** para cada nodo `n` que tenga exactamente un paquete adyacente en la solución, una instancia para ese paquete.
 - **Dominio:** `D = Libres(m) ∩ Ady(nodeId)`.
 - **Anulación común:** `A = Ady(nodeId)`, para todos los paquetes salvo `m`. Si `m` ocupa `c ∈ D`, `c` queda ocupada y el resto de `Ady(nodeId)` queda prohibido para los demás porque `m` es el único junto al nodo. Así, para cualquier `c` las casillas anuladas son todas las de `Ady(nodeId)`. Por eso este subtipo sirve para la estrategia de anulación aunque `|D| > 1`.

@@ -96,7 +96,7 @@ Esto permite reutilizar una misma topología para generar niveles con dificultad
 
 ## Objetivo final
 
-Una vez deducida la posición de todos los paquetes, el jugador debe resolver una última cuestión para completar el nivel.
+Una vez deducida la posición de todos los paquetes, el nivel tiene una respuesta final: quién es el atacante.
 
 Al igual que en **Murdoku**, esta decisión final no debe constituir un nuevo problema de deducción. Toda la dificultad del nivel reside en reconstruir correctamente el estado de la red. Una vez hecho esto, la respuesta final debe obtenerse aplicando una regla sencilla sobre la solución.
 
@@ -109,7 +109,7 @@ La regla sería simplemente:
 
 > El paquete atacante es el paquete que se encuentra en la misma red que el paquete víctima.
 
-De esta forma, el jugador no necesita realizar nuevas deducciones una vez resuelto el tablero. Basta con localizar el paquete víctima e identificar el otro paquete situado en esa misma red.
+De esta forma, el jugador no necesita realizar nuevas deducciones una vez resuelto el tablero. Basta con localizar el paquete víctima e identificar el otro paquete situado en esa misma red. Como la respuesta es evidente con el tablero completo, el juego no la pregunta: al colocar el último paquete, el nivel queda resuelto y se muestra el atacante.
 
 Esta mecánica reproduce la filosofía de Murdoku, donde la identificación del culpable es la consecuencia directa de haber resuelto correctamente el puzle y no un desafío independiente.
 

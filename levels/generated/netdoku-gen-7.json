@@ -560,7 +560,7 @@
   },
   "objective": {
     "type": "identify_attacker",
-    "text": "Coloca los paquetes e identifica al atacante. En cada fila y en cada columna hay como mucho un paquete. La víctima es el paquete A: en su red solo había otro paquete, el atacante.",
+    "text": "Coloca los paquetes para descubrir al atacante. En cada fila y en cada columna hay como mucho un paquete. La víctima es el paquete A: en su red solo había otro paquete, el atacante.",
     "victimPacketId": "A",
     "packetsInVictimNetwork": 2,
     "observableAnswer": {

@@ -16,6 +16,7 @@
         <input type="file" id="level-file" accept=".json,application/json" hidden>
       </label>
       <button id="restart" class="button secondary" type="button">Reiniciar</button>
+      <a class="button secondary" href="ayuda.html" target="_blank" rel="noopener">Ayuda</a>
     </div>
     <div id="lives" class="lives" aria-label="Vidas"></div>
   </header>
@@ -23,9 +24,15 @@
   <main class="layout">
     <section class="board-area">
       <p id="objective" class="objective"></p>
+      <nav id="help-strip" class="help-strip" aria-label="Reglas de este nivel"></nav>
+      <label class="modebar" title="Atajo: tecla A">
+        <input type="checkbox" id="note-mode" role="switch">
+        <span class="switch" aria-hidden="true"></span>
+        <span id="mode-label">Modo colocar</span>
+      </label>
       <div id="board-wrap" class="board-wrap"></div>
       <div id="legend" class="legend"></div>
-      <p class="hint">Regla básica: como mucho un paquete por fila y por columna. Arrastra cada paquete a su casilla (o selecciónalo y pulsa la casilla). Clic derecho en una casilla para marcarla con una ✕. Pulsa una pista para tacharla.</p>
+      <p class="hint"><b>Colocar</b>: arrastra un paquete a su casilla (o selecciónalo y pulsa la casilla). <b>Anotar</b> (interruptor o tecla A): selecciona un paquete y pulsa las casillas donde crees que puede ir; vuelve a pulsar para quitar la nota. <b>Descartar</b>: clic derecho (o pulsación larga) marca o desmarca una casilla con ✕ y borra sus notas. Pulsa una pista para tacharla.</p>
     </section>
 
     <aside class="side">
@@ -37,6 +44,12 @@
 
   <div id="drag-ghost" class="token ghost" hidden></div>
 
+  <dialog id="help-dialog" class="help-dialog">
+    <button type="button" class="close" aria-label="Cerrar">✕</button>
+    <div class="help-body"></div>
+  </dialog>
+
+  <script src="help.js"></script>
   <script src="netdoku.js"></script>
 </body>
 </html>
