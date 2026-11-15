@@ -1,7 +1,10 @@
 # Versiones de Netdoku
 
-## Sin publicar
+## 0.2 (15 de noviembre de 2026)
 
+Dificultad medida y niveles organizados por ella, puntuación con estrellas y pistas más legibles. Las pistas siguen siendo las de la 0.1 (sin conocimientos de la asignatura). En el diseño quedan definidas las formas de nombrar, la dificultad de lectura y la organización categoría → dificultad → nivel, que se implementarán con las categorías de redes.
+
+- Documentación: formas de nombrar de redes y equipos en el catálogo de reglas, parámetro `difficulty.reading` y método de la dificultad lógica en `game_round_generation.md`.
 - Dificultad lógica de cada nivel (1 a 5, de Muy fácil a Muy difícil), calculada simulando la resolución más sencilla: técnica más difícil necesaria (colocación directa, fila o columna obligada, anulación, reservas de 2, 3 o 4) y cuellos de botella. Se guarda en el nivel y en el índice.
 - El selector de niveles los agrupa por dificultad, y el panel de ayuda muestra la del nivel.
 - `generate.py --stats` genera niveles sin guardarlos y muestra el reparto de dificultad.
