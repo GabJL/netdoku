@@ -5,26 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Netdoku</title>
   <link rel="stylesheet" href="netdoku.css">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
   <script src="theme.js"></script>
 </head>
 <body>
   <header class="topbar">
-    <h1>Netdoku</h1>
-    <div class="level-picker">
-      <select id="level-select" aria-label="Nivel"></select>
-      <label class="button">
-        Abrir nivel…
-        <input type="file" id="level-file" accept=".json,application/json" hidden>
-      </label>
-      <button id="restart" class="button" type="button">Reiniciar</button>
-      <a class="button" href="ayuda.html" target="_blank" rel="noopener">Ayuda</a>
-      <span id="appearance-controls" class="level-picker"></span>
-    </div>
+    <h1 class="brand"><img src="icon.svg" alt="" width="30" height="30">Netdoku</h1>
+    <nav class="level-nav" aria-label="Niveles">
+      <button id="level-prev" class="icon-button" type="button" title="Nivel anterior" aria-label="Nivel anterior">‹</button>
+      <select id="level-select" class="pill-select" aria-label="Nivel"></select>
+      <button id="level-next" class="icon-button" type="button" title="Nivel siguiente" aria-label="Nivel siguiente">›</button>
+      <button id="restart" class="icon-button" type="button" title="Reiniciar el nivel" aria-label="Reiniciar el nivel">↺</button>
+    </nav>
+    <div id="appearance-controls" class="appearance-controls"></div>
     <div id="lives" class="lives" aria-label="Vidas"></div>
   </header>
 
   <main class="layout">
     <aside class="help-panel" aria-label="Ayuda del nivel">
+      <div class="help-head">
+        <h2>Ayuda</h2>
+        <a class="icon-button" href="ayuda.html" target="_blank" rel="noopener" title="Abrir la ayuda completa" aria-label="Ayuda completa">?</a>
+      </div>
       <p id="objective" class="objective"></p>
       <div id="help-groups"></div>
       <section class="help-group">

@@ -41,7 +41,8 @@ def ascii_board(level):
 
 def update_index():
     levels = []
-    for f in sorted(OUT_DIR.glob("netdoku-gen-*.json")):
+    # Orden numérico (gen-2 antes que gen-10): el motor numera los niveles por su posición.
+    for f in sorted(OUT_DIR.glob("netdoku-gen-*.json"), key=lambda f: int(f.stem.rsplit("-", 1)[1])):
         data = json.loads(f.read_text(encoding="utf-8"))
         levels.append({"file": f.name, "id": data["level"]["id"], "name": data["level"]["name"],
                        "clues": data["generation"]["clueCount"]})

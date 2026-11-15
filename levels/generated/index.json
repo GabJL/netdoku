@@ -7,12 +7,6 @@
       "clues": 8
     },
     {
-      "file": "netdoku-gen-10.json",
-      "id": "netdoku-gen-10",
-      "name": "Nivel generado 10",
-      "clues": 6
-    },
-    {
       "file": "netdoku-gen-2.json",
       "id": "netdoku-gen-2",
       "name": "Nivel generado 2",
@@ -58,6 +52,12 @@
       "file": "netdoku-gen-9.json",
       "id": "netdoku-gen-9",
       "name": "Nivel generado 9",
+      "clues": 6
+    },
+    {
+      "file": "netdoku-gen-10.json",
+      "id": "netdoku-gen-10",
+      "name": "Nivel generado 10",
       "clues": 6
     }
   ]

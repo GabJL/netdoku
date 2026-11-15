@@ -9,7 +9,7 @@ Netdoku es un juego de deducción lógica inspirado en **Murdoku** para enseñar
 ## Comandos
 
 - Generar niveles: `python generator/generate.py --seed 1 -n 10` (añadir `--print` para ver solución y pistas). Escribe JSON en `levels/generated/` y regenera `levels/generated/index.json`. Python 3.10+, sin dependencias.
-- Jugar: `python -m http.server 8000` en la raíz y abrir `http://localhost:8000/engine/` (el motor usa `fetch`, así que no funciona con `file://` salvo con «Abrir nivel…»).
+- Jugar: `python -m http.server 8000` en la raíz y abrir `http://localhost:8000/engine/` (el motor usa `fetch`, así que no funciona con `file://` salvo arrastrando un fichero de nivel a la página).
 - Comprobar la sintaxis del motor: `node --check engine/netdoku.js`. No hay tests todavía; el generador valida cada nivel (solución única por fuerza bruta y propagación hasta la solución generada).
 
 ## Código (v0)

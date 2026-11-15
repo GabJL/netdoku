@@ -25,6 +25,8 @@
   let level = null;
   let state = null;
   let levelIndex = [];
+  // Paquetes ya colocados cuyas pistas el jugador ha vuelto a desplegar.
+  let expanded = new Set();
 
   // ---------- Progreso guardado (por nivel, en este navegador) ----------
 
@@ -72,8 +74,9 @@
   // ---------- Carga de niveles ----------
 
   async function init() {
-    $("level-file").addEventListener("change", onFileChosen);
-    $("level-select").addEventListener("change", () => loadFromUrl(LEVEL_DIR + $("level-select").value));
+    $("level-select").addEventListener("change", () => openLevel($("level-select").selectedIndex));
+    $("level-prev").addEventListener("click", () => openLevel($("level-select").selectedIndex - 1));
+    $("level-next").addEventListener("click", () => openLevel($("level-select").selectedIndex + 1));
     $("restart").addEventListener("click", restart);
     if (window.NetdokuTheme) window.NetdokuTheme.mountControls($("appearance-controls"));
     window.addEventListener("netdoku-theme", () => { if (level) render(); });
@@ -99,25 +102,34 @@
       const select = $("level-select");
       const wanted = params.get("level");
       if (wanted) select.value = wanted;
-      if (select.value) await loadFromUrl(LEVEL_DIR + select.value);
+      if (select.value) await openLevel(select.selectedIndex);
     } catch (err) {
       $("level-select").hidden = true;
-      say("No se ha podido leer la lista de niveles. Usa «Abrir nivel…» o sirve la carpeta con un servidor web (véase README.md).", "bad");
+      say("No se ha podido leer la lista de niveles. Sirve la carpeta con un servidor web (véase README.md) o arrastra aquí un fichero de nivel.", "bad");
     }
+  }
+
+  async function openLevel(i) {
+    const select = $("level-select");
+    if (i < 0 || i >= select.options.length) return;
+    select.selectedIndex = i;
+    $("level-prev").disabled = i === 0;
+    $("level-next").disabled = i === select.options.length - 1;
+    await loadFromUrl(LEVEL_DIR + select.value);
   }
 
   function fillLevelSelect() {
     const select = $("level-select");
     const current = select.value;
     select.innerHTML = "";
-    for (const item of levelIndex) {
+    levelIndex.forEach((item, i) => {
       const opt = document.createElement("option");
       opt.value = item.file;
       const progress = readProgress(item.id);
-      const mark = progress && progress.solved ? "✓ " : "";
-      opt.textContent = `${mark}${item.name} (${item.clues} pistas)`;
+      opt.textContent = `Nivel ${i + 1}${progress && progress.solved ? " ✓" : ""}`;
+      opt.title = `${item.name} · ${item.clues} pistas`;
       select.appendChild(opt);
-    }
+    });
     if (current) select.value = current;
   }
 
@@ -142,11 +154,6 @@
     reader.readAsText(file);
   }
 
-  function onFileChosen(e) {
-    if (e.target.files[0]) loadFromFile(e.target.files[0]);
-    e.target.value = "";
-  }
-
   function onFileDropped(e) {
     e.preventDefault();
     if (e.dataTransfer.files[0]) loadFromFile(e.dataTransfer.files[0]);
@@ -156,6 +163,7 @@
 
   function start(data) {
     level = data;
+    expanded = new Set();
     const saved = readProgress(levelId());
     state = {
       lives: saved ? saved.lives : START_LIVES,
@@ -526,7 +534,10 @@
       card.className = "packet-card";
       if (state.selected === p.id) card.classList.add("selected");
       const placed = p.id in state.placed;
+      // Un paquete colocado se compacta; sus pistas se pueden desplegar de nuevo.
+      const open = !placed || expanded.has(p.id);
       if (placed) card.classList.add("placed");
+      if (!open) card.classList.add("compact");
 
       const token = document.createElement("div");
       token.className = "token" + (placed ? " placed" : "");
@@ -547,7 +558,28 @@
       card.appendChild(title);
 
       const clues = level.clues.filter((c) => c.packet === p.id);
-      if (clues.length) {
+      if (placed) {
+        const [r, c] = state.placed[p.id];
+        const where = document.createElement("span");
+        where.className = "where";
+        where.textContent = `fila ${r}, columna ${c}`;
+        title.appendChild(where);
+        if (clues.length) {
+          const toggle = document.createElement("button");
+          toggle.type = "button";
+          toggle.className = "toggle";
+          toggle.textContent = open ? "▾ ocultar" : `▸ ${clues.length === 1 ? "1 pista" : `${clues.length} pistas`}`;
+          toggle.setAttribute("aria-expanded", open);
+          toggle.addEventListener("click", () => {
+            expanded.has(p.id) ? expanded.delete(p.id) : expanded.add(p.id);
+            renderPackets();
+          });
+          title.appendChild(toggle);
+        }
+      }
+      if (!open) {
+        // Compacto: solo ficha, nombre, posición y el botón para desplegar.
+      } else if (clues.length) {
         const ul = document.createElement("ul");
         for (const c of clues) {
           const li = document.createElement("li");

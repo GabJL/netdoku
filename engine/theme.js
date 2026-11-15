@@ -159,9 +159,9 @@
 
   function fillThemeSelect(select) {
     select.innerHTML = "";
-    if (store.theme === null) el("option", { value: "", textContent: "Tema: personalizado" }, select);
+    if (store.theme === null) el("option", { value: "", textContent: "Personalizado" }, select);
     for (const name of Object.keys(themes())) {
-      el("option", { value: name, textContent: `Tema: ${name}` }, select);
+      el("option", { value: name, textContent: name }, select);
     }
     select.value = store.theme === null ? "" : store.theme;
   }
@@ -232,12 +232,16 @@
     };
   }
 
-  // Añade a `container` el selector de tema y el botón «⚙ Apariencia».
+  // Añade a `container` el selector de tema y el botón «+» que abre la ventana de apariencia.
   function mountControls(container) {
-    const select = el("select", {}, container);
+    el("span", { className: "control-label", textContent: "Tema" }, container);
+    const select = el("select", { className: "pill-select", title: "Tema" }, container);
     select.setAttribute("aria-label", "Tema");
     select.addEventListener("change", () => { if (select.value) selectTheme(select.value); });
-    const button = el("button", { type: "button", className: "button", textContent: "⚙ Apariencia" }, container);
+    const button = el("button", { type: "button", className: "icon-button accent", title: "Apariencia: crear o editar un tema" }, container);
+    // El «+» se dibuja en SVG: con un carácter de texto no queda centrado en el círculo.
+    button.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M8 2.5v11M2.5 8h11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+    button.setAttribute("aria-label", "Apariencia: crear o editar un tema");
     const panel = buildDialog();
     button.addEventListener("click", () => {
       panel.refresh();

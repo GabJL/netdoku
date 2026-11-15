@@ -15,7 +15,7 @@ Los niveles se guardan en `levels/generated/` como JSON, junto con `index.json`,
 
 ## Jugar
 
-El motor es una página web sin dependencias (`engine/`). Como carga los niveles con `fetch`, hay que servir la carpeta del proyecto con un servidor web; abriendo `index.html` directamente solo funciona el botón «Abrir nivel…».
+El motor es una página web sin dependencias (`engine/`). Como carga los niveles con `fetch`, hay que servir la carpeta del proyecto con un servidor web; abriendo `index.html` directamente solo se puede jugar arrastrando un fichero de nivel JSON a la página.
 
 ```
 python -m http.server 8000
