@@ -5,37 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Netdoku</title>
   <link rel="stylesheet" href="netdoku.css">
+  <script src="theme.js"></script>
 </head>
 <body>
   <header class="topbar">
     <h1>Netdoku</h1>
     <div class="level-picker">
       <select id="level-select" aria-label="Nivel"></select>
-      <label class="button secondary">
+      <label class="button">
         Abrir nivel…
         <input type="file" id="level-file" accept=".json,application/json" hidden>
       </label>
-      <button id="restart" class="button secondary" type="button">Reiniciar</button>
-      <a class="button secondary" href="ayuda.html" target="_blank" rel="noopener">Ayuda</a>
+      <button id="restart" class="button" type="button">Reiniciar</button>
+      <a class="button" href="ayuda.html" target="_blank" rel="noopener">Ayuda</a>
+      <span id="appearance-controls" class="level-picker"></span>
     </div>
     <div id="lives" class="lives" aria-label="Vidas"></div>
   </header>
 
   <main class="layout">
-    <section class="board-area">
+    <aside class="help-panel" aria-label="Ayuda del nivel">
       <p id="objective" class="objective"></p>
-      <nav id="help-strip" class="help-strip" aria-label="Reglas de este nivel"></nav>
+      <div id="help-groups"></div>
+      <section class="help-group">
+        <h3>Redes</h3>
+        <div id="legend" class="legend"></div>
+      </section>
+    </aside>
+
+    <section class="board-area">
+      <div id="board-wrap" class="board-wrap"></div>
+    </section>
+
+    <aside class="side">
       <label class="modebar" title="Atajo: tecla A">
         <input type="checkbox" id="note-mode" role="switch">
         <span class="switch" aria-hidden="true"></span>
         <span id="mode-label">Modo colocar</span>
       </label>
-      <div id="board-wrap" class="board-wrap"></div>
-      <div id="legend" class="legend"></div>
-      <p class="hint"><b>Colocar</b>: arrastra un paquete a su casilla (o selecciónalo y pulsa la casilla). <b>Anotar</b> (interruptor o tecla A): selecciona un paquete y pulsa las casillas donde crees que puede ir; vuelve a pulsar para quitar la nota. <b>Descartar</b>: clic derecho (o pulsación larga) marca o desmarca una casilla con ✕ y borra sus notas. Pulsa una pista para tacharla.</p>
-    </section>
-
-    <aside class="side">
       <div id="message" class="message" role="status"></div>
       <div id="final" class="final" hidden></div>
       <div id="packets" class="packets"></div>

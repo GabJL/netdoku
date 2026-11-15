@@ -1,4 +1,9 @@
+/* ---------- Temas ----------
+   Todos los colores están en variables. El tablero SVG las lee desde JS
+   (NetdokuTheme.value) y se redibuja al cambiar de tema. */
+
 :root {
+  /* Interfaz */
   --bg: #f5f3ee;
   --panel: #ffffff;
   --ink: #23262b;
@@ -6,12 +11,147 @@
   --line: #d9d5cc;
   --accent: #2f5fb3;
   --danger: #c0392b;
+  --danger-bg: #fbeeee;
   --ok: #27864a;
-  --wall: #3a3d42;
+  --ok-bg: #eef8f1;
   --note: #d9822b;
+  --note-bg: #fff4e5;
+  --badge-bg: #f3dede;
+  --switch-off: #c9ccd1;
+  --shadow: rgba(0, 0, 0, 0.25);
+
+  /* Categorías de ayuda */
+  --cat-basic: #2f5fb3;
+  --cat-rules: #27864a;
+  --cat-clues: #c46a12;
+  --cat-icons: #7a4fb8;
+
+  /* Tablero */
+  --net-1: #f3d9a4;
+  --net-2: #c5e3c6;
+  --net-3: #bcd6f2;
+  --net-4: #f4c6d6;
+  --net-5: #d6cbef;
+  --net-6: #ffdcb4;
+  --net-7: #b8e6ea;
+  --net-8: #e3e9a4;
+  --cell-line: rgba(0, 0, 0, 0.12);
+  --wall: #3a3d42;
+  --board-number: #8a8f96;
+  --mark: rgba(0, 0, 0, 0.38);
+  --label-ink: #2b2d31;
+  --label-halo: rgba(255, 255, 255, 0.85);
+  --node-server: #2e3440;
+  --node-client: #4f5965;
+  --node-edge: transparent;
+  --node-part: #cfd6df;
+  --node-screen: #cfe3ff;
+  --router: #1f4e99;
+  --router-edge: #ffffff;
+  --token-edge: rgba(0, 0, 0, 0.4);
+  --pattern-ink: rgba(0, 0, 0, 0.11);
+
+  color-scheme: light;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--ink);
 }
+
+/* Tema oscuro: por preferencia del sistema (salvo que se elija «claro») o elegido a mano. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171b;
+    --panel: #1f2329;
+    --ink: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #353b44;
+    --accent: #6b9cf0;
+    --danger: #ef6b5e;
+    --danger-bg: #3a2222;
+    --ok: #4cc27a;
+    --ok-bg: #1d3326;
+    --note: #f0a050;
+    --note-bg: #3a2b19;
+    --badge-bg: #4a2a2a;
+    --switch-off: #4a515b;
+    --shadow: rgba(0, 0, 0, 0.6);
+    --cat-basic: #6b9cf0;
+    --cat-rules: #4cc27a;
+    --cat-clues: #f0a050;
+    --cat-icons: #b08ef0;
+    --net-1: #6b5a36;
+    --net-2: #3e6347;
+    --net-3: #39587a;
+    --net-4: #77495b;
+    --net-5: #574a7a;
+    --net-6: #7a5733;
+    --net-7: #2f6a70;
+    --net-8: #5f6833;
+    --cell-line: rgba(255, 255, 255, 0.08);
+    --wall: #c9ced6;
+    --board-number: #8f96a0;
+    --mark: rgba(255, 255, 255, 0.5);
+    --label-ink: #f1f3f5;
+    --label-halo: rgba(0, 0, 0, 0.6);
+    --node-server: #101317;
+    --node-client: #262b33;
+    --node-edge: rgba(255, 255, 255, 0.3);
+    --node-part: #c3cad3;
+    --node-screen: #a9c9f5;
+    --router: #3d7be0;
+    --router-edge: #e6e8eb;
+    --token-edge: rgba(255, 255, 255, 0.55);
+    --pattern-ink: rgba(255, 255, 255, 0.12);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #15171b;
+  --panel: #1f2329;
+  --ink: #e6e8eb;
+  --muted: #9aa1ab;
+  --line: #353b44;
+  --accent: #6b9cf0;
+  --danger: #ef6b5e;
+  --danger-bg: #3a2222;
+  --ok: #4cc27a;
+  --ok-bg: #1d3326;
+  --note: #f0a050;
+  --note-bg: #3a2b19;
+  --badge-bg: #4a2a2a;
+  --switch-off: #4a515b;
+  --shadow: rgba(0, 0, 0, 0.6);
+  --cat-basic: #6b9cf0;
+  --cat-rules: #4cc27a;
+  --cat-clues: #f0a050;
+  --cat-icons: #b08ef0;
+  --net-1: #6b5a36;
+  --net-2: #3e6347;
+  --net-3: #39587a;
+  --net-4: #77495b;
+  --net-5: #574a7a;
+  --net-6: #7a5733;
+  --net-7: #2f6a70;
+  --net-8: #5f6833;
+  --cell-line: rgba(255, 255, 255, 0.08);
+  --wall: #c9ced6;
+  --board-number: #8f96a0;
+  --mark: rgba(255, 255, 255, 0.5);
+  --label-ink: #f1f3f5;
+  --label-halo: rgba(0, 0, 0, 0.6);
+  --node-server: #101317;
+  --node-client: #262b33;
+  --node-edge: rgba(255, 255, 255, 0.3);
+  --node-part: #c3cad3;
+  --node-screen: #a9c9f5;
+  --router: #3d7be0;
+  --router-edge: #e6e8eb;
+  --token-edge: rgba(255, 255, 255, 0.55);
+  --pattern-ink: rgba(255, 255, 255, 0.12);
+  color-scheme: dark;
+}
+
+/* ---------- Base ---------- */
 
 * { box-sizing: border-box; }
 
@@ -21,6 +161,7 @@
 body {
   margin: 0;
   background: var(--bg);
+  color: var(--ink);
 }
 
 .topbar {
@@ -55,12 +196,7 @@ select, .button {
   background: var(--panel);
   color: var(--ink);
   cursor: pointer;
-}
-
-.button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  text-decoration: none;
 }
 
 .lives {
@@ -72,35 +208,61 @@ select, .button {
 
 .lives .lost { color: var(--line); }
 
+/* ---------- Distribución ----------
+   Ancho: ayuda | tablero | paquetes. Medio: tablero | paquetes, ayuda debajo.
+   Estrecho: tablero, paquetes, ayuda. */
+
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
-  gap: 20px;
+  grid-template-columns: minmax(230px, 270px) minmax(0, 1fr) minmax(280px, 360px);
+  grid-template-areas: "help board side";
+  gap: 24px;
   padding: 20px;
-  max-width: 1200px;
+  max-width: 1500px;
   margin: 0 auto;
+  align-items: start;
+}
+
+.help-panel { grid-area: help; }
+.board-area { grid-area: board; }
+.side { grid-area: side; }
+
+@media (max-width: 1180px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+    grid-template-areas: "board side" "help help";
+  }
 }
 
 @media (max-width: 860px) {
-  .layout { grid-template-columns: 1fr; padding: 12px 16px; }
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-areas: "board" "side" "help";
+    padding: 12px 16px;
+  }
 }
 
-.objective {
-  margin: 0 0 12px;
-  font-size: 0.95rem;
-}
+/* ---------- Tablero ---------- */
 
 .board-wrap svg {
   width: 100%;
-  max-width: 560px;
+  max-width: 620px;
   height: auto;
   display: block;
+  margin: 0 auto;
   touch-action: none;
   user-select: none;
+  border-radius: 6px;
+  outline: 3px solid transparent;
+  outline-offset: 2px;
+  transition: outline-color 0.15s;
 }
 
+/* En modo anotar, el tablero se rodea de un borde de color. */
+.board-wrap.noting svg { outline-color: var(--note); }
+
 .cell { cursor: pointer; }
-.cell:hover { filter: brightness(0.95); }
+.cell:hover { filter: brightness(0.94); }
 .cell.wrong { animation: flash 0.6s; }
 
 @keyframes flash {
@@ -108,12 +270,75 @@ select, .button {
   30% { filter: sepia(1) saturate(6) hue-rotate(-40deg) brightness(0.9); }
 }
 
-.legend {
+/* ---------- Panel de ayuda (izquierda) ---------- */
+
+.help-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 0.9rem;
+}
+
+.objective {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.help-group h3 {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cat, var(--muted));
+}
+
+.help-group .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 16px;
-  margin-top: 12px;
-  font-size: 0.88rem;
+  gap: 6px;
+}
+
+/* Categoría de ayuda: fija --cat en cualquier elemento (grupo, ficha, tarjeta, título). */
+.cat-basic { --cat: var(--cat-basic); }
+.cat-rules { --cat: var(--cat-rules); }
+.cat-clues { --cat: var(--cat-clues); }
+.cat-icons { --cat: var(--cat-icons); }
+
+.chip {
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 3px 10px 3px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--cat, var(--accent));
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.chip::before {
+  content: "?";
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  line-height: 1.25em;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--cat, var(--accent));
+  color: var(--panel);
+  font-size: 0.75em;
+  font-weight: 700;
+  text-align: center;
+}
+
+.chip:hover { border-color: var(--cat, var(--accent)); }
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
 }
 
 .legend span.swatch {
@@ -123,14 +348,10 @@ select, .button {
   border-radius: 3px;
   margin-right: 6px;
   vertical-align: -2px;
-  border: 1px solid rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--cell-line);
 }
 
-.hint {
-  color: var(--muted);
-  font-size: 0.8rem;
-  margin-top: 12px;
-}
+/* ---------- Panel de paquetes (derecha) ---------- */
 
 .side { display: flex; flex-direction: column; gap: 12px; }
 
@@ -170,7 +391,7 @@ select, .button {
   padding: 1px 6px;
   border-radius: 999px;
   margin-left: 6px;
-  background: #f3dede;
+  background: var(--badge-bg);
   color: var(--danger);
   vertical-align: 1px;
 }
@@ -194,7 +415,7 @@ select, .button {
   place-items: center;
   color: #fff;
   font-weight: 700;
-  border: 2px solid rgba(0, 0, 0, 0.35);
+  border: 2px solid var(--token-edge);
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -208,7 +429,7 @@ select, .button {
   pointer-events: none;
   z-index: 10;
   transform: translate(-50%, -50%);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 16px var(--shadow);
 }
 
 .final {
@@ -220,58 +441,68 @@ select, .button {
 
 .final p { margin: 0 0 10px; }
 .final p:last-child { margin-bottom: 0; }
-.final.solved { border-color: var(--ok); background: #eef8f1; }
-.final.lost { border-color: var(--danger); background: #fbeeee; }
-.final .choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.final.solved { border-color: var(--ok); background: var(--ok-bg); }
+.final.lost { border-color: var(--danger); background: var(--danger-bg); }
 
-/* ---------- Ayuda ---------- */
+/* Interruptor Colocar / Anotar */
 
-.help-strip {
+.modebar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0 0 10px;
-}
-
-.chip {
-  font: inherit;
-  font-size: 0.8rem;
-  padding: 3px 10px;
-  border-radius: 999px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px 6px;
   border: 1px solid var(--line);
+  border-radius: 999px;
   background: var(--panel);
-  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 600;
   cursor: pointer;
+  user-select: none;
 }
 
-.chip::before {
-  content: "?";
-  display: inline-block;
-  width: 1.2em;
-  height: 1.2em;
-  line-height: 1.2em;
-  margin-right: 5px;
+.modebar input { position: absolute; opacity: 0; pointer-events: none; }
+
+.modebar .switch {
+  position: relative;
+  flex: none;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--switch-off);
+  transition: background 0.15s;
+}
+
+.modebar .switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.75em;
-  font-weight: 700;
-  text-align: center;
+  background: #fff;
+  transition: transform 0.15s;
 }
 
-.chip:hover { border-color: var(--accent); }
+.modebar input:checked + .switch { background: var(--note); }
+.modebar input:checked + .switch::after { transform: translateX(16px); }
+.modebar input:focus-visible + .switch { outline: 2px solid var(--accent); outline-offset: 2px; }
+.modebar.noting { border-color: var(--note); color: var(--note); background: var(--note-bg); }
+
+/* ---------- Ventana y página de ayuda ---------- */
 
 .help-dialog {
-  width: min(440px, calc(100vw - 32px));
+  width: min(460px, calc(100vw - 32px));
   border: none;
+  border-top: 4px solid var(--cat, var(--accent));
   border-radius: 12px;
   padding: 0; /* el relleno va en .help-body: así, pulsar en el borde no cierra */
+  background: var(--panel);
   color: var(--ink);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 12px 40px var(--shadow);
 }
 
-.help-dialog::backdrop { background: rgba(0, 0, 0, 0.3); }
-
+.help-dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
 .help-dialog .help-body { padding: 18px 20px; }
 
 .help-dialog .close {
@@ -293,7 +524,7 @@ select, .button {
 .help-body p, .help-card p {
   font-size: 0.9rem;
   margin: 0 0 8px;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .help-body figure, .help-card figure {
@@ -313,76 +544,88 @@ figcaption {
   margin-top: 4px;
 }
 
-/* Página de ayuda */
-
 .help-page {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 20px 16px 40px;
 }
 
-.help-page > p { max-width: 70ch; }
+.help-page .intro {
+  font-size: 0.98rem;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+
+.help-page h2.section {
+  margin: 28px 0 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cat);
+}
 
 .help-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
-  margin-top: 16px;
+  margin-top: 10px;
 }
 
 .help-card {
   background: var(--panel);
   border: 1px solid var(--line);
+  border-top: 4px solid var(--cat, var(--accent));
   border-radius: 10px;
   padding: 14px 16px;
 }
 
-/* Interruptor Colocar / Anotar */
+/* ---------- Ventana de apariencia ---------- */
 
-.modebar {
-  display: inline-flex;
+.appearance .field {
+  display: grid;
+  grid-template-columns: 11em 1fr;
   align-items: center;
   gap: 10px;
   margin: 0 0 10px;
-  padding: 5px 12px 5px 6px;
+  font-size: 0.9rem;
+}
+
+.appearance .field.check {
+  display: flex;
+  gap: 8px;
+}
+
+.appearance select { width: 100%; }
+
+.appearance .save-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.appearance .save-row input {
+  flex: 1 1 10em;
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 6px 10px;
+  border-radius: 6px;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--panel);
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-  user-select: none;
+  background: var(--bg);
+  color: var(--ink);
 }
 
-.modebar input { position: absolute; opacity: 0; pointer-events: none; }
+.appearance .button:disabled { opacity: 0.5; cursor: default; }
 
-.modebar .switch {
-  position: relative;
-  flex: none;
-  width: 38px;
-  height: 22px;
-  border-radius: 999px;
-  background: #c9ccd1;
-  transition: background 0.15s;
+.appearance .note {
+  min-height: 1.2em;
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
-.modebar .switch::after {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
-  transition: transform 0.15s;
+@media (max-width: 480px) {
+  .appearance .field { grid-template-columns: 1fr; gap: 4px; }
 }
-
-.modebar input:checked + .switch { background: var(--note); }
-.modebar input:checked + .switch::after { transform: translateX(16px); }
-.modebar input:focus-visible + .switch { outline: 2px solid var(--accent); outline-offset: 2px; }
-.modebar.noting { border-color: var(--note); color: var(--note); background: #fff4e5; }
-
-/* En modo anotar, el tablero se rodea de un borde de color. */
-.board-wrap svg { border-radius: 6px; outline: 3px solid transparent; outline-offset: 2px; transition: outline-color 0.15s; }
-.board-wrap.noting svg { outline-color: var(--note); }

@@ -9,12 +9,19 @@
   const START_LIVES = 3;
   const CELL = 80;
   const PAD = 6;
-  const MARGIN = 22; // margen superior e izquierdo para los números de fila y columna
-  const NETWORK_COLORS = ["#f3d9a4", "#c5e3c6", "#bcd6f2", "#f4c6d6", "#d6cbef", "#ffdcb4", "#b8e6ea", "#e3e9a4"];
+  const NUMBERS_MARGIN = 22; // margen superior e izquierdo para los números de fila y columna
+  let margin = NUMBERS_MARGIN;
+  const NODE_TEXT = { client: "PC", web: "Web", dns: "DNS", mail: "Correo", storage: "Ficheros", multimedia: "Media", dhcp: "DHCP" };
+  // Texturas de casilla; con «una textura por red», cada red usa la suya en este orden.
+  const PER_NETWORK_PATTERNS = ["tiles", "dots", "stripes", "cross", "waves", "plain"];
+  const appearance = () => (window.NetdokuTheme ? window.NetdokuTheme.settings() : { pattern: "plain", icons: "drawings", numbers: true, netNames: true });
+  const NETWORK_COLOR_COUNT = 8; // --net-1 … --net-8 en netdoku.css
   const SERVICE_COLORS = { web: "#2f7de1", dns: "#8e44ad", mail: "#e67e22", storage: "#16a085", multimedia: "#c0392b", dhcp: "#7f8c8d" };
   const SVG_NS = "http://www.w3.org/2000/svg";
 
   const $ = (id) => document.getElementById(id);
+  // Color del tema actual (variables CSS de netdoku.css).
+  const tv = (name) => (window.NetdokuTheme ? window.NetdokuTheme.value(name) : "") || "#888";
   let level = null;
   let state = null;
   let levelIndex = [];
@@ -68,6 +75,8 @@
     $("level-file").addEventListener("change", onFileChosen);
     $("level-select").addEventListener("change", () => loadFromUrl(LEVEL_DIR + $("level-select").value));
     $("restart").addEventListener("click", restart);
+    if (window.NetdokuTheme) window.NetdokuTheme.mountControls($("appearance-controls"));
+    window.addEventListener("netdoku-theme", () => { if (level) render(); });
     $("note-mode").addEventListener("change", (e) => setMode(e.target.checked ? "note" : "place"));
     // Atajo: A activa o desactiva el modo anotar.
     document.addEventListener("keydown", (e) => {
@@ -169,17 +178,31 @@
 
   // Etiquetas con las reglas que usa este nivel; cada una abre su ficha.
   function renderHelpStrip() {
-    const strip = $("help-strip");
-    strip.innerHTML = "";
+    const panel = $("help-groups");
+    panel.innerHTML = "";
     if (!window.NetdokuHelp) return;
-    for (const entry of window.NetdokuHelp.forLevel(level)) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "chip";
-      b.textContent = entry.chip;
-      b.title = entry.title;
-      b.addEventListener("click", () => openHelp(entry));
-      strip.appendChild(b);
+    const entries = window.NetdokuHelp.forLevel(level);
+    for (const cat of window.NetdokuHelp.CATEGORIES) {
+      const inCat = entries.filter((e) => e.category === cat.id);
+      if (!inCat.length) continue;
+      const group = document.createElement("section");
+      group.className = `help-group cat-${cat.id}`;
+      const h = document.createElement("h3");
+      h.textContent = cat.id === "clues" ? "Pistas de este nivel" : cat.title;
+      group.appendChild(h);
+      const chips = document.createElement("div");
+      chips.className = "chips";
+      for (const entry of inCat) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = `chip cat-${cat.id}`;
+        b.textContent = entry.chip;
+        b.title = entry.title;
+        b.addEventListener("click", () => openHelp(entry));
+        chips.appendChild(b);
+      }
+      group.appendChild(chips);
+      panel.appendChild(group);
     }
   }
 
@@ -187,6 +210,7 @@
     const dialog = $("help-dialog");
     const body = dialog.querySelector(".help-body");
     body.innerHTML = "";
+    dialog.className = `help-dialog cat-${entry.category}`;
     window.NetdokuHelp.renderEntry(body, entry);
     dialog.showModal();
   }
@@ -212,7 +236,7 @@
 
   function networkColor(netId) {
     const i = level.networks.findIndex((n) => n.id === netId);
-    return NETWORK_COLORS[i % NETWORK_COLORS.length];
+    return tv(`--net-${(i % NETWORK_COLOR_COUNT) + 1}`);
   }
 
   // ---------- Dibujo ----------
@@ -249,19 +273,24 @@
     return t;
   }
 
-  const px = (c) => MARGIN + (c - 1) * CELL;
-  const py = (r) => MARGIN + (r - 1) * CELL;
+  const px = (c) => margin + (c - 1) * CELL;
+  const py = (r) => margin + (r - 1) * CELL;
 
   function renderBoard() {
     const { width, height, networkGrid } = level.board;
-    const W = MARGIN + width * CELL + PAD;
-    const H = MARGIN + height * CELL + PAD;
+    const look = appearance();
+    margin = look.numbers ? NUMBERS_MARGIN : PAD;
+    const W = margin + width * CELL + PAD;
+    const H = margin + height * CELL + PAD;
     const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Tablero" });
 
     // Números de fila y columna, para las pistas «en la fila N».
-    const num = { "font-size": 13, "font-weight": 600, fill: "#8a8f96" };
-    for (let r = 1; r <= height; r++) text(root, MARGIN / 2, py(r) + CELL / 2 + 5, r, num);
-    for (let c = 1; c <= width; c++) text(root, px(c) + CELL / 2, MARGIN - 7, c, num);
+    const num = { "font-size": 13, "font-weight": 600, fill: tv("--board-number") };
+    if (look.numbers) {
+      for (let r = 1; r <= height; r++) text(root, margin / 2, py(r) + CELL / 2 + 5, r, num);
+      for (let c = 1; c <= width; c++) text(root, px(c) + CELL / 2, margin - 7, c, num);
+    }
+    const patternFor = definePatterns(root, look.pattern);
 
     // Casillas.
     for (let r = 1; r <= height; r++) {
@@ -269,7 +298,7 @@
         const net = networkGrid[r - 1][c - 1];
         const rect = svg("rect", {
           x: px(c), y: py(r), width: CELL, height: CELL,
-          fill: networkColor(net), stroke: "rgba(0,0,0,0.12)", "stroke-width": 1,
+          fill: networkColor(net), stroke: tv("--cell-line"), "stroke-width": 1,
           class: "cell", "data-r": r, "data-c": c,
         }, root);
         rect.addEventListener("click", () => onCellClick(r, c));
@@ -280,11 +309,15 @@
           toggleMark(r, c);
         });
         rect.addEventListener("pointerdown", (e) => startLongPress(e, r, c));
+        const pattern = patternFor(net);
+        if (pattern) {
+          svg("rect", { x: px(c), y: py(r), width: CELL, height: CELL, fill: `url(#${pattern})`, "pointer-events": "none" }, root);
+        }
       }
     }
 
     // Bordes entre redes y borde exterior.
-    const wall = { stroke: "#3a3d42", "stroke-width": 4, "stroke-linecap": "round" };
+    const wall = { stroke: tv("--wall"), "stroke-width": 4, "stroke-linecap": "round" };
     for (let r = 1; r <= height; r++) {
       for (let c = 1; c <= width; c++) {
         const net = networkGrid[r - 1][c - 1];
@@ -298,7 +331,7 @@
     // Marcas del jugador.
     for (const key of state.marks) {
       const [r, c] = key.split(",").map(Number);
-      text(root, px(c) + CELL / 2, py(r) + CELL / 2 + 10, "✕", { "font-size": 30, fill: "rgba(0,0,0,0.35)" });
+      text(root, px(c) + CELL / 2, py(r) + CELL / 2 + 10, "✕", { "font-size": 30, fill: tv("--mark") });
     }
 
     // Notas: circulito del color del paquete, siempre en la misma posición de la casilla.
@@ -318,12 +351,12 @@
     }
 
     for (const n of level.nodes) drawNode(root, n);
-    drawNetworkNames(root);
+    if (look.netNames) drawNetworkNames(root);
 
     // Paquetes colocados.
     for (const [id, [r, c]] of Object.entries(state.placed)) {
       const p = packetById(id);
-      svg("circle", { cx: px(c) + CELL / 2, cy: py(r) + CELL / 2, r: 22, fill: p.color, stroke: "rgba(0,0,0,0.4)", "stroke-width": 2, "pointer-events": "none" }, root);
+      svg("circle", { cx: px(c) + CELL / 2, cy: py(r) + CELL / 2, r: 22, fill: p.color, stroke: tv("--token-edge"), "stroke-width": 2, "pointer-events": "none" }, root);
       text(root, px(c) + CELL / 2, py(r) + CELL / 2 + 7, id, { "font-size": 20, "font-weight": 700, fill: "#fff" });
     }
 
@@ -333,7 +366,7 @@
       const cx = (px(c1) + px(c2)) / 2 + CELL / 2;
       const cy = (py(r1) + py(r2)) / 2 + CELL / 2;
       const g = svg("g", {}, root);
-      svg("circle", { cx, cy, r: 14, fill: "#1f4e99", stroke: "#fff", "stroke-width": 2 }, g);
+      svg("circle", { cx, cy, r: 14, fill: tv("--router"), stroke: tv("--router-edge"), "stroke-width": 2 }, g);
       // Flechas cruzadas: símbolo habitual de router.
       const arrow = { stroke: "#fff", "stroke-width": 2, "stroke-linecap": "round", fill: "none" };
       svg("path", { d: `M${cx - 7} ${cy - 3} h14 m-4 -4 l4 4 l-4 4`, ...arrow }, g);
@@ -375,36 +408,74 @@
       const estimated = label.length * 7.4;
       const attrs = {
         "text-anchor": "start", "font-size": 12, "font-weight": 800, "letter-spacing": "0.03em",
-        fill: "#2b2d31", stroke: "rgba(255,255,255,0.85)", "stroke-width": 3, "paint-order": "stroke",
+        fill: tv("--label-ink"), stroke: tv("--label-halo"), "stroke-width": 3, "paint-order": "stroke",
       };
       if (estimated > available) Object.assign(attrs, { textLength: available, lengthAdjust: "spacingAndGlyphs" });
       text(root, px(best.c) + 5, py(best.r) + CELL - 6, label, attrs);
     }
   }
 
+  // Texturas de las casillas (patrones SVG alineados con el tablero). Devuelve
+  // una función red -> id de patrón (o null si la casilla va lisa).
+  function definePatterns(root, mode) {
+    if (!mode || mode === "plain") return () => null;
+    const defs = svg("defs", {}, root);
+    const ink = tv("--pattern-ink");
+    const made = new Set();
+    const make = (kind) => {
+      const id = `pat-${kind}`;
+      if (kind === "plain" || made.has(id)) return kind === "plain" ? null : id;
+      made.add(id);
+      const size = kind === "tiles" ? CELL / 2 : 16;
+      const p = svg("pattern", { id, width: size, height: size, patternUnits: "userSpaceOnUse", x: margin, y: margin }, defs);
+      const line = { stroke: ink, "stroke-width": 1.5, fill: "none" };
+      switch (kind) {
+        case "dots": svg("circle", { cx: 8, cy: 8, r: 1.7, fill: ink }, p); break;
+        case "stripes": svg("path", { d: "M-4 4 L4 -4 M0 16 L16 0 M12 20 L20 12", ...line }, p); break;
+        case "tiles": svg("rect", { x: 0.75, y: 0.75, width: size - 1.5, height: size - 1.5, rx: 3, ...line }, p); break;
+        case "cross": svg("path", { d: "M0 0 L16 16 M16 0 L0 16", ...line, "stroke-width": 1 }, p); break;
+        case "waves": svg("path", { d: "M0 8 Q4 4 8 8 T16 8", ...line }, p); break;
+      }
+      return id;
+    };
+    if (mode !== "perNetwork") return () => make(mode);
+    return (netId) => {
+      const i = level.networks.findIndex((n) => n.id === netId);
+      return make(PER_NETWORK_PATTERNS[i % PER_NETWORK_PATTERNS.length]);
+    };
+  }
+
   function drawNode(root, n) {
     const [r, c] = n.position;
+    const style = appearance().icons;
     const x = px(c);
     const y = py(r);
     const cx = x + CELL / 2;
-    const cy = y + CELL / 2 - 2;
+    // Con «dibujos con texto», el dibujo sube para dejar sitio al rótulo.
+    const cy = y + CELL / 2 - 2 - (style === "both" ? 7 : 0);
     const g = svg("g", { "pointer-events": "none" }, root);
-    svg("rect", { x: x + 9, y: y + 9, width: CELL - 18, height: CELL - 18, rx: 10, fill: n.type === "client" ? "#4f5965" : "#2e3440" }, g);
+    svg("rect", { x: x + 9, y: y + 9, width: CELL - 18, height: CELL - 18, rx: 10, fill: tv(n.type === "client" ? "--node-client" : "--node-server"), stroke: tv("--node-edge"), "stroke-width": 1.5 }, g);
+    const caption = n.type === "client" ? NODE_TEXT.client : (n.services || []).map((s) => NODE_TEXT[s] || s).join("/");
 
-    if (n.type === "client") {
+    if (style === "text") {
+      text(g, cx, y + CELL / 2 + 5, caption, { "font-size": caption.length > 6 ? 12 : 15, "font-weight": 700, fill: tv("--node-part") });
+    } else if (n.type === "client") {
       // Monitor.
-      svg("rect", { x: cx - 17, y: cy - 15, width: 34, height: 24, rx: 3, fill: "#cfe3ff", stroke: "#e9eef4", "stroke-width": 2 }, g);
-      svg("rect", { x: cx - 3, y: cy + 9, width: 6, height: 6, fill: "#cfd6df" }, g);
-      svg("rect", { x: cx - 10, y: cy + 14, width: 20, height: 3, rx: 1.5, fill: "#cfd6df" }, g);
+      svg("rect", { x: cx - 17, y: cy - 15, width: 34, height: 24, rx: 3, fill: tv("--node-screen"), stroke: tv("--node-part"), "stroke-width": 2 }, g);
+      svg("rect", { x: cx - 3, y: cy + 9, width: 6, height: 6, fill: tv("--node-part") }, g);
+      svg("rect", { x: cx - 10, y: cy + 14, width: 20, height: 3, rx: 1.5, fill: tv("--node-part") }, g);
     } else {
       // Rack de servidor.
       for (let i = 0; i < 3; i++) {
-        svg("rect", { x: cx - 17, y: cy - 17 + i * 12, width: 34, height: 10, rx: 2, fill: "#cfd6df" }, g);
+        svg("rect", { x: cx - 17, y: cy - 17 + i * 12, width: 34, height: 10, rx: 2, fill: tv("--node-part") }, g);
         svg("circle", { cx: cx + 11, cy: cy - 12 + i * 12, r: 1.8, fill: "#36c26f" }, g);
         svg("rect", { x: cx - 13, y: cy - 13 + i * 12, width: 14, height: 2, fill: "#8a939e" }, g);
       }
       const service = (n.services || [])[0];
-      if (service) drawServiceBadge(g, service, x + CELL - 17, y + CELL - 17);
+      if (service && style !== "both") drawServiceBadge(g, service, x + CELL - 17, y + CELL - 17);
+    }
+    if (style === "both") {
+      text(g, cx, y + CELL - 14, caption, { "font-size": 10, "font-weight": 700, fill: tv("--node-part") });
     }
     svg("title", {}, g).textContent = `${n.label} (${n.id})`;
   }

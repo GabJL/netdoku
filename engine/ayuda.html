@@ -5,29 +5,51 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ayuda de Netdoku</title>
   <link rel="stylesheet" href="netdoku.css">
+  <script src="theme.js"></script>
 </head>
 <body>
   <header class="topbar">
     <h1>Netdoku · Ayuda</h1>
     <div class="level-picker">
-      <a class="button secondary" href="index.html">Volver al juego</a>
+      <a class="button" href="index.html">Volver al juego</a>
+      <span id="appearance-controls" class="level-picker"></span>
     </div>
   </header>
   <main class="help-page">
-    <p>Netdoku es un juego de deducción inspirado en Murdoku. El tablero es un conjunto de redes unidas por routers. Coloca cada paquete en su casilla a partir de las pistas: si aciertas, queda fijo; si fallas, pierdes una vida. Cada nivel muestra encima del tablero solo las reglas que usa; aquí están todas.</p>
-    <div id="help-grid" class="help-grid"></div>
+    <p class="intro">Netdoku es un juego de deducción inspirado en Murdoku. El tablero es un conjunto de redes unidas por routers. Coloca cada paquete en su casilla a partir de las pistas: si aciertas, queda fijo; si fallas, pierdes una vida. Cada nivel muestra a la izquierda del tablero solo la ayuda que necesita; aquí está toda.</p>
+    <div id="help-sections"></div>
   </main>
   <script src="help.js"></script>
   <script>
     (function () {
-      const grid = document.getElementById("help-grid");
-      for (const entry of window.NetdokuHelp.ENTRIES) {
-        const card = document.createElement("section");
-        card.className = "help-card";
-        card.id = entry.id;
-        window.NetdokuHelp.renderEntry(card, entry);
-        grid.appendChild(card);
+      const H = window.NetdokuHelp;
+      const root = document.getElementById("help-sections");
+
+      function render() {
+        root.innerHTML = "";
+        for (const cat of H.CATEGORIES) {
+          const entries = H.ENTRIES.filter((e) => e.category === cat.id);
+          if (!entries.length) continue;
+          const title = document.createElement("h2");
+          title.className = `section cat-${cat.id}`;
+          title.textContent = cat.title;
+          root.appendChild(title);
+          const grid = document.createElement("div");
+          grid.className = "help-grid";
+          for (const entry of entries) {
+            const card = document.createElement("section");
+            card.className = `help-card cat-${cat.id}`;
+            card.id = entry.id;
+            H.renderEntry(card, entry);
+            grid.appendChild(card);
+          }
+          root.appendChild(grid);
+        }
       }
+
+      window.NetdokuTheme.mountControls(document.getElementById("appearance-controls"));
+      window.addEventListener("netdoku-theme", render);
+      render();
     })();
   </script>
 </body>
