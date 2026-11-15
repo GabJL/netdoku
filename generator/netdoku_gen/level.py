@@ -23,7 +23,7 @@ DEFAULTS = {
     "selectionRuns": 12,
     "enabledRuleSubtypes": None,   # None = todos
     "category": "inicial",         # inicial | direccionamiento
-    "reading": None,               # dificultad de lectura buscada (1-5); None = al azar
+    "reading": None,               # dificultad de interpretación buscada (1-5); None = al azar
     "plan": "auto",                # addressing.plan
     "categoryFormRatio": "auto",   # clues.naming.categoryFormRatio
     "maxTopic": "T3.vlsm",         # level.maxTopic
@@ -32,8 +32,8 @@ DEFAULTS = {
     "maxSpatial": None,            # máximo de pistas de fila o columna; None = sin límite
 }
 
-# Dificultad de lectura con la que se busca cada dificultad global en
-# Direccionamiento (peso de cada lectura). La lógica se ajusta después eligiendo,
+# Dificultad de interpretación con la que se busca cada dificultad global en
+# Direccionamiento (peso de cada interpretación). La lógica se ajusta después eligiendo,
 # entre varias selecciones de pistas, una cuya dificultad lógica encaje.
 READING_FOR_TARGET = {
     1: {1: 1},
@@ -43,7 +43,7 @@ READING_FOR_TARGET = {
     5: {3: 0.5, 4: 1, 5: 2},
 }
 
-# Plan de direcciones según la dificultad de lectura buscada (addressing.plan: auto).
+# Plan de direcciones según la dificultad de interpretación buscada (addressing.plan: auto).
 AUTO_PLANS = {
     1: {"distinct": 1, "octet_subnets": 1, "bit_subnets": 1, "vlsm": 1},
     2: {"distinct": 1, "octet_subnets": 2},
@@ -100,7 +100,7 @@ def _attempt(rng, seed, cfg, attempt):
     nodes = place_nodes(rng, board)
     packets, victim_net = place_packets(rng, board, nodes, cfg["packets"])
     ctx = Context(board, nodes, packets, addressing)
-    # network.prefix_length cuesta como mínimo 1: no cabe en Inicial ni en lectura 1.
+    # network.prefix_length cuesta como mínimo 1: no cabe en Inicial ni en interpretación 1.
     disabled = {"network.prefix_length"} if category == "inicial" or reading == 1 else set()
     pool = generate_instances(ctx, cfg["enabledRuleSubtypes"], disabled)
     victim = next(p for p in packets if p.role == "victim")
@@ -122,7 +122,7 @@ def _attempt(rng, seed, cfg, attempt):
         raise RuntimeError("Las pistas disponibles no bastan para resolver el nivel")
     ids = [p.id for p in packets]
     if target:
-        # Solo valen las selecciones cuya dificultad lógica da, con esta lectura, la global buscada.
+        # Solo valen las selecciones cuya dificultad lógica da, con esta interpretación, la global buscada.
         fitting = [c for c in candidates
                    if global_level(evaluate(ctx.free_cells, ids, c, rules, victim.id)["logic"], reading) == target]
         if not fitting:
@@ -153,7 +153,7 @@ def _attempt(rng, seed, cfg, attempt):
         ratio = rng.uniform(0.3, 0.7) if ratio == "auto" else float(ratio)
         assigned = namer.assign(clues, reading, ratio)
         if assigned is None:
-            raise RuntimeError(f"No se pueden nombrar las pistas con dificultad de lectura {reading}")
+            raise RuntimeError(f"No se pueden nombrar las pistas con dificultad de interpretación {reading}")
         clues = namer.apply(clues, *assigned)
     namer.assign_remaining(nodes, board.routers)
     topic = max_topic([c.topic for c in clues])

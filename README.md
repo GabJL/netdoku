@@ -38,4 +38,4 @@ Los lotes se guardan en `levels/<categoría>/<dificultad>/` como JSON, junto con
 - Tablero 6×6 con 4 redes, routers de grado 2 en las fronteras, clientes y servidores.
 - Categorías: Inicial (basta con leer el tablero) y Direccionamiento (prefijos, máscaras, pertenencia de una dirección a una red, VLSM).
 - Pistas: `network.in_network`, `network.prefix_length`, `node.adjacent_to_node`, `node.unique_adjacent_to_node`, `router.adjacent_to_router`, `spatial.in_row` y `spatial.in_column` (véase `implementation/netdoku_catalogo_reglas.md`), con varias formas de nombrar redes, equipos y routers.
-- Dificultad lógica y de lectura (1 a 5) y dificultad global. Solución única comprobada por fuerza bruta.
+- Dificultad lógica y de interpretación (1 a 5) y dificultad global. Solución única comprobada por fuerza bruta.

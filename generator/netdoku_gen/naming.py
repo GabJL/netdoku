@@ -1,8 +1,8 @@
-"""Formas de nombrar y dificultad de lectura (véase netdoku_catalogo_reglas.md).
+"""Formas de nombrar y dificultad de interpretación (véase netdoku_catalogo_reglas.md).
 
 Las pistas se eligen por su efecto lógico (`D` y `A`); después se decide cómo
 nombra cada una sus elementos (`slots`). La forma no cambia lo que deduce la
-pista, solo el trabajo de pasar del texto a las casillas: su coste de lectura
+pista, solo el trabajo de pasar del texto a las casillas: su coste de interpretación
 (0 a 3), su bloque temático y si es propia de la categoría Direccionamiento.
 """
 
@@ -35,7 +35,7 @@ def category_of(topic):
 
 
 def reading_level(costs):
-    """Dificultad de lectura 1-5 a partir del coste de cada pista."""
+    """Dificultad de interpretación 1-5 a partir del coste de cada pista."""
     n3 = sum(1 for c in costs if c >= 3)
     n2 = sum(1 for c in costs if c == 2)
     if n3 >= 2:
@@ -163,7 +163,7 @@ class Namer:
         return combos
 
     def assign(self, clues, reading, ratio, tries=30):
-        """Elige formas para obtener la dificultad de lectura `reading` (o None si no se puede)."""
+        """Elige formas para obtener la dificultad de interpretación `reading` (o None si no se puede)."""
         for _ in range(tries):
             result = self._try_assign(clues, reading, ratio)
             if result is not None:
@@ -187,7 +187,7 @@ class Namer:
 
         order = list(range(len(clues)))
         rng.shuffle(order)
-        # Pistas caras que fijan la dificultad de lectura.
+        # Pistas caras que fijan la dificultad de interpretación.
         if reading == 5:
             needs = [(3, rng.choice([2, 2, 3]))]
         elif reading == 4:

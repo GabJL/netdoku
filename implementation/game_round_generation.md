@@ -538,33 +538,33 @@ La dificultad lógica (`level.difficulty.logic`, de 1 a 5) es el nivel de la té
 
 Esta fórmula es provisional: hay que calibrarla con partidas reales. Los datos de 700 niveles confirman que influye el número de pistas: con 5 pistas, el 36 % sale Media o más; con 8, el 7 %. Con la v0 (6×6, solo pistas de tablero) el reparto en 150 niveles fue: 19 % Muy fácil, 53 % Fácil, 23 % Media, 5 % Difícil y ninguno Muy difícil; nunca hicieron falta reservas de 3 o 4.
 
-#### Dificultad de lectura
+#### Dificultad de interpretación
 
-La dificultad lógica supone que el jugador ya sabe qué casillas permite cada pista. Traducir el texto a casillas tiene su propio coste, que depende de cómo nombra la pista sus elementos: «en la red Aulas» se lee en la leyenda; «en la red de la dirección 10.147.3.5» obliga a aplicar máscaras. Son las [formas de nombrar](netdoku_catalogo_reglas.md#formas-de-nombrar) del catálogo, cada una con un coste de lectura de 0 a 3.
+La dificultad lógica supone que el jugador ya sabe qué casillas permite cada pista. Traducir el texto a casillas tiene su propio coste, que depende de cómo nombra la pista sus elementos: «en la red Aulas» se lee en la leyenda; «en la red de la dirección 10.147.3.5» obliga a aplicar máscaras. Son las [formas de nombrar](netdoku_catalogo_reglas.md#formas-de-nombrar) del catálogo, cada una con un coste de interpretación de 0 a 3.
 
 La dificultad tendrá así dos ejes independientes:
 
 - **Lógica** (`difficulty.logic`): técnicas de deducción y cuellos de botella. Depende solo de los dominios `D` y las anulaciones `A`.
-- **Lectura** (`difficulty.reading`): esfuerzo de interpretar las pistas, a partir del coste de las formas de nombrar usadas.
+- **Interpretación** (`difficulty.reading`): esfuerzo de pasar del texto de las pistas a casillas, a partir del coste de las formas de nombrar usadas.
 
-El coste de lectura de una pista es el mayor de los costes de las formas que usa. La dificultad de lectura del nivel, de 1 a 5 (escala provisional, que habrá que calibrar jugando):
+El coste de interpretación de una pista es el mayor de los costes de las formas que usa. La dificultad de interpretación del nivel, de 1 a 5, es el nivel más alto cuya condición se cumple (escala provisional, que habrá que calibrar jugando):
 
-| Lectura | Condición |
+| Interpretación | Condición |
 |---|---|
 | 1 | Todas las pistas cuestan 0. |
-| 2 | La más cara cuesta 1. |
+| 2 | Alguna cuesta 1. |
 | 3 | Alguna cuesta 2. |
 | 4 | Tres o más cuestan 2, o alguna cuesta 3. |
-| 5 | Varias cuestan 3. |
+| 5 | Dos o más cuestan 3. |
 
-La **dificultad global** es la mayor de las dos, más un punto si ambas son 3 o más (hasta 5), porque calcular máscaras dentro de un nivel que además exige reservas cuesta más que cada cosa por separado. Como la forma de nombrar no cambia el efecto lógico, el generador elige primero las pistas (eje lógico) y después los textos (eje de lectura), según la dificultad buscada y la [proporción de formas de la categoría](netdoku_catalogo_reglas.md#proporción-de-formas-nuevas).
+La **dificultad global** es la mayor de las dos, más un punto si ambas son 3 o más (hasta 5), porque calcular máscaras dentro de un nivel que además exige reservas cuesta más que cada cosa por separado. Como la forma de nombrar no cambia el efecto lógico, el generador elige primero las pistas (eje lógico) y después los textos (eje de interpretación), según la dificultad buscada y la [proporción de formas de la categoría](netdoku_catalogo_reglas.md#proporción-de-formas-nuevas).
 
 #### Organización de los niveles
 
 Los niveles se organizan en **categoría → dificultad → nivel**:
 
 1. **Categoría:** el conocimiento que exige el nivel, es decir, el bloque temático más alto entre los de sus pistas y formas de nombrar (`requirements.topic`). Son acumulativas: un nivel de una categoría puede usar todo lo de las anteriores. Por ejemplo: Inicial (`T3.dispositivos`, sin conocimientos previos), Direccionamiento (`T3.ip` a `T3.vlsm`), Encaminamiento (`T3.encaminamiento`), Transporte y aplicación (`T4` a `T6`).
-2. **Dificultad:** la global, de 1 a 5, a partir de la lógica y la de lectura.
+2. **Dificultad:** la global, de 1 a 5, a partir de la lógica y la de interpretación.
 3. **Nivel:** varios por cada combinación, elegidos de un lote grande generado.
 
 ## Evaluación

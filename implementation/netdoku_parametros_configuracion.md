@@ -1075,7 +1075,7 @@ Las rutas no se sortean paquete a paquete. Como en la asignatura, cada router de
 - **Carácter:** opcional.
 - **Dominio:** número real entre `0` y `1` o `auto`.
 - **Valor por defecto:** `auto`.
-- **Descripción:** proporción de pistas que usan [formas de nombrar](netdoku_catalogo_reglas.md#proporción-de-formas-nuevas) propias de la categoría del nivel (por ejemplo, `prefix` o `ip_member` en Direccionamiento), aunque su coste de lectura sea 0. Siempre hay al menos una. Con `auto` se sortea en cada nivel entre 0,3 y 0,7, para que unos niveles usen más formas nuevas que otros. Las formas con coste mayor que el permitido por `difficulty.reading` no se usan, sea cual sea la proporción.
+- **Descripción:** proporción de pistas que usan [formas de nombrar](netdoku_catalogo_reglas.md#proporción-de-formas-nuevas) propias de la categoría del nivel (por ejemplo, `prefix` o `ip_member` en Direccionamiento), aunque su coste de interpretación sea 0. Siempre hay al menos una. Con `auto` se sortea en cada nivel entre 0,3 y 0,7, para que unos niveles usen más formas nuevas que otros. Las formas con coste mayor que el permitido por `difficulty.reading` no se usan, sea cual sea la proporción.
 
 ### `clues.avoidRedundant`
 
@@ -1206,7 +1206,7 @@ Estos parámetros pueden configurarse manualmente, pero normalmente se derivan d
 - **Carácter:** opcional.
 - **Dominio:** entero entre `1` y `5` o `auto`.
 - **Valor por defecto:** `auto`.
-- **Descripción:** dificultad de lectura de las pistas: cuánto cuesta pasar de su texto a casillas, según el coste de las [formas de nombrar](netdoku_catalogo_reglas.md#formas-de-nombrar) que use. Es independiente de `difficulty.logic`, que mide las deducciones necesarias una vez traducidas las pistas. La escala está en [dificultad de lectura](game_round_generation.md#dificultad-de-lectura).
+- **Descripción:** dificultad de interpretación de las pistas: cuánto cuesta pasar de su texto a casillas, según el coste de las [formas de nombrar](netdoku_catalogo_reglas.md#formas-de-nombrar) que use. Es independiente de `difficulty.logic`, que mide las deducciones necesarias una vez traducidas las pistas. La escala está en [dificultad de interpretación](game_round_generation.md#dificultad-de-interpretación).
 
 ### `difficulty.knowledge`
 

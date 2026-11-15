@@ -59,7 +59,7 @@ def summary(level):
     g = level["generation"]
     d = g["difficulty"]
     return (f"{g['clueCount']} pistas, dificultad {d['global']} (lógica {d['logic']}: "
-            f"{d['hardestTechnique']}, {d['bottlenecks']} cuellos de botella; lectura {d['reading']}, "
+            f"{d['hardestTechnique']}, {d['bottlenecks']} cuellos de botella; interpretación {d['reading']}, "
             f"plan {level['addressing']['plan']}), intento {g['attempt']}")
 
 
@@ -123,7 +123,7 @@ def fill_pool(category, target, size, workers, replace):
 
 def print_stats(reports):
     n = len(reports)
-    for key, title in (("global", "global"), ("logic", "lógica"), ("reading", "de lectura")):
+    for key, title in (("global", "global"), ("logic", "lógica"), ("reading", "de interpretación")):
         print(f"\nReparto de la dificultad {title} en {n} niveles:")
         for value, count in sorted(collections.Counter(r[key] for r in reports).items()):
             print(f"  {value} {count:>4}  ({100 * count / n:.0f} %)")
@@ -148,7 +148,7 @@ def main():
                         help="categoría (por defecto: todas con --pool, inicial sin él)")
     parser.add_argument("--target", type=int, choices=DIFFICULTIES, help="dificultad global buscada")
     parser.add_argument("--reading", type=int, choices=DIFFICULTIES,
-                        help="dificultad de lectura buscada (Direccionamiento, sin --target); por defecto, al azar")
+                        help="dificultad de interpretación buscada (Direccionamiento, sin --target); por defecto, al azar")
     parser.add_argument("--plan", choices=("auto",) + PLANS, default="auto", help="plan de direcciones")
     parser.add_argument("--print", action="store_true", help="muestra la solución en texto")
     parser.add_argument("--stats", action="store_true",

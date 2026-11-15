@@ -80,7 +80,7 @@ Una pista tiene dos partes independientes:
 - **Qué dice:** su dominio `D` y su anulación `A`. Es lo único que usan el solver, la selección de pistas y la [dificultad lógica](game_round_generation.md#evaluación-de-la-dificultad).
 - **Cómo lo dice:** la forma de nombrar cada elemento que menciona. Dos textos que nombran la misma red, uno por su nombre y otro por una dirección IP que cae en ella, dan la misma pista lógica, pero el segundo obliga a hacer un cálculo antes de saber qué casillas permite.
 
-Cada forma de nombrar tiene un **coste de lectura** (de 0 a 3), un **bloque mínimo** y un **conocimiento**. El coste mide el trabajo que hace el jugador para pasar del texto a las casillas:
+Cada forma de nombrar tiene un **coste de interpretación** (de 0 a 3), un **bloque mínimo** y un **conocimiento**. El coste mide el trabajo que hace el jugador para pasar del texto a las casillas:
 
 | Coste | Trabajo del jugador |
 |---|---|
@@ -89,9 +89,9 @@ Cada forma de nombrar tiene un **coste de lectura** (de 0 a 3), un **bloque mín
 | 2 | Hacer un cálculo con un dato visible (aplicar una máscara dentro de un octeto, contar direcciones). |
 | 3 | Un cálculo con varios prefijos distintos o en el límite entre dos redes. |
 
-El coste depende del bloque temático solo en parte: leer un prefijo en la leyenda cuesta 0, como leer un nombre, aunque exija el bloque `T3.ip`. La categoría del nivel la fija el bloque; la dificultad de lectura, el coste.
+El coste depende del bloque temático solo en parte: leer un prefijo en la leyenda cuesta 0, como leer un nombre, aunque exija el bloque `T3.ip`. La categoría del nivel la fija el bloque; la dificultad de interpretación, el coste.
 
-El generador elige primero las pistas por su efecto lógico y después la forma de nombrar de cada una, según la dificultad de lectura y la categoría (bloques temáticos) que se busquen. Así, con un mismo tablero y las mismas pistas, cambiando solo los textos, se obtienen niveles de categorías y dificultades distintas. Solo se puede usar una forma si identifica el elemento sin ambigüedad en el nivel (por ejemplo, «la red con menos direcciones» exige que no haya empate).
+El generador elige primero las pistas por su efecto lógico y después la forma de nombrar de cada una, según la dificultad de interpretación y la categoría (bloques temáticos) que se busquen. Así, con un mismo tablero y las mismas pistas, cambiando solo los textos, se obtienen niveles de categorías y dificultades distintas. Solo se puede usar una forma si identifica el elemento sin ambigüedad en el nivel (por ejemplo, «la red con menos direcciones» exige que no haya empate).
 
 **Redes:**
 
@@ -147,7 +147,7 @@ Las redes de un nivel nunca se solapan: una dirección pertenece a una sola red.
 
 Como el jugador no ve las direcciones de los equipos, «junto al servidor web 192.168.0.130» solo le permite calcular la red: el dominio es el de la clase de equipo dentro de esa red, `D = Libres(m) ∩ ⋃ Ady(n)` para los equipos `n` de esa clase en la red de la dirección. Si la red solo tiene un equipo de esa clase, equivale a nombrar ese equipo.
 
-En la v0.3, `label_prefix` e `ip` solo se usan con equipos cuya etiqueta se repite en otras redes pero es única en la suya (los únicos que el generador nombra uno a uno). Así la dirección identifica un equipo concreto, y nombrarla tiene sentido: si el equipo fuera el único con su etiqueta en todo el tablero, el jugador podría ignorar la dirección, y el coste de lectura sería falso.
+En la v0.3, `label_prefix` e `ip` solo se usan con equipos cuya etiqueta se repite en otras redes pero es única en la suya (los únicos que el generador nombra uno a uno). Así la dirección identifica un equipo concreto, y nombrarla tiene sentido: si el equipo fuera el único con su etiqueta en todo el tablero, el jugador podría ignorar la dirección, y el coste de interpretación sería falso.
 
 La dirección es la que el equipo nombrado tiene en la solución (el nivel guarda la dirección de cada equipo). Mientras el solver no razone sobre qué dirección tiene cada equipo (previsto para la categoría Rutas y TTL), el generador no pone en un mismo nivel dos pistas con direcciones distintas de equipos de la misma clase y la misma red: el jugador deduciría que están junto a equipos distintos, información que el solver no tiene en cuenta.
 

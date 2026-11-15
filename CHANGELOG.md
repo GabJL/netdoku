@@ -1,14 +1,14 @@
 # Versiones de Netdoku
 
-## Sin publicar
+## 0.3 (15 de noviembre de 2026)
 
-Primera categoría con conocimientos de la asignatura: Direccionamiento. Las mismas pistas pueden nombrar redes, equipos y routers por su prefijo, por una dirección IP o por su tamaño, y eso da una dificultad de lectura independiente de la lógica. El juego pasa a tener menú, progresión por categoría y dificultad, y versión en inglés.
+Primera categoría con conocimientos de la asignatura: Direccionamiento. Las mismas pistas pueden nombrar redes, equipos y routers por su prefijo, por una dirección IP o por su tamaño, y eso da una dificultad de interpretación independiente de la lógica. El juego pasa a tener menú, progresión por categoría y dificultad, y versión en inglés.
 
 - Categorías de niveles: Inicial (sin conocimientos previos) y Direccionamiento (prefijos, máscaras, pertenencia de una dirección a una red, VLSM).
 - Planes de direcciones (`addressing.plan`): redes que se distinguen por el primer octeto, subredes de octeto completo, subredes con la misma máscara dentro de un octeto, y VLSM. Las redes nunca se solapan. Los equipos y los routers tienen dirección (no se muestra en el tablero).
-- Formas de nombrar con coste de lectura: nombre o prefijo (0); la red con más o menos direcciones y «una red /26» (1); número de direcciones y máscara (2); la red de una dirección, el equipo de una dirección y el router de dos interfaces (de 1 a 3 según el plan y si la dirección está cerca del límite con otra red).
+- Formas de nombrar con coste de interpretación: nombre o prefijo (0); la red con más o menos direcciones y «una red /26» (1); número de direcciones y máscara (2); la red de una dirección, el equipo de una dirección y el router de dos interfaces (de 1 a 3 según el plan y si la dirección está cerca del límite con otra red).
 - Pista nueva `network.prefix_length`: «estaba en una red /26» (o de 64 direcciones, o con máscara 255.255.255.192), cuando varias redes comparten esa longitud.
-- Dificultad de lectura (1 a 5) y dificultad global (la mayor de la lógica y la de lectura, más un punto si ambas son 3 o más). En los niveles de Direccionamiento, una parte variable de las pistas usa formas de la categoría aunque cuesten 0 (`clues.naming.categoryFormRatio`).
+- Dificultad de interpretación (1 a 5) y dificultad global (la mayor de la lógica y la de interpretación, más un punto si ambas son 3 o más). En los niveles de Direccionamiento, una parte variable de las pistas usa formas de la categoría aunque cuesten 0 (`clues.naming.categoryFormRatio`).
 - Las direcciones, máscaras y longitudes de las pistas se muestran sin el color de su red, para no adelantar el cálculo. Los niveles que hablan de tamaños recuerdan que las casillas no indican el tamaño de una red.
 - Ayuda: fichas sobre prefijos, máscaras y tamaño de una red, sobre cómo saber a qué red pertenece una dirección y sobre la pista de longitud de prefijo.
 - Lotes de niveles: `generate.py --pool 50` genera en paralelo 50 niveles por categoría y dificultad global en `levels/<categoría>/<dificultad>/` y su índice `levels/index.json`. Los niveles sueltos de prueba van a `levels/extra/`. Sustituyen a la colección elegida a mano de `levels/generated/`.
