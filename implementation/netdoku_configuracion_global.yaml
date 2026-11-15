@@ -265,6 +265,9 @@ clues:
   maxPerSubtype: null
   maxPerType: null
   subtypeWeights: {}
+  naming:
+    # Proporción de pistas con formas de nombrar de la categoría (prefix, ip_member…).
+    categoryFormRatio: auto
   avoidRedundant: true
   avoidSemanticallyEquivalent: true
   requireLogicalSolvability: true
@@ -300,6 +303,12 @@ difficulty:
   evaluateMultipleRuleOrders: true
   ruleOrderSamples: 50
   scorePolicy: easiest_valid_order
+
+addressing:
+  # distinct | octet_subnets | bit_subnets | vlsm | auto
+  plan: auto
+  nearBoundaryDistance: 4
+  allowSpecialAddresses: false
 
 validation:
   requireConnectedTopology: true

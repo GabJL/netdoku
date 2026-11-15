@@ -19,6 +19,7 @@ from .solver import initial_domains, propagate, uncertainty
 # fáciles de usar, así que se prefieren las de red y nodos.
 SUBTYPE_WEIGHTS = {
     "network.in_network": 1.0,
+    "network.prefix_length": 2.0,  # solo existe con longitudes repetidas pero no todas iguales
     "node.adjacent_to_node": 1.0,
     "node.unique_adjacent_to_node": 1.2,
     "router.adjacent_to_router": 1.0,

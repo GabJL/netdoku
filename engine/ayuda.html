@@ -3,53 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ayuda de Netdoku</title>
-  <link rel="stylesheet" href="netdoku.css">
+  <meta http-equiv="refresh" content="0; url=index.html#help">
+  <title>Netdoku</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <script src="theme.js"></script>
 </head>
 <body>
-  <header class="topbar">
-    <h1 class="brand"><img src="icon.svg" alt="" width="30" height="30">Netdoku · Ayuda</h1>
-    <a class="button" href="index.html">‹ Volver al juego</a>
-    <div id="appearance-controls" class="appearance-controls"></div>
-  </header>
-  <main class="help-page">
-    <p class="intro">Netdoku es un juego de deducción inspirado en Murdoku. El tablero es un conjunto de redes unidas por routers. Coloca cada paquete en su casilla a partir de las pistas: si aciertas, queda fijo; si fallas, pierdes una vida. Cada nivel muestra a la izquierda del tablero solo la ayuda que necesita; aquí está toda.</p>
-    <div id="help-sections"></div>
-  </main>
-  <script src="help.js"></script>
-  <script>
-    (function () {
-      const H = window.NetdokuHelp;
-      const root = document.getElementById("help-sections");
-
-      function render() {
-        root.innerHTML = "";
-        for (const cat of H.CATEGORIES) {
-          const entries = H.ENTRIES.filter((e) => e.category === cat.id);
-          if (!entries.length) continue;
-          const title = document.createElement("h2");
-          title.className = `section cat-${cat.id}`;
-          title.textContent = cat.title;
-          root.appendChild(title);
-          const grid = document.createElement("div");
-          grid.className = "help-grid";
-          for (const entry of entries) {
-            const card = document.createElement("section");
-            card.className = `help-card cat-${cat.id}`;
-            card.id = entry.id;
-            H.renderEntry(card, entry);
-            grid.appendChild(card);
-          }
-          root.appendChild(grid);
-        }
-      }
-
-      window.NetdokuTheme.mountControls(document.getElementById("appearance-controls"));
-      window.addEventListener("netdoku-theme", render);
-      render();
-    })();
-  </script>
+  <!-- La ayuda está ahora en la página principal (index.html#help). -->
+  <p><a href="index.html#help">Netdoku</a></p>
 </body>
 </html>

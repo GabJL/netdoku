@@ -139,4 +139,23 @@ Si es incorrecta:
 - vuelve al panel;
 - el jugador pierde una vida.
 
-Una vez colocados todos los paquetes, el jugador selecciona el equipo infectado.
+Al colocar el último paquete, el nivel queda resuelto y se muestra el atacante, que es evidente con el tablero completo; no hay pregunta final.
+
+## Organización del juego (v0.3)
+
+Una sola página con pantalla inicial y cinco apartados:
+
+- **Cómo se juega**: objetivo, forma de jugar, reglas comunes a todas las categorías, algunas pistas comunes y lo que añade cada categoría.
+- **Jugar**: se elige una categoría y una de sus cinco dificultades. Las categorías completadas (todas sus dificultades resueltas) se distinguen por el color, y aparece elegida la más avanzada que se ha empezado sin completarla (o, si no hay, la primera sin completar).
+- **Estadísticas**: tabla compacta categoría × dificultad con el mejor resultado en estrellas.
+- **Ayuda**: todas las fichas de ayuda.
+- **Sobre el juego**: relación con la asignatura, objetivo docente y licencia.
+
+Progresión:
+
+- Cada categoría corresponde a un bloque temático de la asignatura y muestra cinco niveles, uno por dificultad. Internamente cada dificultad tiene un lote de unos 50 niveles y, al jugarla, sale uno al azar sin repetir hasta haber visto casi todos. Reiniciar da otro nivel de la misma dificultad.
+- Se guarda el mejor resultado de cada dificultad (tres estrellas menos una por fallo); nunca se pierde.
+- Para abrir una dificultad hay que haber resuelto la anterior. Todas las categorías están abiertas desde el principio.
+- En cada nivel, un botón abre la información de su categoría: un resumen corto de teoría y las reglas nuevas que introduce.
+
+Idiomas: español e inglés de serie. Todos los textos de la interfaz, de la ayuda y de las pistas están en un fichero por idioma; el texto de cada pista se compone en el motor a partir de sus datos (tipo, parámetros y formas de nombrar), así que un nivel sirve para cualquier idioma.

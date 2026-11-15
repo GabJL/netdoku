@@ -1,5 +1,7 @@
 __pycache__/
+examples/
 *.pyc
 .venv/
 .vscode/
 .idea/
+levels/extra/

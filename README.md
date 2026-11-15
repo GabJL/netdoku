@@ -1,40 +1,41 @@
 # Netdoku
 
-Juego de deducción lógica inspirado en Murdoku para la asignatura Redes y Servicios (UMA). El diseño está en `description.md` y en `implementation/`.
-
-## Generar niveles (v0)
-
-Requiere Python 3.10 o superior, sin dependencias externas.
-
-```
-python generator/generate.py --seed 1 -n 10     # niveles con semillas 1 a 10
-python generator/generate.py --seed 7 --print   # muestra además la solución y las pistas
-python generator/generate.py --stats -n 100     # reparto de dificultad, sin guardar niveles
-```
-
-Los niveles se guardan en `levels/generated/` como JSON, junto con `index.json`, que es la lista que lee el motor. Opciones: `--packets` (6 por defecto) y `--networks` (4 por defecto).
+Juego de deducción lógica inspirado en Murdoku para la asignatura Redes y Servicios (UMA). El diseño está en `description.md` y en `implementation/`. Licencia MIT.
 
 ## Jugar
 
-El motor es una página web sin dependencias (`engine/`). Como carga los niveles con `fetch`, hay que servir la carpeta del proyecto con un servidor web; abriendo `index.html` directamente solo se puede jugar arrastrando un fichero de nivel JSON a la página.
+El juego es una página web sin dependencias (`engine/`), en español e inglés. Como carga los niveles con `fetch`, hay que servir la carpeta del proyecto con un servidor web; abriendo `index.html` directamente solo se puede jugar arrastrando un fichero de nivel JSON a la página.
 
 ```
 python -m http.server 8000
 ```
 
-Después, abrir <http://localhost:8000/engine/> en el navegador. Con `?level=netdoku-gen-3.json` se abre un nivel concreto.
+Después, abrir <http://localhost:8000/engine/> en el navegador. El repositorio también se publica en GitHub Pages con cada push a `master` (`.github/workflows/pages.yml`, que publica solo `engine/` y `levels/`).
+
+La pantalla inicial tiene cinco apartados: Cómo se juega, Jugar, Estadísticas, Ayuda y Sobre el juego. En «Jugar» se elige una categoría (cada una corresponde a un bloque de la asignatura) y una de sus cinco dificultades. Cada vez que se juega una dificultad sale un nivel distinto de su lote (unos 50), y ↺ da otro. Para abrir una dificultad hay que superar la anterior; las categorías están todas abiertas. De cada dificultad se guarda el mejor resultado: tres estrellas menos una por fallo, que nunca se pierden.
 
 Mecánica: como mucho un paquete por fila y por columna. Arrastra cada paquete a su casilla (o selecciónalo y pulsa la casilla). Si aciertas, queda fijo; si fallas, vuelve al panel y pierdes una vida. Al colocar el último paquete, el nivel queda resuelto y se muestra el atacante: el único otro paquete en la red de la víctima.
 
-Un interruptor (o la tecla A) cambia entre **Colocar** paquetes y **Anotar**, que marca con un circulito del color del paquete las casillas donde el jugador cree que puede ir (como los candidatos del Sudoku; el juego nunca los rellena solo). En modo anotar, el tablero se rodea de un borde naranja. El clic derecho (o una pulsación larga en táctil) marca una casilla como descartada con ✕ y borra sus notas; anotar en una casilla descartada quita la ✕. Al colocar bien un paquete se borran sus notas y las de esa casilla.
+Un interruptor (o la tecla A) cambia entre **Colocar** paquetes y **Anotar**, que marca con un circulito del color del paquete las casillas donde el jugador cree que puede ir (como los candidatos del Sudoku; el juego nunca los rellena solo). El clic derecho (o una pulsación larga en táctil) marca una casilla como descartada con ✕ y borra sus notas.
 
-A la izquierda del tablero está la ayuda del nivel, agrupada por colores (cómo jugar, reglas, pistas de este nivel e iconos), y la leyenda de redes; al pulsar una etiqueta se abre su explicación con un ejemplo. En la barra superior se elige el tema, y el botón «⚙ Apariencia» abre una ventana para combinar opciones independientes: modo (automático, claro u oscuro), colores de las redes (pastel, intensos, aptos para daltonismo, grises), fondo de las casillas (liso, puntos, rayas, baldosas o una textura por red), estilo de los equipos (dibujos, texto o ambos) y si se muestran los números de fila y columna y los nombres de las redes. Cada combinación se puede guardar como tema con nombre; se guardan en el navegador. El botón «Ayuda» abre en otra pestaña la página con todas (`engine/ayuda.html`).
+A la izquierda del tablero están la ayuda del nivel (cómo jugar, reglas, pistas de este nivel e iconos) y la leyenda de redes; el botón «i» de la barra superior muestra la teoría y las reglas nuevas de la categoría. La apariencia (modo claro u oscuro, colores, texturas, estilo de los equipos…) se configura con el botón + y se puede guardar como tema. El progreso se guarda en el navegador.
 
-El progreso de cada nivel (paquetes colocados, vidas, marcas y si está resuelto) se guarda en el navegador y se recupera al volver a abrirlo; «Reiniciar» (↺) lo borra. Al resolver un nivel por primera vez se obtienen tres estrellas menos una por fallo, contando los fallos de todos los intentos anteriores (reiniciar no borra los fallos). Desde ese momento las estrellas quedan fijas: repetir el nivel ya no las cambia. La lista de niveles muestra las estrellas de cada uno.
+## Generar niveles
 
-## Alcance de la v0
+Requiere Python 3.10 o superior, sin dependencias externas.
 
-- Tablero 6×6 con 4 redes, routers de grado 2 en las fronteras, clientes y servidores con etiqueta.
-- Pistas: `network.in_network`, `node.adjacent_to_node`, `node.unique_adjacent_to_node`, `router.adjacent_to_router`, `spatial.in_row` y `spatial.in_column` (véase `implementation/netdoku_catalogo_reglas.md`).
-- Regla básica: como mucho un paquete por fila y por columna. Con 6 paquetes en un 6×6, la víctima se localiza por descarte, sin pistas propias.
-- Selección de pistas voraz con colocación directa y reservas; se comprueba por fuerza bruta que la solución es única. Aún no hay protocolos, rutas, TTL ni evaluación de dificultad.
+```
+python generator/generate.py --pool 50                       # lotes del juego: 50 niveles por categoría y dificultad
+python generator/generate.py --pool 50 --difficulties 5      # solo la dificultad 5
+python generator/generate.py --seed 7 --print                # nivel suelto en levels/extra/, con solución y pistas
+python generator/generate.py --stats -n 100                  # reparto de dificultad, sin guardar niveles
+```
+
+Los lotes se guardan en `levels/<categoría>/<dificultad>/` como JSON, junto con `levels/index.json`, que es la lista que lee el juego.
+
+## Alcance actual
+
+- Tablero 6×6 con 4 redes, routers de grado 2 en las fronteras, clientes y servidores.
+- Categorías: Tablero (basta con leer el tablero) y Direccionamiento (prefijos, máscaras, pertenencia de una dirección a una red, VLSM).
+- Pistas: `network.in_network`, `network.prefix_length`, `node.adjacent_to_node`, `node.unique_adjacent_to_node`, `router.adjacent_to_router`, `spatial.in_row` y `spatial.in_column` (véase `implementation/netdoku_catalogo_reglas.md`), con varias formas de nombrar redes, equipos y routers.
+- Dificultad lógica y de lectura (1 a 5) y dificultad global. Solución única comprobada por fuerza bruta.

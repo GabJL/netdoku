@@ -6,60 +6,122 @@
   <title>Netdoku</title>
   <link rel="stylesheet" href="netdoku.css">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script src="i18n.js"></script>
+  <script src="lang/es.js"></script>
+  <script src="lang/en.js"></script>
   <script src="theme.js"></script>
 </head>
-<body>
+<body data-view="menu">
   <header class="topbar">
-    <h1 class="brand"><img src="icon.svg" alt="" width="30" height="30">Netdoku</h1>
-    <nav class="level-nav" aria-label="Niveles">
-      <button id="level-prev" class="icon-button" type="button" title="Nivel anterior" aria-label="Nivel anterior">‹</button>
-      <select id="level-select" class="pill-select" aria-label="Nivel"></select>
-      <button id="level-next" class="icon-button" type="button" title="Nivel siguiente" aria-label="Nivel siguiente">›</button>
-      <button id="restart" class="icon-button" type="button" title="Reiniciar el nivel" aria-label="Reiniciar el nivel">↺</button>
-    </nav>
-    <div id="appearance-controls" class="appearance-controls"></div>
-    <div id="lives" class="lives" aria-label="Vidas"></div>
+    <button id="back" class="icon-button" type="button" data-i18n-title="ui.back" data-i18n-aria="ui.back" hidden>‹</button>
+    <a class="brand" href="#menu" data-i18n-title="ui.toMenu"><img src="icon.svg" alt="" width="30" height="30"><span>Netdoku</span></a>
+    <div id="game-title" class="game-title" hidden></div>
+    <div id="game-tools" class="game-tools" hidden>
+      <button id="category-info" class="icon-button" type="button" data-i18n-title="game.categoryInfo" data-i18n-aria="game.categoryInfo">i</button>
+      <button id="new-level" class="icon-button" type="button" data-i18n-title="game.anotherLevel" data-i18n-aria="game.anotherLevel">↺</button>
+    </div>
+    <div id="lives" class="lives" hidden></div>
+    <div class="topbar-end">
+      <select id="lang-select" class="pill-select" data-i18n-title="ui.language" data-i18n-aria="ui.language"></select>
+      <div id="appearance-controls" class="appearance-controls"></div>
+    </div>
   </header>
 
-  <main class="layout">
-    <aside class="help-panel" aria-label="Ayuda del nivel">
-      <div class="help-head">
-        <h2>Ayuda</h2>
-        <a class="icon-button" href="ayuda.html" target="_blank" rel="noopener" title="Abrir la ayuda completa" aria-label="Ayuda completa">?</a>
-      </div>
-      <p id="level-meta" class="level-meta"></p>
-      <p id="objective" class="objective"></p>
-      <div id="help-groups"></div>
-      <section class="help-group">
-        <h3>Redes</h3>
-        <div id="legend" class="legend"></div>
+  <div id="notice" class="notice" role="status" hidden></div>
+
+  <!-- Menú principal -->
+  <section id="view-menu" class="view menu-view">
+    <div class="menu-hero">
+      <img src="icon.svg" alt="" width="84" height="84">
+      <h1>Netdoku</h1>
+      <p data-i18n="ui.tagline"></p>
+    </div>
+    <nav class="menu-buttons">
+      <a class="menu-button" href="#howto" data-i18n="ui.menu.howto"></a>
+      <a class="menu-button primary" href="#play" data-i18n="ui.menu.play"></a>
+      <a class="menu-button" href="#stats" data-i18n="ui.menu.stats"></a>
+      <a class="menu-button" href="#help" data-i18n="ui.menu.help"></a>
+      <a class="menu-button" href="#about" data-i18n="ui.menu.about"></a>
+    </nav>
+    <p id="menu-error" class="error" hidden></p>
+  </section>
+
+  <section id="view-howto" class="view page" hidden>
+    <h1 data-i18n="howto.title"></h1>
+    <div id="howto-body"></div>
+  </section>
+
+  <section id="view-play" class="view page" hidden>
+    <h1 data-i18n="play.title"></h1>
+    <p class="intro" data-i18n="play.intro"></p>
+    <div id="play-categories" class="category-tabs" role="tablist"></div>
+    <div id="play-detail" class="category-detail"></div>
+  </section>
+
+  <section id="view-stats" class="view page" hidden>
+    <h1 data-i18n="stats.title"></h1>
+    <p class="intro" data-i18n="stats.intro"></p>
+    <div id="stats-body"></div>
+  </section>
+
+  <section id="view-help" class="view page" hidden>
+    <h1 data-i18n="help.title"></h1>
+    <div id="help-body"></div>
+  </section>
+
+  <section id="view-about" class="view page narrow" hidden>
+    <h1 data-i18n="about.title"></h1>
+    <div id="about-body" class="about"></div>
+  </section>
+
+  <!-- Partida: ayuda y leyenda | tablero | interruptor y paquetes -->
+  <section id="view-game" class="view" hidden>
+    <main class="layout">
+      <aside class="help-panel">
+        <div class="help-head">
+          <h2 data-i18n="game.helpTitle"></h2>
+          <a class="icon-button" href="index.html#help" target="_blank" rel="noopener" data-i18n-title="game.fullHelp" data-i18n-aria="game.fullHelp">?</a>
+        </div>
+        <p id="level-meta" class="level-meta"></p>
+        <p id="objective" class="objective"></p>
+        <div id="help-groups"></div>
+        <section class="help-group">
+          <h3 data-i18n="game.networks"></h3>
+          <div id="legend" class="legend"></div>
+        </section>
+      </aside>
+
+      <section class="board-area">
+        <div id="board-wrap" class="board-wrap"></div>
       </section>
-    </aside>
 
-    <section class="board-area">
-      <div id="board-wrap" class="board-wrap"></div>
-    </section>
-
-    <aside class="side">
-      <label class="modebar" title="Atajo: tecla A">
-        <input type="checkbox" id="note-mode" role="switch">
-        <span class="switch" aria-hidden="true"></span>
-        <span id="mode-label">Modo colocar</span>
-      </label>
-      <div id="message" class="message" role="status"></div>
-      <div id="final" class="final" hidden></div>
-      <div id="packets" class="packets"></div>
-    </aside>
-  </main>
+      <aside class="side">
+        <label class="modebar" data-i18n-title="game.modeShortcut">
+          <input type="checkbox" id="note-mode" role="switch">
+          <span class="switch" aria-hidden="true"></span>
+          <span id="mode-label"></span>
+        </label>
+        <div id="message" class="message" role="status"></div>
+        <div id="final" class="final" hidden></div>
+        <div id="packets" class="packets"></div>
+      </aside>
+    </main>
+  </section>
 
   <div id="drag-ghost" class="token ghost" hidden></div>
 
   <dialog id="help-dialog" class="help-dialog">
-    <button type="button" class="close" aria-label="Cerrar">✕</button>
+    <button type="button" class="close" data-i18n-aria="theme.close">✕</button>
     <div class="help-body"></div>
+  </dialog>
+
+  <dialog id="info-dialog" class="help-dialog info-dialog">
+    <button type="button" class="close" data-i18n-aria="theme.close">✕</button>
+    <div id="info-body" class="help-body"></div>
   </dialog>
 
   <script src="help.js"></script>
   <script src="netdoku.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

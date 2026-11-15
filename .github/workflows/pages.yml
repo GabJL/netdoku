@@ -1,0 +1,44 @@
+# Publica el juego en GitHub Pages con cada push a master: solo el motor
+# (engine/) y los niveles (levels/), no el generador ni la documentación.
+# En el repositorio: Settings → Pages → Source: «GitHub Actions».
+name: Publicar en GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Preparar el sitio (motor y niveles)
+        run: |
+          mkdir -p _site
+          cp -r engine levels _site/
+          rm -f _site/levels/*.yaml
+          # La raíz del sitio lleva al juego.
+          cat > _site/index.html <<'EOF'
+          <!doctype html>
+          <meta charset="utf-8">
+          <meta http-equiv="refresh" content="0; url=engine/">
+          <title>Netdoku</title>
+          <a href="engine/">Netdoku</a>
+          EOF
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1070,6 +1070,13 @@ Las rutas no se sortean paquete a paquete. Como en la asignatura, cada router de
 - **Dominio:** mapa de pesos no negativos.
 - **Valor por defecto:** `{}`.
 
+### `clues.naming.categoryFormRatio`
+
+- **Carácter:** opcional.
+- **Dominio:** número real entre `0` y `1` o `auto`.
+- **Valor por defecto:** `auto`.
+- **Descripción:** proporción de pistas que usan [formas de nombrar](netdoku_catalogo_reglas.md#proporción-de-formas-nuevas) propias de la categoría del nivel (por ejemplo, `prefix` o `ip_member` en Direccionamiento), aunque su coste de lectura sea 0. Siempre hay al menos una. Con `auto` se sortea en cada nivel entre 0,3 y 0,7, para que unos niveles usen más formas nuevas que otros. Las formas con coste mayor que el permitido por `difficulty.reading` no se usan, sea cual sea la proporción.
+
 ### `clues.avoidRedundant`
 
 - **Carácter:** opcional.
@@ -1199,7 +1206,7 @@ Estos parámetros pueden configurarse manualmente, pero normalmente se derivan d
 - **Carácter:** opcional.
 - **Dominio:** entero entre `1` y `5` o `auto`.
 - **Valor por defecto:** `auto`.
-- **Descripción:** dificultad de lectura de las pistas: cuánto cuesta pasar de su texto a casillas, según el coste de las [formas de nombrar](netdoku_catalogo_reglas.md#formas-de-nombrar) que use. Es independiente de `difficulty.logic`, que mide las deducciones necesarias una vez traducidas las pistas.
+- **Descripción:** dificultad de lectura de las pistas: cuánto cuesta pasar de su texto a casillas, según el coste de las [formas de nombrar](netdoku_catalogo_reglas.md#formas-de-nombrar) que use. Es independiente de `difficulty.logic`, que mide las deducciones necesarias una vez traducidas las pistas. La escala está en [dificultad de lectura](game_round_generation.md#dificultad-de-lectura).
 
 ### `difficulty.knowledge`
 
@@ -1447,6 +1454,35 @@ Estos parámetros pueden configurarse manualmente, pero normalmente se derivan d
 - **Carácter:** opcional.
 - **Dominio:** entero positivo o `null`.
 - **Valor por defecto:** `null`.
+
+## 20. Direccionamiento
+
+### `addressing.plan`
+
+- **Carácter:** opcional.
+- **Dominio:** `distinct`, `octet_subnets`, `bit_subnets`, `vlsm` o `auto`.
+- **Valor por defecto:** `auto`.
+- **Descripción:** cómo se parecen entre sí los prefijos de las redes del nivel, que determina el coste de calcular la red de una dirección (véase [coste C](netdoku_catalogo_reglas.md#coste-c-de-calcular-la-red-de-una-dirección)):
+  - `distinct`: redes que se distinguen por el primer octeto (10.0.0.0/8, 20.0.0.0/8…).
+  - `octet_subnets`: subredes de un mismo bloque con máscaras que acaban en un octeto (172.16.1.0/24, 172.16.2.0/24…).
+  - `bit_subnets`: subredes de un mismo bloque con la misma máscara, que no acaba en un octeto (dos /25, cuatro /26…).
+  - `vlsm`: subredes de un mismo bloque con máscaras distintas (un /24 repartido en /25, /26, /27 y /27). Exige `level.maxTopic` igual o posterior a `T3.vlsm`.
+  
+  Con `auto`, el generador elige el plan según `difficulty.reading` y `level.maxTopic`. Las redes nunca se solapan, y todos los prefijos son identificadores de red válidos, alineados con su máscara.
+
+### `addressing.nearBoundaryDistance`
+
+- **Carácter:** opcional.
+- **Dominio:** entero mayor o igual que `0`.
+- **Valor por defecto:** `4`.
+- **Descripción:** una dirección que esté a esta distancia o menos del límite con otra red del nivel, si alguna de las dos máscaras no acaba en un octeto, cuesta un punto más de leer (hasta 3). Con `0` no se aplica.
+
+### `addressing.allowSpecialAddresses`
+
+- **Carácter:** opcional.
+- **Dominio:** booleano.
+- **Valor por defecto:** `false`.
+- **Descripción:** permite usar en las pistas la dirección de red y la de difusión de una red (por ejemplo, «la red de la dirección 192.168.0.127»). Los equipos y los routers nunca las tienen.
 
 ## Configuración mínima recomendada
 

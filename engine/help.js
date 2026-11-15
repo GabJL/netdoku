@@ -1,7 +1,10 @@
 // Fichas de ayuda de Netdoku, agrupadas por categoría (cómo jugar, reglas,
-// pistas, iconos). Las usan el panel de ayuda de cada nivel (netdoku.js) y la
-// página de ayuda (ayuda.html). Al añadir un subtipo de pista, añadir aquí su
-// ficha (categoría "clues") y su entrada en TYPE_TO_ENTRY.
+// pistas, iconos). Las usan el panel de ayuda de cada nivel y las vistas de
+// ayuda, «Cómo se juega» e información de categoría (app.js). Aquí está la
+// estructura (categoría y mini tablero); los textos (chip, title, text,
+// caption) están en lang/<idioma>.js, en help.entries.<id>. Al añadir un
+// subtipo de pista, añadir aquí su ficha (categoría "clues"), sus textos en
+// cada idioma y su entrada en TYPE_TO_ENTRY.
 (function () {
   "use strict";
 
@@ -15,12 +18,12 @@
   const GREEN = "#2e9e5b";
   const ORANGE = "#e08a1e";
 
-  const CATEGORIES = [
-    { id: "basic", title: "Cómo jugar" },
-    { id: "rules", title: "Reglas" },
-    { id: "clues", title: "Pistas" },
-    { id: "icons", title: "Iconos" },
-  ];
+  const t = (key, vars) => window.NetdokuI18n.t(key, vars);
+  // Título de cada categoría de ayuda: help.categories.<id> en el idioma activo.
+  const CATEGORIES = ["basic", "rules", "clues", "icons"].map((id) => ({
+    id,
+    get title() { return t(`help.categories.${id}`); },
+  }));
 
   // Mini tableros: grid (una letra de red por casilla), nodes [f, c, tipo],
   // routers [[f, c], [f, c]], packets [f, c, letra, color], notes [f, c, letra,
@@ -30,174 +33,132 @@
     {
       id: "how_to_play",
       category: "basic",
-      chip: "Cómo jugar",
-      title: "Cómo jugar",
-      text: [
-        "Colocar: arrastra un paquete a la casilla donde crees que está, o selecciónalo en el panel y pulsa la casilla. Si aciertas, queda fijo; si fallas, vuelve al panel y pierdes una de tus tres vidas. Al resolverlo por primera vez ganas tres estrellas menos una por fallo, contando los intentos anteriores: reiniciar no borra los fallos.",
-        "Anotar: activa el interruptor (o pulsa A), selecciona un paquete y pulsa las casillas donde podría estar. Aparece un circulito de su color; vuelve a pulsar para quitarlo.",
-        "Descartar: clic derecho (o pulsación larga) marca una casilla con ✕ y borra sus notas. Pulsa una pista para tacharla cuando ya la hayas usado.",
-        "El progreso se guarda en este navegador. «Reiniciar» empieza el nivel de cero.",
-      ],
       mini: {
         grid: ["AAAA", "AAAA", "AAAA"],
         packets: [[1, 1, "A", "#d64545"]],
         notes: [[2, 3, "B", "#3b6fd6", 1], [2, 3, "C", "#2e9e5b", 2], [3, 4, "B", "#3b6fd6", 1]],
         no: [[3, 2]],
       },
-      caption: "A está colocado; B y C tienen notas; una casilla está descartada.",
     },
     {
       id: "objective",
       category: "basic",
-      chip: "Objetivo",
-      title: "Objetivo: descubrir al atacante",
-      text: [
-        "La víctima estaba a solas con el atacante: en su red no hay ningún otro paquete.",
-        "Coloca todos los paquetes en su casilla. Al colocar el último, el atacante queda al descubierto: es el otro paquete de la red de la víctima.",
-      ],
       mini: {
         grid: ["AABB", "AABB", "AABB", "AABB"],
         packets: [[1, 1, "B", BLUE], [2, 3, "V", RED], [3, 2, "C", GREEN], [4, 4, "?", "#555"]],
         shade: [[1, 3], [1, 4], [2, 3], [2, 4], [3, 3], [3, 4], [4, 3], [4, 4]],
       },
-      caption: "V es la víctima. El único otro paquete de su red es el atacante.",
     },
     {
       id: "row_column",
       category: "rules",
-      chip: "Fila y columna",
-      title: "Un paquete por fila y por columna",
-      text: [
-        "En cada fila y en cada columna hay como mucho un paquete. Al colocar uno, el resto de su fila y de su columna queda descartado para los demás.",
-        "Con tantos paquetes como filas, cada fila y cada columna tiene exactamente uno. Por eso el último paquete (la víctima) se deduce por descarte.",
-      ],
       mini: {
         grid: ["AAAA", "AAAA", "AAAA", "AAAA"],
         packets: [[2, 3, "A", RED]],
         no: [[2, 1], [2, 2], [2, 4], [1, 3], [3, 3], [4, 3]],
       },
-      caption: "Con A en la fila 2 y la columna 3, ningún otro paquete puede ir en las casillas marcadas.",
     },
     {
       id: "adjacent",
       category: "rules",
-      chip: "«Junto a»",
-      title: "Qué significa «junto a»",
-      text: [
-        "Junto a una casilla están las cuatro que comparten un lado con ella (arriba, abajo, izquierda y derecha) y que pertenecen a la misma red.",
-        "Las diagonales no cuentan. Una casilla de otra red tampoco, aunque toque al equipo: el borde de red las separa.",
-      ],
       mini: {
         grid: ["AAB", "AAB", "AAA"],
         nodes: [[2, 2, "web"]],
         ok: [[1, 2], [2, 1], [3, 2]],
         no: [[2, 3], [1, 1], [1, 3], [3, 1], [3, 3]],
       },
-      caption: "Junto al servidor solo están las casillas con círculo. La de la derecha es de otra red.",
+    },
+    {
+      id: "network_size",
+      category: "rules",
+    },
+    {
+      id: "ip_network",
+      category: "rules",
+    },
+    {
+      id: "named_by_address",
+      category: "rules",
     },
     {
       id: "in_network",
       category: "clues",
-      chip: "En una red",
-      title: "«Estaba en la red X»",
-      text: [
-        "El paquete está en alguna casilla libre de esa red. Las casillas con equipos nunca tienen paquetes.",
-        "Cada red tiene su color, su nombre en el tablero y, en la leyenda, su prefijo (por ejemplo, 192.168.1.0/24).",
-      ],
       mini: {
         grid: ["AABB", "AABB", "CCBB"],
         nodes: [[1, 4, "client"]],
         ok: [[1, 3], [2, 3], [2, 4], [3, 3], [3, 4]],
       },
-      caption: "«En la red verde»: cualquiera de las casillas con círculo.",
+    },
+    {
+      id: "prefix_length",
+      category: "clues",
+      mini: {
+        grid: ["AABB", "AABB", "CCDD"],
+        ok: [[1, 1], [1, 2], [2, 1], [2, 2], [3, 3], [3, 4]],
+      },
     },
     {
       id: "adjacent_to_node",
       category: "clues",
-      chip: "Junto a un equipo",
-      title: "«Estaba junto a…» un equipo",
-      text: [
-        "«Junto al servidor web»: en una casilla junto a ese equipo concreto. Si hay varios iguales, la pista dice de qué red es.",
-        "«Junto a un servidor web»: junto a cualquiera de los servidores web del tablero. «Junto a un servidor»: junto a cualquier servidor.",
-      ],
       mini: {
         grid: ["AAAA", "AAAA", "AAAA"],
         nodes: [[1, 1, "web"], [3, 4, "web"], [2, 3, "client"]],
         ok: [[1, 2], [2, 1], [2, 4], [3, 3]],
       },
-      caption: "«Junto a un servidor web»: cualquiera de las casillas con círculo.",
     },
     {
       id: "unique_adjacent",
       category: "clues",
-      chip: "Ningún otro junto a…",
-      title: "«…y ningún otro paquete lo estaba»",
-      text: [
-        "«El paquete A estaba junto al servidor de correo, y ningún otro paquete lo estaba»: A está en una de las casillas junto a ese equipo.",
-        "Las demás casillas junto a él quedan descartadas para todos los demás paquetes, también para la víctima, aunque todavía no sepas en cuál de ellas está A.",
-      ],
       mini: {
         grid: ["AAA", "AAA", "AAA"],
         nodes: [[2, 2, "mail"]],
         packets: [[1, 2, "A", ORANGE]],
         no: [[2, 1], [2, 3], [3, 2]],
       },
-      caption: "Ningún otro paquete puede ocupar las otras casillas junto al servidor de correo.",
     },
     {
       id: "router",
       category: "clues",
-      chip: "Junto a un router",
-      title: "«Estaba junto al router que une X e Y»",
-      text: [
-        "Los routers están en el borde entre redes: son el punto de paso de una red a otra y pertenecen a todas las redes que unen.",
-        "Junto a un router solo hay dos casillas: la que lo toca en cada una de las dos redes.",
-      ],
       mini: {
         grid: ["AABB", "AABB", "AABB"],
         routers: [[[2, 2], [2, 3]]],
         ok: [[2, 2], [2, 3]],
       },
-      caption: "Junto al router solo están las dos casillas con círculo, una en cada red.",
     },
     {
       id: "spatial",
       category: "clues",
-      chip: "Fila o columna",
-      title: "«Estaba en la fila N» o «en la columna N»",
-      text: [
-        "Las filas se cuentan de arriba abajo y las columnas de izquierda a derecha. Los números están en el margen del tablero.",
-        "Junto con la regla de un paquete por fila y columna, una de estas pistas descarta esa fila o columna para todos los demás.",
-      ],
       mini: {
         grid: ["AAAA", "AAAA", "AAAA"],
         nodes: [[2, 2, "dns"]],
         ok: [[2, 1], [2, 3], [2, 4]],
         numbers: true,
       },
-      caption: "«En la fila 2»: cualquiera de las casillas libres de esa fila.",
     },
     {
       id: "icons",
       category: "icons",
-      chip: "Iconos",
-      title: "Iconos del tablero",
-      text: [
-        "Monitor: equipo de usuario (cliente). Rack: servidor; la insignia indica el servicio: globo azul (web), «DNS» morado, sobre naranja (correo), carpeta verde (ficheros) y triángulo rojo (multimedia).",
-        "Círculo azul con flechas sobre un borde: router. Los paquetes son los círculos de colores con una letra.",
-      ],
       mini: {
         grid: ["AAAA", "AABB"],
         nodes: [[1, 1, "client"], [1, 2, "web"], [1, 3, "dns"], [1, 4, "mail"], [2, 1, "storage"]],
         routers: [[[2, 2], [2, 3]]],
         packets: [[2, 4, "A", BLUE]],
       },
-      caption: "Cliente, servidores web, DNS, de correo y de ficheros, un router y un paquete.",
     },
   ];
 
+  // Textos de cada ficha en el idioma activo: e.chip, e.title, e.text (lista de párrafos), e.caption.
+  for (const e of ENTRIES) {
+    for (const field of ["chip", "title", "text", "caption"]) {
+      Object.defineProperty(e, field, {
+        get() { return (window.NetdokuI18n.get(`help.entries.${e.id}`) || {})[field]; },
+      });
+    }
+  }
+
   const TYPE_TO_ENTRY = {
     "network.in_network": "in_network",
+    "network.prefix_length": "prefix_length",
     "node.adjacent_to_node": "adjacent_to_node",
     "node.unique_adjacent_to_node": "unique_adjacent",
     "router.adjacent_to_router": "router",
@@ -205,6 +166,18 @@
     "spatial.in_column": "spatial",
   };
   const USES_ADJACENCY = new Set(["node.adjacent_to_node", "node.unique_adjacent_to_node"]);
+  // Fichas de reglas que necesitan algunas formas de nombrar (clue.naming).
+  const FORM_TO_ENTRY = {
+    size_rank: "network_size",
+    prefix_length: "network_size",
+    address_count: "network_size",
+    mask: "network_size",
+    ip_member: "ip_network",
+    ip: "ip_network",
+    interfaces: "ip_network",
+  };
+  // Formas que nombran algo sin su nombre: explicadas en la ficha named_by_address.
+  const ADDRESS_FORMS = new Set(["prefix", "size_rank", "ip_member", "label_prefix", "ip", "networks_prefix", "interfaces"]);
 
   function entry(id) {
     return ENTRIES.find((e) => e.id === id);
@@ -216,6 +189,10 @@
     for (const clue of level.clues || []) {
       if (TYPE_TO_ENTRY[clue.type]) ids.add(TYPE_TO_ENTRY[clue.type]);
       if (USES_ADJACENCY.has(clue.type)) ids.add("adjacent");
+      for (const form of Object.values(clue.naming || {})) {
+        if (FORM_TO_ENTRY[form]) ids.add(FORM_TO_ENTRY[form]);
+        if (ADDRESS_FORMS.has(form)) ids.add("named_by_address");
+      }
     }
     return ENTRIES.filter((e) => ids.has(e.id));
   }
@@ -328,5 +305,5 @@
     }
   }
 
-  window.NetdokuHelp = { CATEGORIES, ENTRIES, forLevel, renderEntry };
+  window.NetdokuHelp = { CATEGORIES, ENTRIES, entry, forLevel, renderEntry };
 })();

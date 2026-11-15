@@ -7,7 +7,8 @@
 //   icons    cómo se dibujan los equipos
 //   numbers  números de fila y columna en el margen
 //   netNames nombres de las redes dentro del tablero
-// Hay temas de serie (PRESETS) y el jugador puede guardar los suyos.
+// Hay temas de serie (PRESETS) y el jugador puede guardar los suyos. Los
+// textos de los controles están en lang/<idioma>.js (theme.*).
 //
 // Se carga en <head> para aplicar el modo y la paleta antes de pintar. Las
 // páginas leen las opciones con settings() y los colores con value(), y se
@@ -17,16 +18,16 @@
 
   const KEY = "netdoku:appearance";
 
+  const t = (key, vars) => (window.NetdokuI18n ? window.NetdokuI18n.t(key, vars) : key);
+
+  // Valores de cada opción; sus nombres, en theme.options.<opción>.
   const OPTIONS = {
-    mode: { label: "Modo", values: { auto: "Automático (según el sistema)", light: "Claro", dark: "Oscuro" } },
-    palette: { label: "Colores de las redes", values: { pastel: "Pastel", vivid: "Intensos", colorblind: "Aptos para daltonismo", gray: "Grises" } },
-    pattern: { label: "Fondo de las casillas", values: { plain: "Liso", dots: "Puntos", stripes: "Rayas", tiles: "Baldosas", perNetwork: "Una textura por red" } },
-    icons: { label: "Equipos", values: { drawings: "Dibujos", text: "Texto (PC, Web, DNS…)", both: "Dibujos con texto" } },
+    mode: ["auto", "light", "dark"],
+    palette: ["pastel", "vivid", "colorblind", "gray"],
+    pattern: ["plain", "dots", "stripes", "tiles", "perNetwork"],
+    icons: ["drawings", "text", "both"],
   };
-  const TOGGLES = {
-    numbers: "Números de fila y columna",
-    netNames: "Nombres de las redes en el tablero",
-  };
+  const TOGGLES = ["numbers", "netNames"];
 
   // Ocho colores por paleta y modo (redes 1 a 8 del nivel).
   const PALETTES = {
@@ -50,12 +51,16 @@
   };
 
   const DEFAULT = { mode: "auto", palette: "pastel", pattern: "plain", icons: "drawings", numbers: true, netNames: true };
+  // Temas de serie, por clave (su nombre visible está en theme.presets.<clave>).
   const PRESETS = {
-    "Clásico": { ...DEFAULT },
-    "Texturas": { ...DEFAULT, pattern: "perNetwork" },
-    "Accesible": { ...DEFAULT, palette: "colorblind", pattern: "perNetwork", icons: "both" },
-    "Texto": { ...DEFAULT, icons: "text" },
+    classic: { ...DEFAULT },
+    textures: { ...DEFAULT, pattern: "perNetwork" },
+    accessible: { ...DEFAULT, palette: "colorblind", pattern: "perNetwork", icons: "both" },
+    text: { ...DEFAULT, icons: "text" },
   };
+  // Nombres que tenían los temas de serie antes de traducir la interfaz.
+  const OLD_PRESETS = { "Clásico": "classic", "Texturas": "textures", "Accesible": "accessible", "Texto": "text" };
+  const themeLabel = (name) => (PRESETS[name] ? t(`theme.presets.${name}`) : name);
 
   // ---------- Estado guardado ----------
 
@@ -63,12 +68,13 @@
     try {
       const data = JSON.parse(localStorage.getItem(KEY) || "null");
       if (data && data.settings) {
-        return { theme: data.theme ?? null, settings: { ...DEFAULT, ...data.settings }, custom: data.custom || {} };
+        const theme = data.theme ?? null;
+        return { theme: OLD_PRESETS[theme] || theme, settings: { ...DEFAULT, ...data.settings }, custom: data.custom || {} };
       }
     } catch (err) {
       // Datos corruptos o sin almacenamiento: valores por defecto.
     }
-    return { theme: "Clásico", settings: { ...DEFAULT }, custom: {} };
+    return { theme: "classic", settings: { ...DEFAULT }, custom: {} };
   }
 
   let store = load();
@@ -159,9 +165,9 @@
 
   function fillThemeSelect(select) {
     select.innerHTML = "";
-    if (store.theme === null) el("option", { value: "", textContent: "Personalizado" }, select);
+    if (store.theme === null) el("option", { value: "", textContent: t("theme.custom") }, select);
     for (const name of Object.keys(themes())) {
-      el("option", { value: name, textContent: name }, select);
+      el("option", { value: name, textContent: themeLabel(name) }, select);
     }
     select.value = store.theme === null ? "" : store.theme;
   }
@@ -169,54 +175,55 @@
   function buildDialog() {
     const dialog = el("dialog", { className: "help-dialog appearance-dialog" }, document.body);
     const close = el("button", { type: "button", className: "close", textContent: "✕" }, dialog);
-    close.setAttribute("aria-label", "Cerrar");
+    close.setAttribute("aria-label", t("theme.close"));
     close.addEventListener("click", () => dialog.close());
     dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 
     const body = el("div", { className: "help-body appearance" }, dialog);
-    el("h2", { textContent: "Apariencia" }, body);
+    el("h2", { textContent: t("theme.title") }, body);
 
     const themeRow = el("label", { className: "field" }, body);
-    el("span", { textContent: "Tema guardado" }, themeRow);
+    el("span", { textContent: t("theme.savedTheme") }, themeRow);
     const themeSelect = el("select", {}, themeRow);
     themeSelect.addEventListener("change", () => { if (themeSelect.value) selectTheme(themeSelect.value); });
 
     const fields = {};
-    for (const [key, opt] of Object.entries(OPTIONS)) {
+    for (const [key, values] of Object.entries(OPTIONS)) {
       const row = el("label", { className: "field" }, body);
-      el("span", { textContent: opt.label }, row);
+      el("span", { textContent: t(`theme.options.${key}.label`) }, row);
       const select = el("select", {}, row);
-      for (const [v, text] of Object.entries(opt.values)) el("option", { value: v, textContent: text }, select);
+      for (const v of values) el("option", { value: v, textContent: t(`theme.options.${key}.values.${v}`) }, select);
       select.addEventListener("change", () => update({ [key]: select.value }));
       fields[key] = select;
     }
-    for (const [key, text] of Object.entries(TOGGLES)) {
+    for (const key of TOGGLES) {
       const row = el("label", { className: "field check" }, body);
       const box = el("input", { type: "checkbox" }, row);
-      el("span", { textContent: text }, row);
+      el("span", { textContent: t(`theme.toggles.${key}`) }, row);
       box.addEventListener("change", () => update({ [key]: box.checked }));
       fields[key] = box;
     }
 
     const save = el("div", { className: "save-row" }, body);
-    const nameInput = el("input", { type: "text", placeholder: "Nombre del tema", maxLength: 30 }, save);
-    const saveBtn = el("button", { type: "button", className: "button", textContent: "Guardar como tema" }, save);
-    const delBtn = el("button", { type: "button", className: "button", textContent: "Eliminar tema" }, save);
+    const nameInput = el("input", { type: "text", placeholder: t("theme.namePlaceholder"), maxLength: 30 }, save);
+    const saveBtn = el("button", { type: "button", className: "button", textContent: t("theme.save") }, save);
+    const delBtn = el("button", { type: "button", className: "button", textContent: t("theme.remove") }, save);
     const note = el("p", { className: "note" }, body);
     saveBtn.addEventListener("click", () => {
       const name = nameInput.value;
-      if (PRESETS[name.trim()]) {
-        note.textContent = "Ese nombre es de un tema de serie; elige otro.";
+      const trimmed = name.trim();
+      if (PRESETS[trimmed] || Object.keys(PRESETS).some((k) => themeLabel(k) === trimmed)) {
+        note.textContent = t("theme.presetName");
       } else if (saveTheme(name)) {
-        note.textContent = `Guardado como «${name.trim()}».`;
+        note.textContent = t("theme.saved", { name: trimmed });
         nameInput.value = "";
       } else {
-        note.textContent = "Escribe un nombre para el tema.";
+        note.textContent = t("theme.needName");
       }
     });
     delBtn.addEventListener("click", () => {
       if (store.theme && store.custom[store.theme]) {
-        note.textContent = `Eliminado «${store.theme}».`;
+        note.textContent = t("theme.removed", { name: store.theme });
         deleteTheme(store.theme);
       }
     });
@@ -226,28 +233,35 @@
       refresh() {
         fillThemeSelect(themeSelect);
         for (const key of Object.keys(OPTIONS)) fields[key].value = store.settings[key];
-        for (const key of Object.keys(TOGGLES)) fields[key].checked = !!store.settings[key];
+        for (const key of TOGGLES) fields[key].checked = !!store.settings[key];
         delBtn.disabled = !(store.theme && store.custom[store.theme]);
       },
     };
   }
 
-  // Añade a `container` el selector de tema y el botón «+» que abre la ventana de apariencia.
+  // Añade a `container` el selector de tema y el botón «+» que abre la ventana de
+  // apariencia. Al cambiar de idioma se vuelven a crear con los textos nuevos.
   function mountControls(container) {
-    el("span", { className: "control-label", textContent: "Tema" }, container);
-    const select = el("select", { className: "pill-select", title: "Tema" }, container);
-    select.setAttribute("aria-label", "Tema");
+    const old = controls.findIndex((c) => c.container === container);
+    if (old >= 0) {
+      controls[old].panel.dialog.remove();
+      controls.splice(old, 1);
+    }
+    container.innerHTML = "";
+    el("span", { className: "control-label", textContent: t("theme.label") }, container);
+    const select = el("select", { className: "pill-select", title: t("theme.label") }, container);
+    select.setAttribute("aria-label", t("theme.label"));
     select.addEventListener("change", () => { if (select.value) selectTheme(select.value); });
-    const button = el("button", { type: "button", className: "icon-button accent", title: "Apariencia: crear o editar un tema" }, container);
+    const button = el("button", { type: "button", className: "icon-button accent", title: t("theme.button") }, container);
     // El «+» se dibuja en SVG: con un carácter de texto no queda centrado en el círculo.
     button.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M8 2.5v11M2.5 8h11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
-    button.setAttribute("aria-label", "Apariencia: crear o editar un tema");
+    button.setAttribute("aria-label", t("theme.button"));
     const panel = buildDialog();
     button.addEventListener("click", () => {
       panel.refresh();
       panel.dialog.showModal();
     });
-    controls.push({ select, panel });
+    controls.push({ container, select, panel });
     refreshControls();
   }
 
@@ -259,6 +273,9 @@
   }
 
   apply();
+  window.addEventListener("netdoku-lang", () => {
+    for (const c of controls.slice()) mountControls(c.container);
+  });
   if (darkQuery) {
     darkQuery.addEventListener("change", () => {
       if (store.settings.mode === "auto") {

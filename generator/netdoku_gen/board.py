@@ -5,10 +5,14 @@ Coordenadas internas (fila, columna) con origen 0; se pasan a base 1 al exportar
 
 from dataclasses import dataclass, field
 
-NETWORK_NAMES = [
-    "Administración", "Servicios", "Laboratorio", "Desarrollo", "Dirección",
-    "Aulas", "Biblioteca", "Invitados", "Secretaría", "Investigación",
-]
+from .addressing import make_prefixes
+
+# Clave de cada nombre de red (la usa el motor para traducirlo) y nombre en español.
+NETWORK_NAMES = {
+    "admin": "Administración", "services": "Servicios", "lab": "Laboratorio", "dev": "Desarrollo",
+    "management": "Dirección", "classrooms": "Aulas", "library": "Biblioteca", "guests": "Invitados",
+    "office": "Secretaría", "research": "Investigación",
+}
 
 
 def side_neighbors(cell, height, width):
@@ -25,6 +29,7 @@ class Network:
     name: str
     prefix: str
     cells: list
+    name_key: str = ""
 
 
 @dataclass
@@ -95,32 +100,6 @@ def grow_regions(rng, height, width, count, min_size, max_tries=500):
     raise RuntimeError("No se ha podido repartir el tablero en redes válidas")
 
 
-def make_prefixes(rng, count):
-    """Prefijos privados distintos. Solo son etiquetas en la v0."""
-    used, prefixes = set(), []
-    while len(prefixes) < count:
-        family = rng.choice(["192.168", "10", "172.16"])
-        if family == "192.168":
-            length = rng.choice([22, 23, 24, 24, 24, 25, 26])
-            block = 2 ** max(0, 24 - length)
-            x = rng.randrange(0, 256, block)
-            last = rng.choice([0, 128]) if length == 25 else rng.choice([0, 64, 128, 192]) if length == 26 else 0
-            text = f"192.168.{x}.{last}/{length}"
-        elif family == "10":
-            x = rng.randrange(1, 255)
-            length = rng.choice([16, 20, 24])
-            text = f"10.{x}.0.0/{length}"
-        else:
-            x = rng.randrange(0, 32)
-            length = rng.choice([24, 24, 25])
-            text = f"172.16.{x}.0/{length}"
-        key = text.split("/")[0]
-        if key not in used:
-            used.add(key)
-            prefixes.append(text)
-    return prefixes
-
-
 def place_routers(rng, board, extra_router_prob=0.3):
     """Routers de grado 2 sobre la frontera entre dos redes vecinas.
 
@@ -172,16 +151,19 @@ def place_routers(rng, board, extra_router_prob=0.3):
     return routers
 
 
-def generate_board(rng, height=6, width=6, network_count=4, min_size=6):
+def generate_board(rng, height=6, width=6, network_count=4, min_size=6, plan="octet_subnets"):
+    """Tablero con sus redes y routers. `board.prefixes` guarda los prefijos como IPv4Network."""
     grid_idx, regions = grow_regions(rng, height, width, network_count, min_size)
-    names = rng.sample(NETWORK_NAMES, network_count)
-    prefixes = make_prefixes(rng, network_count)
+    keys = rng.sample(list(NETWORK_NAMES), network_count)
+    prefixes = make_prefixes(rng, network_count, plan)
     # Identificadores por orden de lectura para que sean predecibles en el tablero.
     order = sorted(range(network_count), key=lambda i: min(regions[i]))
     ids = {old: f"net{new + 1}" for new, old in enumerate(order)}
-    networks = [Network(id=ids[i], name=names[k], prefix=prefixes[k], cells=sorted(regions[i]))
+    networks = [Network(id=ids[i], name=NETWORK_NAMES[keys[k]], prefix=str(prefixes[k]), cells=sorted(regions[i]),
+                        name_key=keys[k])
                 for k, i in enumerate(order)]
     grid = [[ids[v] for v in row] for row in grid_idx]
     board = Board(height=height, width=width, grid=grid, networks=networks)
+    board.prefixes = {ids[i]: prefixes[k] for k, i in enumerate(order)}
     board.routers = place_routers(rng, board)
     return board

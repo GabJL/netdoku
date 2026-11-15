@@ -178,22 +178,45 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .brand img { display: block; flex: none; }
 
-.topbar h1 {
-  margin: 0;
-  font-size: 1.4rem;
-  letter-spacing: 0.02em;
+/* Categoría y dificultad de la partida, con sus botones (información, otro nivel). */
+.game-title {
+  font-weight: 600;
+  color: var(--muted);
 }
 
-.level-picker {
+.game-tools { display: flex; gap: 6px; }
+
+.topbar-end {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
   align-items: center;
+  gap: 8px 14px;
+  margin-left: auto;
 }
+
+/* Aviso pasajero bajo la barra superior. */
+.notice {
+  max-width: 900px;
+  margin: 12px auto 0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-weight: 600;
+  text-align: center;
+}
+
+.error { color: var(--danger); font-weight: 600; }
+.muted { color: var(--muted); }
 
 select, .button {
   font: inherit;
@@ -257,14 +280,12 @@ select, .button {
 
 .pill-select:hover { border-color: var(--accent); }
 
-.level-nav,
 .appearance-controls {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.appearance-controls { margin-left: auto; }
 
 .control-label {
   font-size: 0.8rem;
@@ -307,7 +328,7 @@ select, .button {
 
 @media (max-width: 860px) {
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "board" "side" "help";
     padding: 12px 16px;
   }
@@ -533,6 +554,13 @@ select, .button {
   white-space: nowrap;
 }
 
+/* Direcciones, máscaras y longitudes de prefijo: sin color, para no adelantar el cálculo. */
+.clue-chip.addr {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-weight: 500;
+  font-size: 0.92em;
+}
+
 .clue-chip .dot {
   width: 8px;
   height: 8px;
@@ -587,6 +615,23 @@ select, .button {
   color: var(--note);
 }
 .final.lost { border-color: var(--danger); background: var(--danger-bg); }
+
+.final-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--panel);
+  font-weight: 600;
+}
+
+.button:hover { border-color: var(--accent); }
+.button.primary:hover { filter: brightness(1.1); }
 
 /* Interruptor Colocar / Anotar */
 
@@ -688,19 +733,7 @@ figcaption {
   margin-top: 4px;
 }
 
-.help-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px 16px 40px;
-}
-
-.help-page .intro {
-  font-size: 0.98rem;
-  line-height: 1.5;
-  margin: 0 0 8px;
-}
-
-.help-page h2.section {
+.page h2.section, .help-body h2.section {
   margin: 28px 0 0;
   font-size: 0.8rem;
   letter-spacing: 0.06em;
@@ -791,4 +824,242 @@ figcaption {
 
 @media (max-width: 480px) {
   .appearance .field { grid-template-columns: 1fr; gap: 4px; }
+}
+
+/* ---------- Menú principal ---------- */
+
+.menu-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: 48px 16px;
+}
+
+.menu-hero { text-align: center; }
+.menu-hero img { display: block; margin: 0 auto 10px; }
+
+.menu-hero h1 {
+  margin: 0;
+  font-size: 2.6rem;
+  letter-spacing: 0.03em;
+}
+
+.menu-hero p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(320px, 100%);
+}
+
+.menu-button {
+  display: block;
+  padding: 12px 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+.menu-button:hover { border-color: var(--accent); color: var(--accent); }
+
+.menu-button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--panel);
+  font-size: 1.2rem;
+}
+
+.menu-button.primary:hover { filter: brightness(1.1); color: var(--panel); }
+
+/* ---------- Páginas (cómo se juega, jugar, estadísticas, ayuda, sobre el juego) ---------- */
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+}
+
+.page.narrow { max-width: 760px; }
+
+.page h1 {
+  margin: 4px 0 10px;
+  font-size: 1.6rem;
+}
+
+.page .intro, .help-body .intro {
+  font-size: 0.98rem;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+
+.about p { line-height: 1.55; margin: 0 0 12px; }
+
+/* Tarjetas de categoría (cómo se juega). */
+.category-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.category-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.category-card h3 { margin: 0 0 6px; font-size: 1.05rem; }
+.category-card p { margin: 0 0 12px; font-size: 0.9rem; line-height: 1.45; }
+
+/* Jugar: pestañas de categoría y dificultades de la elegida. */
+.category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0 20px;
+}
+
+.category-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 170px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.category-tab .name { font-weight: 700; font-size: 1rem; }
+.category-tab .count { font-size: 0.85rem; color: var(--note); }
+.category-tab .done { font-size: 0.8rem; font-weight: 600; color: var(--ok); }
+.category-tab:hover { border-color: var(--accent); }
+.category-tab.complete { border-color: var(--ok); background: var(--ok-bg); }
+.category-tab[aria-selected="true"] { outline: 3px solid var(--accent); outline-offset: -1px; }
+
+.detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detail-head h2 { margin: 0 0 4px; font-size: 1.3rem; }
+.detail-head p { margin: 0; color: var(--muted); line-height: 1.45; }
+
+.difficulty-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.difficulty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.difficulty:hover:not(:disabled) { border-color: var(--accent); box-shadow: 0 2px 10px var(--shadow); }
+.difficulty:disabled { opacity: 0.55; cursor: not-allowed; }
+.difficulty.solved { border-color: var(--ok); }
+.difficulty .dots { color: var(--accent); letter-spacing: 1px; }
+.difficulty .tier { font-weight: 700; }
+.difficulty .stars { font-size: 1.4rem; letter-spacing: 2px; color: var(--note); }
+.difficulty .stars.muted { color: var(--muted); }
+
+.difficulty .tag {
+  font-size: 0.75rem;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--note-bg);
+  color: var(--note);
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .difficulty-list { grid-template-columns: minmax(0, 1fr); }
+  .difficulty { flex-direction: row; justify-content: flex-start; gap: 14px; padding: 12px 16px; }
+  .difficulty .stars { margin-left: auto; }
+}
+
+/* Estadísticas. */
+.stats-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 14px 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.stats-table th, .stats-table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.stats-table thead th { font-size: 0.85rem; color: var(--muted); }
+.stats-table tbody th { text-align: left; }
+.stats-table tbody th a { color: var(--ink); }
+.stats-table tbody tr:last-child > * { border-bottom: none; }
+.stats-table tr.complete th a { color: var(--ok); }
+.stats-table td.stars { color: var(--note); letter-spacing: 1px; }
+.stats-table td.total { font-weight: 700; }
+
+@media (max-width: 520px) {
+  .stats-table th, .stats-table td { padding: 6px; font-size: 0.85rem; }
+}
+
+/* Ventana de teoría y reglas de una categoría (ancha). */
+.info-dialog {
+  width: min(1000px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+}
+
+.info-dialog .help-body > h2:first-child { font-size: 1.3rem; }
+.info-dialog .help-body h2.section { margin-top: 20px; font-size: 0.8rem; }
+
+.theory {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.theory li { margin: 0 0 6px; }
+
+@media (max-width: 520px) {
+  .topbar { padding: 10px 16px; gap: 8px 12px; }
+  .brand { font-size: 1.2rem; }
+  .game-title { order: 10; width: 100%; font-size: 0.9rem; }
+  .topbar .control-label { display: none; }
+  .clue-chip { white-space: normal; }
 }
