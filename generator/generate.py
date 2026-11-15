@@ -2,7 +2,7 @@
 
 Lotes del juego (lo que usa el motor):
     python generator/generate.py --pool 50                       # todas las categorías y dificultades
-    python generator/generate.py --pool 50 --category tablero --difficulties 4,5
+    python generator/generate.py --pool 50 --category inicial --difficulties 4,5
 
 Cada lote se guarda en levels/<categoría>/<dificultad>/ y levels/index.json
 lista los ficheros de cada uno. Los lotes existentes se completan hasta el
@@ -34,7 +34,7 @@ LEVELS_DIR = ROOT / "levels"
 EXTRA_DIR = LEVELS_DIR / "extra"
 DIFFICULTIES = range(1, 6)
 # Primera semilla de cada lote: categoría y dificultad no comparten semillas.
-SEED_BASE = {"tablero": 1_000_000, "direccionamiento": 2_000_000}
+SEED_BASE = {"inicial": 1_000_000, "direccionamiento": 2_000_000}
 # Filtros de los lotes: como mucho una pista de fila o columna por nivel.
 POOL_CONFIG = {"maxSpatial": 1}
 
@@ -84,7 +84,7 @@ def update_index():
 def _pool_job(args):
     seed, category, target = args
     config = {**POOL_CONFIG, "category": category, "target": target,
-              "selectionRuns": 40 if category == "tablero" and target == 5 else 12}
+              "selectionRuns": 40 if category == "inicial" and target == 5 else 12}
     try:
         return seed, build(seed, config, max_attempts=100)
     except RuntimeError:
@@ -145,7 +145,7 @@ def main():
     parser.add_argument("--packets", type=int, default=6)
     parser.add_argument("--networks", type=int, default=4)
     parser.add_argument("--category", choices=list(CATEGORIES),
-                        help="categoría (por defecto: todas con --pool, tablero sin él)")
+                        help="categoría (por defecto: todas con --pool, inicial sin él)")
     parser.add_argument("--target", type=int, choices=DIFFICULTIES, help="dificultad global buscada")
     parser.add_argument("--reading", type=int, choices=DIFFICULTIES,
                         help="dificultad de lectura buscada (Direccionamiento, sin --target); por defecto, al azar")
@@ -173,7 +173,7 @@ def main():
     seeds = [int(x) for x in args.seeds.split(",")] if args.seeds else range(first, first + args.count)
     for seed in seeds:
         level = build(seed, {"packets": args.packets, "networks": args.networks,
-                             "category": args.category or "tablero", "target": args.target,
+                             "category": args.category or "inicial", "target": args.target,
                              "reading": args.reading, "plan": args.plan})
         d = level["generation"]["difficulty"]
         reports.append(d)

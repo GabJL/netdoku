@@ -2,7 +2,7 @@
 
 Cada pista lleva una plantilla con huecos (`slots`) para los elementos que
 nombra (red, equipo, router, longitud de prefijo). Su texto inicial usa las
-formas de la categoría Tablero; naming.py puede cambiarlo después sin tocar
+formas de la categoría Inicial; naming.py puede cambiarlo después sin tocar
 `D` ni `A`.
 
 Todas las pistas son unarias: cada una fija un conjunto de casillas

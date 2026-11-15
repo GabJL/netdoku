@@ -327,8 +327,8 @@
     },
 
     categories: {
-      tablero: {
-        name: "Tablero",
+      inicial: {
+        name: "Inicial",
         short: "Redes, equipos y routers. Basta con leer el tablero.",
         theory: [
           "Una red es un conjunto de equipos que se comunican directamente a nivel de enlace, sin pasar por un router. Las redes están delimitadas por routers. En el tablero, cada zona de color es una red; en la leyenda aparece su prefijo (por ejemplo, 192.168.1.0/24), que la identifica.",

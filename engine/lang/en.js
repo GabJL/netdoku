@@ -322,8 +322,8 @@
     },
 
     categories: {
-      tablero: {
-        name: "Board",
+      inicial: {
+        name: "Getting started",
         short: "Networks, devices and routers. Reading the board is enough.",
         theory: [
           "A network is a set of devices that communicate directly at the link layer, without going through a router. Networks are bounded by routers. On the board, each coloured area is a network; the legend shows its prefix (for example, 192.168.1.0/24), which identifies it.",

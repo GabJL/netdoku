@@ -4,7 +4,7 @@
 
 Primera categoría con conocimientos de la asignatura: Direccionamiento. Las mismas pistas pueden nombrar redes, equipos y routers por su prefijo, por una dirección IP o por su tamaño, y eso da una dificultad de lectura independiente de la lógica. El juego pasa a tener menú, progresión por categoría y dificultad, y versión en inglés.
 
-- Categorías de niveles: Tablero (sin conocimientos previos) y Direccionamiento (prefijos, máscaras, pertenencia de una dirección a una red, VLSM).
+- Categorías de niveles: Inicial (sin conocimientos previos) y Direccionamiento (prefijos, máscaras, pertenencia de una dirección a una red, VLSM).
 - Planes de direcciones (`addressing.plan`): redes que se distinguen por el primer octeto, subredes de octeto completo, subredes con la misma máscara dentro de un octeto, y VLSM. Las redes nunca se solapan. Los equipos y los routers tienen dirección (no se muestra en el tablero).
 - Formas de nombrar con coste de lectura: nombre o prefijo (0); la red con más o menos direcciones y «una red /26» (1); número de direcciones y máscara (2); la red de una dirección, el equipo de una dirección y el router de dos interfaces (de 1 a 3 según el plan y si la dirección está cerca del límite con otra red).
 - Pista nueva `network.prefix_length`: «estaba en una red /26» (o de 64 direcciones, o con máscara 255.255.255.192), cuando varias redes comparten esa longitud.

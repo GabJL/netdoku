@@ -563,7 +563,7 @@ La **dificultad global** es la mayor de las dos, más un punto si ambas son 3 o 
 
 Los niveles se organizan en **categoría → dificultad → nivel**:
 
-1. **Categoría:** el conocimiento que exige el nivel, es decir, el bloque temático más alto entre los de sus pistas y formas de nombrar (`requirements.topic`). Son acumulativas: un nivel de una categoría puede usar todo lo de las anteriores. Por ejemplo: Tablero (`T3.dispositivos`, sin conocimientos previos), Direccionamiento (`T3.ip` a `T3.vlsm`), Encaminamiento (`T3.encaminamiento`), Transporte y aplicación (`T4` a `T6`).
+1. **Categoría:** el conocimiento que exige el nivel, es decir, el bloque temático más alto entre los de sus pistas y formas de nombrar (`requirements.topic`). Son acumulativas: un nivel de una categoría puede usar todo lo de las anteriores. Por ejemplo: Inicial (`T3.dispositivos`, sin conocimientos previos), Direccionamiento (`T3.ip` a `T3.vlsm`), Encaminamiento (`T3.encaminamiento`), Transporte y aplicación (`T4` a `T6`).
 2. **Dificultad:** la global, de 1 a 5, a partir de la lógica y la de lectura.
 3. **Nivel:** varios por cada combinación, elegidos de un lote grande generado.
 

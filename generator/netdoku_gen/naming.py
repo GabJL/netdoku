@@ -12,7 +12,7 @@ from dataclasses import replace
 TOPICS = ["T3.dispositivos", "T3.vlan", "T3.ip", "T3.fragmentacion", "T3.subredes", "T3.vlsm",
           "T3.encaminamiento", "T3.nat", "T4.udp", "T4.tcp", "T5.dns", "T5.web",
           "T5.ficheros_correo", "T6"]
-CATEGORIES = {"tablero": "Tablero", "direccionamiento": "Direccionamiento"}
+CATEGORIES = {"inicial": "Inicial", "direccionamiento": "Direccionamiento"}
 READING_TIERS = {1: "Muy fácil", 2: "Fácil", 3: "Media", 4: "Difícil", 5: "Muy difícil"}
 # Formas que hablan del tamaño de las redes: exigen la aclaración sobre las casillas.
 SIZE_FORMS = {"size_rank", "prefix_length", "address_count", "mask"}
@@ -31,7 +31,7 @@ def max_topic(topics):
 
 
 def category_of(topic):
-    return "tablero" if topic_index(topic) < topic_index("T3.ip") else "direccionamiento"
+    return "inicial" if topic_index(topic) < topic_index("T3.ip") else "direccionamiento"
 
 
 def reading_level(costs):

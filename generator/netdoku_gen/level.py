@@ -22,7 +22,7 @@ DEFAULTS = {
     "maxSubset": 4,
     "selectionRuns": 12,
     "enabledRuleSubtypes": None,   # None = todos
-    "category": "tablero",         # tablero | direccionamiento
+    "category": "inicial",         # inicial | direccionamiento
     "reading": None,               # dificultad de lectura buscada (1-5); None = al azar
     "plan": "auto",                # addressing.plan
     "categoryFormRatio": "auto",   # clues.naming.categoryFormRatio
@@ -74,7 +74,7 @@ def build(seed, config=None, max_attempts=200):
 def _choose_plan(rng, cfg, reading):
     if cfg["plan"] != "auto":
         return cfg["plan"]
-    if cfg["category"] == "tablero":
+    if cfg["category"] == "inicial":
         weights = {p: 1 for p in PLANS}
     else:
         weights = dict(AUTO_PLANS[reading])
@@ -87,7 +87,7 @@ def _choose_plan(rng, cfg, reading):
 def _attempt(rng, seed, cfg, attempt):
     category = cfg["category"]
     target = cfg["target"]
-    if category == "tablero":
+    if category == "inicial":
         reading = 1
     elif target:
         options = READING_FOR_TARGET[target]
@@ -100,8 +100,8 @@ def _attempt(rng, seed, cfg, attempt):
     nodes = place_nodes(rng, board)
     packets, victim_net = place_packets(rng, board, nodes, cfg["packets"])
     ctx = Context(board, nodes, packets, addressing)
-    # network.prefix_length cuesta como mínimo 1: no cabe en Tablero ni en lectura 1.
-    disabled = {"network.prefix_length"} if category == "tablero" or reading == 1 else set()
+    # network.prefix_length cuesta como mínimo 1: no cabe en Inicial ni en lectura 1.
+    disabled = {"network.prefix_length"} if category == "inicial" or reading == 1 else set()
     pool = generate_instances(ctx, cfg["enabledRuleSubtypes"], disabled)
     victim = next(p for p in packets if p.role == "victim")
     attacker = next(p for p in packets if p.role == "attacker")
@@ -145,7 +145,7 @@ def _attempt(rng, seed, cfg, attempt):
 
     # Formas de nombrar: después de la lógica, porque no cambian D ni A.
     namer = Namer(rng, board, nodes, addressing, cfg["maxTopic"])
-    if category == "tablero":
+    if category == "inicial":
         default = [(0, {n: namer.slot_options(*v)[0] for n, v in c.slots.items()}) for c in clues]
         clues = namer.apply(clues, default, {})
     else:
