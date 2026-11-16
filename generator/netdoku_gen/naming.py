@@ -151,28 +151,37 @@ class Namer:
 
     # ---- elección para todo el nivel ----
 
-    def clue_options(self, clue):
-        """Combinaciones de formas de una pista: lista de (coste, opciones por hueco)."""
+    def clue_options(self, clue, needed=True):
+        """Combinaciones de formas de una pista: lista de (coste, opciones por hueco).
+
+        Si su cálculo no es imprescindible (`needed` falso), solo formas de coste 0.
+        """
         if not clue.slots:
             return [(0, {})]
         names = list(clue.slots)
         per_slot = [self.slot_options(*clue.slots[n]) for n in names]
+        if not needed:
+            per_slot = [[o for o in opts if o.cost == 0] for opts in per_slot]
         combos = []
         for choice in itertools.product(*per_slot):
             combos.append((max(o.cost for o in choice), dict(zip(names, choice))))
         return combos
 
-    def assign(self, clues, reading, ratio, tries=30):
-        """Elige formas para obtener la dificultad de interpretación `reading` (o None si no se puede)."""
+    def assign(self, clues, reading, ratio, needed=None, tries=30):
+        """Elige formas para obtener la dificultad de interpretación `reading` (o None si no se puede).
+
+        `needed`: ids de las pistas cuyo cálculo es imprescindible (None = todas);
+        las demás solo pueden usar formas de coste 0.
+        """
         for _ in range(tries):
-            result = self._try_assign(clues, reading, ratio)
+            result = self._try_assign(clues, reading, ratio, needed)
             if result is not None:
                 return result
         return None
 
-    def _try_assign(self, clues, reading, ratio):
+    def _try_assign(self, clues, reading, ratio, needed):
         rng = self.rng
-        options = [self.clue_options(c) for c in clues]
+        options = [self.clue_options(c, needed is None or c.id in needed) for c in clues]
         chosen = [None] * len(clues)
 
         def pick(i, predicate):

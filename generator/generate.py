@@ -8,6 +8,12 @@ Cada lote se guarda en levels/<categoría>/<dificultad>/ y levels/index.json
 lista los ficheros de cada uno. Los lotes existentes se completan hasta el
 tamaño pedido (no se borran niveles); --replace los vacía antes.
 
+Para quitar niveles de los lotes:
+    python generator/generate.py --retire direccionamiento-2020005,direccionamiento-2020011
+Los nombres retirados (y los que borra --replace) se apuntan en
+levels/retired.txt y no se vuelven a usar: si un jugador tenía uno a medias,
+el juego le da otro en lugar de aplicar su progreso a un nivel distinto.
+
 Niveles sueltos, para probar (se guardan en levels/extra/, que el motor no lee;
 se pueden arrastrar a la página del juego):
     python generator/generate.py --seed 7 -n 5 --print
@@ -32,6 +38,7 @@ from netdoku_gen.naming import CATEGORIES  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 LEVELS_DIR = ROOT / "levels"
 EXTRA_DIR = LEVELS_DIR / "extra"
+RETIRED = LEVELS_DIR / "retired.txt"
 DIFFICULTIES = range(1, 6)
 # Primera semilla de cada lote: categoría y dificultad no comparten semillas.
 SEED_BASE = {"inicial": 1_000_000, "direccionamiento": 2_000_000}
@@ -81,6 +88,35 @@ def update_index():
                                            encoding="utf-8")
 
 
+def read_retired():
+    if not RETIRED.exists():
+        return set()
+    return {line.strip() for line in RETIRED.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.startswith("#")}
+
+
+def record_retired(names):
+    """Apunta nombres de nivel que no deben reutilizarse."""
+    names = read_retired() | set(names)
+    header = "# Niveles retirados de los lotes: generate.py no vuelve a usar estos nombres.\n"
+    RETIRED.write_text(header + "".join(f"{n}\n" for n in sorted(names)), encoding="utf-8", newline="\n")
+
+
+def retire(names):
+    """Borra niveles de los lotes y apunta sus nombres como retirados."""
+    removed = []
+    for name in names:
+        found = list(LEVELS_DIR.glob(f"*/*/{name}.json"))
+        if not found:
+            print(f"{name}: no está en ningún lote")
+        for f in found:
+            f.unlink()
+            removed.append(name)
+            print(f"retirado {f.relative_to(ROOT).as_posix()}")
+    record_retired(removed)
+    update_index()
+
+
 def _pool_job(args):
     seed, category, target = args
     config = {**POOL_CONFIG, "category": category, "target": target,
@@ -95,15 +131,19 @@ def fill_pool(category, target, size, workers, replace):
     folder = LEVELS_DIR / category / str(target)
     folder.mkdir(parents=True, exist_ok=True)
     if replace:
+        removed = [f.stem for f in folder.glob("*.json")]
         for f in folder.glob("*.json"):
             f.unlink()
+        record_retired(removed)
     have = {f.stem for f in folder.glob("*.json")}
+    retired = read_retired()
     missing = size - len(have)
     if missing <= 0:
         print(f"{category} {target}: ya tiene {len(have)} niveles")
         return
     base = SEED_BASE[category] + 10_000 * target
-    seeds = (s for s in range(base, base + 10_000) if f"{category}-{s}" not in have)
+    seeds = (s for s in range(base, base + 10_000)
+             if f"{category}-{s}" not in have and f"{category}-{s}" not in retired)
     jobs = ((s, category, target) for s in seeds)
     made = 0
     with multiprocessing.Pool(workers) as pool:
@@ -139,6 +179,8 @@ def main():
     parser.add_argument("--workers", type=int, default=max(1, (multiprocessing.cpu_count() or 2) - 1))
     parser.add_argument("--replace", action="store_true", help="vacía los lotes antes de rellenarlos")
     parser.add_argument("--index", action="store_true", help="solo regenera levels/index.json")
+    parser.add_argument("--retire", metavar="NOMBRES",
+                        help="quita de los lotes estos niveles (separados por comas) y no reutiliza sus nombres")
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("-n", "--count", type=int, default=1)
     parser.add_argument("--seeds", help="lista de semillas separadas por comas (en lugar de --seed y -n)")
@@ -157,6 +199,9 @@ def main():
 
     if args.index:
         update_index()
+        return
+    if args.retire:
+        retire([x.strip() for x in args.retire.split(",") if x.strip()])
         return
     if args.pool:
         categories = [args.category] if args.category else list(CATEGORIES)

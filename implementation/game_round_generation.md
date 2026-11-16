@@ -547,7 +547,7 @@ La dificultad tendrá así dos ejes independientes:
 - **Lógica** (`difficulty.logic`): técnicas de deducción y cuellos de botella. Depende solo de los dominios `D` y las anulaciones `A`.
 - **Interpretación** (`difficulty.reading`): esfuerzo de pasar del texto de las pistas a casillas, a partir del coste de las formas de nombrar usadas.
 
-El coste de interpretación de una pista es el mayor de los costes de las formas que usa. La dificultad de interpretación del nivel, de 1 a 5, es el nivel más alto cuya condición se cumple (escala provisional, que habrá que calibrar jugando):
+El coste de interpretación de una pista es el mayor de los costes de las formas que usa. Solo cuentan cálculos imprescindibles: una forma con coste no se usa si el nivel se resuelve igual sin hacer su cálculo (véase [formas de nombrar](netdoku_catalogo_reglas.md#formas-de-nombrar)). La dificultad de interpretación del nivel, de 1 a 5, es el nivel más alto cuya condición se cumple (escala provisional, que habrá que calibrar jugando):
 
 | Interpretación | Condición |
 |---|---|

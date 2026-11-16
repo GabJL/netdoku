@@ -1,6 +1,7 @@
 """Generación completa de un nivel y exportación a JSON (formato de levels/*.yaml)."""
 
 import random
+from dataclasses import replace
 
 from .addressing import PLANS, Addressing
 from .board import generate_board
@@ -8,7 +9,7 @@ from .content import place_nodes, place_packets
 from .difficulty import evaluate
 from .naming import (CATEGORIES, READING_TIERS, SIZE_FORMS, SIZE_NOTE, Namer, category_of, global_level,
                      max_topic, topic_index)
-from .rules import KNOWLEDGE, Context, generate_instances
+from .rules import KNOWLEDGE, Context, generate_instances, uncalculated
 from .selection import Selector
 from .solver import Rules, count_solutions, initial_domains, propagate
 
@@ -151,10 +152,13 @@ def _attempt(rng, seed, cfg, attempt):
     else:
         ratio = cfg["categoryFormRatio"]
         ratio = rng.uniform(0.3, 0.7) if ratio == "auto" else float(ratio)
-        assigned = namer.assign(clues, reading, ratio)
+        needed = needed_calculations(ctx, clues, rules, ids, victim.id, report["logic"])
+        assigned = namer.assign(clues, reading, ratio, needed)
         if assigned is None:
             raise RuntimeError(f"No se pueden nombrar las pistas con dificultad de interpretación {reading}")
         clues = namer.apply(clues, *assigned)
+        if any(c.reading_cost and c.id not in needed for c in clues):
+            raise RuntimeError("Una pista con coste de interpretación se resuelve sin hacer su cálculo")
     namer.assign_remaining(nodes, board.routers)
     topic = max_topic([c.topic for c in clues])
     if category_of(topic) != category:
@@ -164,6 +168,31 @@ def _attempt(rng, seed, cfg, attempt):
     report["global"] = global_level(report["logic"], reading)
     return to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victim_net, max_subset, report,
                    addressing, category, topic)
+
+
+def needed_calculations(ctx, clues, rules, ids, victim, logic):
+    """Ids de las pistas cuyo cálculo es imprescindible.
+
+    Se sustituye cada pista por lo que dice sin calcular (rules.uncalculated):
+    si el nivel sigue resolviéndose con la misma lógica o una más sencilla, el
+    cálculo es esquivable y la pista solo puede usar formas de coste 0.
+    """
+    needed = set()
+    for i, clue in enumerate(clues):
+        if not clue.slots:
+            continue
+        domain, excluded = uncalculated(ctx, clue)
+        trial = clues[:i] + [replace(clue, domain=domain, excluded=excluded)] + clues[i + 1:]
+        solved, _ = propagate(initial_domains(ctx.free_cells, ids, trial), rules, exclude_from_subsets={victim})
+        if solved is None or any(len(solved[p]) != 1 for p in ids):
+            needed.add(clue.id)
+            continue
+        try:
+            if evaluate(ctx.free_cells, ids, trial, rules, victim)["logic"] > logic:
+                needed.add(clue.id)
+        except RuntimeError:
+            needed.add(clue.id)
+    return needed
 
 
 def _spatial_score(clues):

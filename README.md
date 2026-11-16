@@ -29,11 +29,12 @@ Requiere Python 3.10 o superior, sin dependencias externas.
 ```
 python generator/generate.py --pool 50                       # lotes del juego: 50 niveles por categoría y dificultad
 python generator/generate.py --pool 50 --difficulties 5      # solo la dificultad 5
+python generator/generate.py --retire direccionamiento-2020005   # quita un nivel de los lotes
 python generator/generate.py --seed 7 --print                # nivel suelto en levels/extra/, con solución y pistas
 python generator/generate.py --stats -n 100                  # reparto de dificultad, sin guardar niveles
 ```
 
-Los lotes se guardan en `levels/<categoría>/<dificultad>/` como JSON, junto con `levels/index.json`, que es la lista que lee el juego.
+Los lotes se guardan en `levels/<categoría>/<dificultad>/` como JSON, junto con `levels/index.json`, que es la lista que lee el juego. Los niveles retirados se apuntan en `levels/retired.txt` y sus nombres no se reutilizan.
 
 ## Alcance actual
 

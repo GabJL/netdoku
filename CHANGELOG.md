@@ -1,5 +1,10 @@
 # Versiones de Netdoku
 
+## Sin publicar
+
+- Las pistas solo exigen cálculos imprescindibles. Antes, al nombrar un equipo por su dirección o un router por sus interfaces, a veces el resto de pistas ya dejaba claro a cuál se refería y el cálculo se podía saltar: el nivel era más fácil de lo que indicaba su dificultad. El generador comprueba ahora cada pista sustituyéndola por lo que dice sin calcular («junto a algún servidor DNS») y, si el nivel sigue saliendo igual, la nombra sin dirección. Se han sustituido los 58 niveles de Direccionamiento que tenían algún cálculo esquivable (10 de dificultad 2, 16 de 3, 14 de 4 y 18 de 5); en 35 de ellos la dificultad real era menor que la indicada.
+- `generate.py --retire` quita niveles de los lotes. Los nombres retirados se apuntan en `levels/retired.txt` y no se reutilizan, para que el progreso guardado de un jugador nunca se aplique a un nivel distinto.
+
 ## 0.3.1 (16 de noviembre de 2026)
 
 Mejoras de textos y de presentación, sin cambios en los niveles ni en el generador.

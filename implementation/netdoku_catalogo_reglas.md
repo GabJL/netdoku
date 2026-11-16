@@ -93,6 +93,8 @@ El coste depende del bloque temático solo en parte: leer un prefijo en la leyen
 
 El generador elige primero las pistas por su efecto lógico y después la forma de nombrar de cada una, según la dificultad de interpretación y la categoría (bloques temáticos) que se busquen. Así, con un mismo tablero y las mismas pistas, cambiando solo los textos, se obtienen niveles de categorías y dificultades distintas. Solo se puede usar una forma si identifica el elemento sin ambigüedad en el nivel (por ejemplo, «la red con menos direcciones» exige que no haya empate).
 
+Una forma con coste solo se usa si su **cálculo es imprescindible**. Para comprobarlo, el generador sustituye la pista por lo que dice sin calcular: de «junto al servidor web 10.0.3.7» queda «junto a algún servidor web»; de «junto al router con las interfaces …», «junto a algún router»; de una red o una longitud nombradas por dirección, máscara o tamaño, nada. Si con esa pista debilitada el nivel se sigue resolviendo con la misma dificultad lógica o una menor, el cálculo es esquivable (el jugador sabría a qué elemento se refiere por descarte) y la pista solo puede usar formas de coste 0. Si sin el cálculo el nivel no se resuelve, o exige una lógica más difícil, el cálculo cuenta. Así la dificultad de interpretación solo suma cálculos que el jugador tiene que hacer. El generador lo valida en cada nivel, como la solución única.
+
 **Redes:**
 
 | Forma | Ejemplo | Coste | Bloque mínimo | Conocimiento |

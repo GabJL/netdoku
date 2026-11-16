@@ -157,6 +157,28 @@ SUBTYPES = {
 }
 
 
+def uncalculated(ctx, clue):
+    """`D` y `A` de la pista para quien no hace el cálculo de una forma con coste.
+
+    Sin calcular, de «junto al servidor web 10.0.3.7» queda «junto a algún
+    servidor web»; de «junto al router con las interfaces …», «junto a algún
+    router»; de una red o una longitud nombradas por dirección, máscara o
+    tamaño, nada.
+    """
+    kinds = {kind for kind, _ in clue.slots.values()}
+    if kinds & {"network", "length"}:
+        return ctx.free_cells, frozenset()
+    if "node" in kinds:
+        node_id = next(ref for kind, ref in clue.slots.values() if kind == "node")
+        label = next(n.label for n in ctx.nodes if n.id == node_id)
+        candidates = [ctx.adj[n.id] for n in ctx.nodes if n.label == label]
+        excluded = frozenset.intersection(*candidates) if clue.excluded else frozenset()
+        return frozenset().union(*candidates), excluded
+    if "router" in kinds:
+        return frozenset(c for r in ctx.board.routers for c in r.between if c in ctx.free_cells), frozenset()
+    return clue.domain, clue.excluded
+
+
 def generate_instances(ctx, enabled=None, disabled=()):
     """Todas las pistas verdaderas de los subtipos activos, sin duplicados lógicos."""
     seen, result = set(), []
