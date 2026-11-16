@@ -9,16 +9,22 @@ pista, solo el trabajo de pasar del texto a las casillas: su coste de interpreta
 import itertools
 from dataclasses import replace
 
+from .content import and_word, count_text, network_counts, node_classes
+
 TOPICS = ["T3.dispositivos", "T3.vlan", "T3.ip", "T3.fragmentacion", "T3.subredes", "T3.vlsm",
           "T3.encaminamiento", "T3.nat", "T4.udp", "T4.tcp", "T5.dns", "T5.web",
           "T5.ficheros_correo", "T6"]
 CATEGORIES = {"inicial": "Inicial", "direccionamiento": "Direccionamiento"}
 READING_TIERS = {1: "Muy fácil", 2: "Fácil", 3: "Media", 4: "Difícil", 5: "Muy difícil"}
 # Formas que hablan del tamaño de las redes: exigen la aclaración sobre las casillas.
-SIZE_FORMS = {"size_rank", "prefix_length", "address_count", "mask"}
+SIZE_FORMS = {"size_rank", "prefix_length", "address_count", "usable_count", "mask"}
 # Peso al elegir entre formas posibles: las de tamaño solo existen en algunos
 # planes (longitudes distintas), así que se favorecen cuando se pueden usar.
-FORM_WEIGHTS = {"size_rank": 4.0, "prefix_length": 2.0, "address_count": 2.0, "mask": 2.0}
+# `contents` pesa menos para que el nombre siga siendo lo habitual.
+FORM_WEIGHTS = {"size_rank": 4.0, "prefix_length": 2.0, "address_count": 2.0, "usable_count": 3.0, "mask": 2.0,
+                "broadcast": 1.5, "first_host": 2.5, "last_host": 1.5, "contents": 0.4}
+# Las formas que cuentan direcciones solo se usan hasta 65 536 direcciones (/16).
+MIN_COUNT_LENGTH = 16
 SIZE_NOTE ="Las casillas no indican el tamaño de una red: su tamaño es su número de direcciones."
 
 
@@ -94,14 +100,41 @@ class Namer:
 
     def network_options(self, net_id):
         net = self.board.network(net_id)
+        prefix = self.addr.prefixes[net_id]
         opts = [Option("name", f"{net.name} ({net.prefix})", 0, "T3.dispositivos", False),
                 Option("prefix", net.prefix, 0, "T3.ip", True)]
+        opts += self._contents_options(net_id)
         rank = self.addr.size_rank(net_id)
         if rank:
             words = "con más direcciones" if rank == "most" else "con menos direcciones"
             opts.append(Option("size_rank", words, 1, "T3.subredes", True, value=rank))
+        # Por su longitud, si ninguna otra red la tiene.
+        length = prefix.prefixlen
+        if sum(1 for x in self.addr.prefixes.values() if x.prefixlen == length) == 1:
+            opts += [o for o in self.length_options(length) if o.form == "mask"
+                     or (o.form != "prefix_length" and length >= MIN_COUNT_LENGTH)]
+        # Identificador, difusión y direcciones asignables.
+        broadcast = prefix.broadcast_address
+        first, last = prefix.network_address + 1, broadcast - 1
+        opts += [Option("first_host", f"cuya primera dirección asignable es {first}", 1, "T3.subredes", True,
+                        value=str(first)),
+                 Option("broadcast", f"cuya dirección de difusión es {broadcast}", self.addr.cost(broadcast, net_id),
+                        self._ip_topic(), True, value=str(broadcast)),
+                 Option("last_host", f"cuya última dirección asignable es {last}", self.addr.cost(last, net_id),
+                        self._ip_topic(), True, value=str(last))]
         for a, cost in self._ip_variants(net_id):
             opts.append(Option("ip_member", f"de la dirección {a}", cost, self._ip_topic(), True, value=str(a)))
+        return opts
+
+    def _contents_options(self, net_id):
+        """La red descrita por el número de equipos de una clase, si ninguna otra red lo comparte."""
+        opts = []
+        for params in node_classes(self.all_nodes):
+            counts = network_counts(self.all_nodes, self.board.networks, params)
+            count = counts[net_id]
+            if count <= 3 and list(counts.values()).count(count) == 1:
+                opts.append(Option("contents", count_text(params, count), 0, "T3.dispositivos", False,
+                                   value={**params, "count": count}))
         return opts
 
     def node_options(self, node_id):
@@ -122,7 +155,7 @@ class Namer:
     def router_options(self, router_id):
         r = next(x for x in self.board.routers if x.id == router_id)
         a, b = (self.board.network(n) for n in r.networks)
-        opts = [Option("networks", f"que une {a.name} y {b.name}", 0, "T3.dispositivos", False),
+        opts = [Option("networks", f"que une {a.name} {and_word(b.name)} {b.name}", 0, "T3.dispositivos", False),
                 Option("networks_prefix", f"que une {a.prefix} y {b.prefix}", 0, "T3.ip", True)]
         variants = [self._ip_variants(n, ("router", router_id, n)) for n in r.networks]
         for va, vb in itertools.product(*variants):
@@ -135,9 +168,33 @@ class Namer:
     def length_options(self, length):
         mask = str(self._mask(length))
         count = 2 ** (32 - length)
-        return [Option("prefix_length", f"/{length}", 1, "T3.ip", True),
-                Option("address_count", f"de {count} direcciones", 2, "T3.subredes", True),
-                Option("mask", f"con máscara {mask}", 2, "T3.subredes", True)]
+        opts = [Option("prefix_length", f"/{length}", 1, "T3.ip", True),
+                Option("address_count", f"de {count} direcciones", 2, "T3.subredes", True)]
+        if length >= MIN_COUNT_LENGTH:
+            opts.append(Option("usable_count", f"con {count - 2} direcciones asignables", 2, "T3.subredes", True))
+        opts.append(Option("mask", f"con máscara {mask}", 2, "T3.subredes", True))
+        return opts
+
+    def line_options(self, axis, line):
+        """Una fila o columna (desde 1) por su número o por un equipo o un router que esté en ella."""
+        k = 0 if axis == "row" else 1
+        word = "fila" if axis == "row" else "columna"
+        opts = [Option("number", f"en la {word} {line}", 0, "T3.dispositivos", False)]
+        for n in self.all_nodes:
+            if n.cell[k] != line - 1:
+                continue
+            for o in self.node_options(n.id):
+                if o.cost == 0:   # «al servidor…» pasa a «el servidor…»
+                    opts.append(Option("aligned_node", f"en la misma {word} que el {o.text[3:]}", 0, o.topic,
+                                       o.category, value={"node": n.id, "form": o.form}))
+        for r in self.board.routers:
+            (a, b) = r.between
+            if a[k] == b[k] == line - 1:
+                for o in self.router_options(r.id):
+                    if o.cost == 0:
+                        opts.append(Option("aligned_router", f"en la misma {word} que el router {o.text}", 0, o.topic,
+                                           o.category, value={"router": r.id, "form": o.form}))
+        return opts
 
     @staticmethod
     def _mask(length):
@@ -146,8 +203,21 @@ class Namer:
 
     def slot_options(self, kind, value):
         maker = {"network": self.network_options, "node": self.node_options,
-                 "router": self.router_options, "length": self.length_options}[kind]
+                 "router": self.router_options, "length": self.length_options,
+                 "row": lambda v: self.line_options("row", v),
+                 "column": lambda v: self.line_options("column", v)}[kind]
         return [o for o in maker(value) if self._allowed(o)]
+
+    def plain(self, clues):
+        """Formas de la categoría Inicial: al azar entre las de coste 0 que no son de otra categoría."""
+        chosen = []
+        for clue in clues:
+            slots = {}
+            for name, (kind, value) in clue.slots.items():
+                opts = [o for o in self.slot_options(kind, value) if o.cost == 0 and not o.category]
+                slots[name] = self.rng.choices(opts, weights=[FORM_WEIGHTS.get(o.form, 1.0) for o in opts])[0]
+            chosen.append((0, slots))
+        return chosen
 
     # ---- elección para todo el nivel ----
 

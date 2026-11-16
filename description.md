@@ -134,6 +134,15 @@ Todas describen propiedades verdaderas de la solución. A continuación se muest
 - El paquete está junto al origen.
 - El paquete está junto al destino.
 
+### Negaciones, alternativas y recuentos
+
+- El paquete no está en la red X.
+- El paquete no está junto a ningún servidor.
+- El paquete está en la red X o en la red Y.
+- El paquete está en una red sin servidores.
+- El paquete está en una red con exactamente dos equipos de usuario.
+- El paquete está en la misma fila que el servidor DNS.
+
 ### Equipos
 
 - El paquete HTTP ha llegado a su destino.
@@ -156,6 +165,9 @@ El **tamaño de una red** es siempre su **número de direcciones**, 2^(32−n) p
 
 - Está en la red con más direcciones.
 - Está en la red con menos direcciones.
+- Está en la red cuya dirección de difusión es 192.168.1.127.
+- Está en la red cuya primera dirección asignable es 192.168.1.65.
+- Está en una red con 62 direcciones asignables.
 - Pertenece a una red /24.
 - Pertenece a una red /30.
 - El origen está en una red con más direcciones que el destino.

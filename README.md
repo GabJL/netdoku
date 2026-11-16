@@ -27,8 +27,8 @@ A la izquierda del tablero están la ayuda del nivel (cómo jugar, reglas, pista
 Requiere Python 3.10 o superior, sin dependencias externas.
 
 ```
-python generator/generate.py --pool 50                       # lotes del juego: 50 niveles por categoría y dificultad
-python generator/generate.py --pool 50 --difficulties 5      # solo la dificultad 5
+python generator/generate.py --pool 75                       # lotes del juego: 75 niveles por categoría y dificultad
+python generator/generate.py --pool 75 --difficulties 5      # solo la dificultad 5
 python generator/generate.py --retire direccionamiento-2020005   # quita un nivel de los lotes
 python generator/generate.py --seed 7 --print                # nivel suelto en levels/extra/, con solución y pistas
 python generator/generate.py --stats -n 100                  # reparto de dificultad, sin guardar niveles
@@ -40,5 +40,5 @@ Los lotes se guardan en `levels/<categoría>/<dificultad>/` como JSON, junto con
 
 - Tablero 6×6 con 4 redes, routers de grado 2 en las fronteras, clientes y servidores.
 - Categorías: Inicial (no requiere conocimiento de redes) y Direccionamiento (prefijos, máscaras, pertenencia de una dirección a una red, VLSM).
-- Pistas: `network.in_network`, `network.prefix_length`, `node.adjacent_to_node`, `node.unique_adjacent_to_node`, `router.adjacent_to_router`, `spatial.in_row` y `spatial.in_column` (véase `implementation/netdoku_catalogo_reglas.md`), con varias formas de nombrar redes, equipos y routers.
+- Pistas: `network.in_network`, `network.prefix_length`, `network.not_in_network`, `network.in_either_network`, `network.node_count`, `node.adjacent_to_node`, `node.unique_adjacent_to_node`, `node.not_adjacent_to_node`, `router.adjacent_to_router`, `spatial.in_row` y `spatial.in_column` (véase `implementation/netdoku_catalogo_reglas.md`), con varias formas de nombrar redes (por nombre, prefijo, equipos que contiene, tamaño, máscara, una dirección, su difusión o su primera o última dirección asignable), equipos, routers, filas y columnas.
 - Dificultad lógica y de interpretación (1 a 5) y dificultad global. Solución única comprobada por fuerza bruta.

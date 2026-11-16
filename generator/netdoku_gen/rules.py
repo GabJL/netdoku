@@ -14,6 +14,7 @@ paquetes la pone solo la regla «una casilla, un paquete».
 from dataclasses import dataclass, field
 
 from .board import side_neighbors
+from .content import and_word, class_label, class_members, count_text, network_counts, node_classes
 
 TOPIC = "T3.dispositivos"
 KNOWLEDGE = "basic"
@@ -55,6 +56,14 @@ class Context:
         self.adj = {n.id: frozenset(x for x in side_neighbors(n.cell, board.height, board.width)
                                     if x in self.free_cells and board.network_of(x) == n.network)
                     for n in nodes}
+        self.classes = node_classes(nodes)
+
+    def network_cells(self, *net_ids):
+        return frozenset(c for i in net_ids for c in self.board.network(i).cells if c in self.free_cells)
+
+    def class_adjacent(self, params):
+        """Casillas junto a algún nodo de la clase."""
+        return frozenset().union(*(self.adj[m.id] for m in class_members(self.nodes, params)))
 
     def node_reference(self, node):
         """Cómo nombrar un nodo concreto sin ambigüedad, o None si no se puede."""
@@ -72,6 +81,43 @@ def _in_network(ctx, p):
     yield Clue(p.id, "network.in_network", {"networkId": net.id},
                f"El paquete {p.id} estaba en la red {net.name} ({net.prefix}).", cells,
                template=f"El paquete {p.id} estaba en la red {{net}}.", slots={"net": ("network", net.id)})
+
+
+def _not_in_network(ctx, p):
+    own = ctx.board.network_of(p.cell)
+    for net in ctx.board.networks:
+        if net.id != own:
+            yield Clue(p.id, "network.not_in_network", {"networkId": net.id},
+                       f"El paquete {p.id} no estaba en la red {net.name} ({net.prefix}).",
+                       ctx.free_cells - ctx.network_cells(net.id),
+                       template=f"El paquete {p.id} no estaba en la red {{net}}.", slots={"net": ("network", net.id)})
+
+
+def _in_either_network(ctx, p):
+    own = ctx.board.network_of(p.cell)
+    for net in ctx.board.networks:
+        if net.id == own:
+            continue
+        a, b = sorted([own, net.id])   # la verdadera puede ser la primera o la segunda
+        na, nb = ctx.board.network(a), ctx.board.network(b)
+        yield Clue(p.id, "network.in_either_network", {"networkIds": [a, b]},
+                   f"El paquete {p.id} estaba en la red {na.name} ({na.prefix}) o en la red {nb.name} ({nb.prefix}).",
+                   ctx.network_cells(a, b),
+                   template=f"El paquete {p.id} estaba en la red {{net1}} o en la red {{net2}}.",
+                   slots={"net1": ("network", a), "net2": ("network", b)})
+
+
+def _node_count(ctx, p):
+    own = ctx.board.network_of(p.cell)
+    for params in ctx.classes:
+        counts = network_counts(ctx.nodes, ctx.board.networks, params)
+        count = counts[own]
+        nets = [n for n, k in counts.items() if k == count]
+        # Con una sola red es la forma `contents` de esa red; con todas, no dice nada.
+        if count > 3 or len(nets) < 2 or len(nets) == len(counts):
+            continue
+        yield Clue(p.id, "network.node_count", {**params, "count": count},
+                   f"El paquete {p.id} estaba en una red {count_text(params, count)}.", ctx.network_cells(*nets))
 
 
 def _prefix_length(ctx, p):
@@ -107,6 +153,22 @@ def _adjacent_to_node(ctx, p):
                        f"El paquete {p.id} estaba junto a {words}.", domain)
 
 
+def _not_adjacent_to_node(ctx, p):
+    for n in ctx.nodes:
+        if p.cell in ctx.adj[n.id] or not ctx.adj[n.id]:
+            continue
+        ref = ctx.node_reference(n)
+        if ref:
+            yield Clue(p.id, "node.not_adjacent_to_node", {"nodeId": n.id},
+                       f"El paquete {p.id} no estaba junto {ref}.", ctx.free_cells - ctx.adj[n.id],
+                       template=f"El paquete {p.id} no estaba junto {{node}}.", slots={"node": ("node", n.id)})
+    for params in ctx.classes:
+        near = ctx.class_adjacent(params)
+        if near and p.cell not in near:
+            yield Clue(p.id, "node.not_adjacent_to_node", dict(params),
+                       f"El paquete {p.id} no estaba junto a ningún {class_label(params)}.", ctx.free_cells - near)
+
+
 def _unique_adjacent_to_node(ctx, p):
     for n in ctx.nodes:
         if p.cell not in ctx.adj[n.id]:
@@ -127,7 +189,7 @@ def _adjacent_to_router(ctx, p):
         if p.cell in cells:
             a, b = (ctx.board.network(n).name for n in r.networks)
             yield Clue(p.id, "router.adjacent_to_router", {"routerId": r.id},
-                       f"El paquete {p.id} estaba junto al router que une {a} y {b}.", cells,
+                       f"El paquete {p.id} estaba junto al router que une {a} {and_word(b)} {b}.", cells,
                        template=f"El paquete {p.id} estaba junto al router {{router}}.",
                        slots={"router": ("router", r.id)})
 
@@ -136,21 +198,30 @@ def _in_row(ctx, p):
     r = p.cell[0]
     yield Clue(p.id, "spatial.in_row", {"row": r + 1},
                f"El paquete {p.id} estaba en la fila {r + 1}.",
-               frozenset(c for c in ctx.free_cells if c[0] == r))
+               frozenset(c for c in ctx.free_cells if c[0] == r),
+               template=f"El paquete {p.id} estaba {{row}}.", slots={"row": ("row", r + 1)})
 
 
 def _in_column(ctx, p):
     col = p.cell[1]
     yield Clue(p.id, "spatial.in_column", {"column": col + 1},
                f"El paquete {p.id} estaba en la columna {col + 1}.",
-               frozenset(c for c in ctx.free_cells if c[1] == col))
+               frozenset(c for c in ctx.free_cells if c[1] == col),
+               template=f"El paquete {p.id} estaba {{column}}.", slots={"column": ("column", col + 1)})
 
 
+# Orden: si dos pistas dicen lo mismo (mismas D y A), se queda la primera. El
+# recuento va antes que la disyuntiva y la negativa porque, con pocas redes,
+# suele coincidir con alguna de ellas.
 SUBTYPES = {
     "network.in_network": _in_network,
     "network.prefix_length": _prefix_length,
+    "network.node_count": _node_count,
+    "network.not_in_network": _not_in_network,
+    "network.in_either_network": _in_either_network,
     "node.adjacent_to_node": _adjacent_to_node,
     "node.unique_adjacent_to_node": _unique_adjacent_to_node,
+    "node.not_adjacent_to_node": _not_adjacent_to_node,
     "router.adjacent_to_router": _adjacent_to_router,
     "spatial.in_row": _in_row,
     "spatial.in_column": _in_column,
@@ -161,9 +232,11 @@ def uncalculated(ctx, clue):
     """`D` y `A` de la pista para quien no hace el cálculo de una forma con coste.
 
     Sin calcular, de «junto al servidor web 10.0.3.7» queda «junto a algún
-    servidor web»; de «junto al router con las interfaces …», «junto a algún
-    router»; de una red o una longitud nombradas por dirección, máscara o
-    tamaño, nada.
+    servidor web»; de «no estaba junto al servidor web 10.0.3.7», que no está
+    junto a alguno de ellos (solo descarta las casillas junto a todos); de
+    «junto al router con las interfaces …», «junto a algún router»; de una red
+    o una longitud nombradas por dirección, máscara o tamaño, nada. Las filas y
+    columnas no tienen formas con coste.
     """
     kinds = {kind for kind, _ in clue.slots.values()}
     if kinds & {"network", "length"}:
@@ -172,6 +245,8 @@ def uncalculated(ctx, clue):
         node_id = next(ref for kind, ref in clue.slots.values() if kind == "node")
         label = next(n.label for n in ctx.nodes if n.id == node_id)
         candidates = [ctx.adj[n.id] for n in ctx.nodes if n.label == label]
+        if clue.type == "node.not_adjacent_to_node":
+            return ctx.free_cells - frozenset.intersection(*candidates), frozenset()
         excluded = frozenset.intersection(*candidates) if clue.excluded else frozenset()
         return frozenset().union(*candidates), excluded
     if "router" in kinds:

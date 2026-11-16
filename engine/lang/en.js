@@ -8,6 +8,17 @@
     client: "user computer", server: "server", web: "web server", dns: "DNS server",
     mail: "mail server", storage: "file server", multimedia: "multimedia server", dhcp: "DHCP server",
   };
+  const PLURAL = {
+    client: "user computers", server: "servers", web: "web servers", dns: "DNS servers",
+    mail: "mail servers", storage: "file servers", multimedia: "multimedia servers", dhcp: "DHCP servers",
+  };
+  const COUNT = { 2: "two", 3: "three" };
+  const kind = (v) => v.service || v.nodeType;
+  // "with no servers", "with a single web server", "with exactly two user computers".
+  const countText = (v) => (v.count === 0 ? `with no ${PLURAL[kind(v)]}`
+    : v.count === 1 ? `with a single ${NODES[kind(v)]}`
+      : `with exactly ${COUNT[v.count] || v.count} ${PLURAL[kind(v)]}`);
+  const lengthOf = (prefix) => Number(prefix.split("/")[1]);
 
   function clue(c, L) {
     const s = c.slots || {};
@@ -16,9 +27,17 @@
 
     const net = (slot) => {
       const n = L.network(slot.ref);
+      const size = 2 ** (32 - lengthOf(n.prefix));
       switch (slot.form) {
         case "prefix": return `network ${n.prefix}`;
+        case "contents": return `the network ${countText(slot.value)}`;
         case "size_rank": return slot.value === "most" ? "the network with the most addresses" : "the network with the fewest addresses";
+        case "address_count": return `the network with ${size} addresses`;
+        case "usable_count": return `the network with ${size - 2} usable addresses`;
+        case "mask": return `the network with mask ${L.mask(lengthOf(n.prefix))}`;
+        case "first_host": return `the network whose first usable address is ${slot.value}`;
+        case "last_host": return `the network whose last usable address is ${slot.value}`;
+        case "broadcast": return `the network whose broadcast address is ${slot.value}`;
         case "ip_member": return `the network of address ${slot.value}`;
         default: return `the ${n.name} network (${n.prefix})`;
       }
@@ -40,10 +59,18 @@
         .map((n) => (slot.form === "networks_prefix" ? n.prefix : n.name));
       return `joining ${a} and ${b}`;
     };
+    // A row or column: by its number or by a computer or router in it.
+    const line = (slot, axis) => {
+      const v = slot.value || {};
+      if (slot.form === "aligned_node") return `in the same ${axis} as ${node({ ref: v.node, form: v.form })}`;
+      if (slot.form === "aligned_router") return `in the same ${axis} as the router ${router({ ref: v.router, form: v.form })}`;
+      return `in ${axis} ${slot.ref}`;
+    };
     const length = (slot) => {
       const n = slot.ref;
       switch (slot.form) {
         case "address_count": return `a network with ${2 ** (32 - n)} addresses`;
+        case "usable_count": return `a network with ${2 ** (32 - n) - 2} usable addresses`;
         case "mask": return `a network with mask ${L.mask(n)}`;
         default: return `a /${n} network`;
       }
@@ -54,6 +81,15 @@
         return `Packet ${p} was in ${net(s.net || { ref: params.networkId })}.`;
       case "network.prefix_length":
         return `Packet ${p} was in ${length(s.len || { ref: params.prefixLength })}.`;
+      case "network.not_in_network":
+        return `Packet ${p} was not in ${net(s.net || { ref: params.networkId })}.`;
+      case "network.in_either_network":
+        return `Packet ${p} was in ${net(s.net1 || { ref: params.networkIds[0] })} or in ${net(s.net2 || { ref: params.networkIds[1] })}.`;
+      case "network.node_count":
+        return `Packet ${p} was in a network ${countText(params)}.`;
+      case "node.not_adjacent_to_node":
+        if (params.nodeId) return `Packet ${p} was not next to ${node(s.node || { ref: params.nodeId })}.`;
+        return `Packet ${p} was not next to any ${NODES[kind(params)]}.`;
       case "node.adjacent_to_node":
         if (params.nodeId) return `Packet ${p} was next to ${node(s.node || { ref: params.nodeId })}.`;
         return `Packet ${p} was next to a ${params.service ? NODES[params.service] : NODES[params.nodeType]}.`;
@@ -62,9 +98,9 @@
       case "router.adjacent_to_router":
         return `Packet ${p} was next to the router ${router(s.router || { ref: params.routerId })}.`;
       case "spatial.in_row":
-        return `Packet ${p} was in row ${params.row}.`;
+        return `Packet ${p} was ${line(s.row || { ref: params.row }, "row")}.`;
       case "spatial.in_column":
-        return `Packet ${p} was in column ${params.column}.`;
+        return `Packet ${p} was ${line(s.column || { ref: params.column }, "column")}.`;
       default:
         return c.text;
     }
@@ -79,6 +115,7 @@
       office: "Office", research: "Research",
     },
     nodes: NODES,
+    nodesPlural: PLURAL,
     nodeText: { client: "PC", web: "Web", dns: "DNS", mail: "Mail", storage: "Files", multimedia: "Media", dhcp: "DHCP" },
     clue,
 
@@ -277,6 +314,16 @@
             "Watch out for addresses near the border between two networks (like .127 and .128): they cause the most mistakes.",
           ],
         },
+        special_addresses: {
+          chip: "Broadcast and usable",
+          title: "Network identifier, broadcast and usable addresses",
+          text: [
+            "The first address of a network is its network identifier (the one in the prefix) and the last one is the broadcast address, used to send to every device in the network. Neither is assigned to a device.",
+            "The other 2^(32−n) − 2 are usable: they go to devices and to router interfaces. A /26 has 64 addresses, 62 of them usable.",
+            "The broadcast address is the identifier plus the number of addresses minus 1: in 192.168.1.64/26, 64 + 64 − 1 = 127, so the broadcast is 192.168.1.127. The first usable address is the one after the identifier (192.168.1.65) and the last one, the one before the broadcast (192.168.1.126).",
+            "So «the network whose first usable address is 192.168.1.65» is the one with identifier 192.168.1.64: look it up in the legend.",
+          ],
+        },
         in_network: {
           chip: "In a network",
           title: "«It was in network X»",
@@ -297,12 +344,42 @@
             "Addresses and masks appear in the clues without their network's colour: finding it is part of the clue.",
           ],
         },
+        negative: {
+          chip: "«Was not…»",
+          title: "«It was not in…» and «it was not next to…»",
+          text: [
+            "«It was not in network X»: the packet is in any free cell of the other networks.",
+            "«It was not next to the web server»: none of the cells next to that device. «It was not next to any server»: no cell next to a server of any kind.",
+            "These clues do not say where the packet is, but where it is not: they are usually useful near the end, when few cells are left.",
+          ],
+          caption: "«Not in the network on the right»: any of the circled cells.",
+        },
+        either: {
+          chip: "One network or another",
+          title: "«It was in network X or in network Y»",
+          text: [
+            "The packet is in one of the two networks, without saying which: any free cell of either one.",
+            "The networks are listed in a fixed order, so the true one can be the first or the second.",
+          ],
+          caption: "«In the top-left network or in the bottom-right one»: any of the circled cells.",
+        },
+        node_count: {
+          chip: "Counting devices",
+          title: "«It was in a network with no servers»",
+          text: [
+            "Count the devices in each network. «A network with no servers» is any network without one; «a network with a single web server», any network with exactly one. The number is exact.",
+            "If only one network fits the description, the clue names it that way: «the network with exactly two user computers».",
+            "«Servers» includes every server, whatever its service.",
+          ],
+          caption: "«In a network with no servers»: the two bottom networks only have user computers.",
+        },
         prefix_length: {
           chip: "Prefix length",
           title: "«It was in a /26 network»",
           text: [
             "The packet is in one of the networks with that prefix length, and there may be several. Check the legend.",
-            "The clue may also give the number of addresses («a network with 64 addresses») or the mask («a network with mask 255.255.255.192»): the three forms say the same.",
+            "The clue may also give the number of addresses («a network with 64 addresses»), the number of usable addresses («a network with 62 usable addresses») or the mask («a network with mask 255.255.255.192»): they all say the same.",
+            "If only one network has that length, the clue names that network: «the network with 64 addresses».",
           ],
           caption: "If the top-left and bottom-right networks are the only /26 ones, the packet is in one of the circled cells.",
         },
@@ -335,12 +412,13 @@
         },
         spatial: {
           chip: "Row or column",
-          title: "«It was in row N» or «in column N»",
+          title: "«It was in row N» or «in the same row as…»",
           text: [
             "Rows are counted from top to bottom and columns from left to right. The numbers are in the board margin.",
+            "«In the same row as the DNS server»: in that device's row, in any network. A router is in a row if it sits on the border between two cells of that row, and in a column if it sits on the border between two cells of that column.",
             "Together with the one-packet-per-row-and-column rule, one of these clues rules out that row or column for all the others.",
           ],
-          caption: "«In row 2»: any of the free cells in that row.",
+          caption: "«In the same row as the DNS server»: any of the free cells in row 2.",
         },
         icons: {
           chip: "Icons",
@@ -366,7 +444,7 @@
           "**Devices** (or **nodes**) can be **end devices** or **intermediate devices**. End devices, also called **hosts** (computers, phones, servers), send and receive the data; intermediate ones (switches, WiFi access points, routers) only forward it. A **switch** joins devices within a network but does not split it: all the computers in a lab connected to its switches are still a single network.",
           "Most services follow the **client/server** model: the **client** asks for something and the **server** provides it. For example, your browser (client) asks a **web server** for a page. In the game there are user devices (clients) and web, **DNS** (they translate names such as www.uma.es into IP addresses), mail, file and multimedia servers.",
         ],
-        rules: ["in_network", "adjacent_to_node", "unique_adjacent", "router", "spatial"],
+        rules: ["in_network", "negative", "either", "node_count", "adjacent_to_node", "unique_adjacent", "router", "spatial"],
       },
       direccionamiento: {
         name: "Addressing",
@@ -375,12 +453,13 @@
           "Every device has an **IP address**, which is like its “name” on the network: it identifies the device, and packets carry the address of their source and that of their destination. In IPv4 it is 32 bits written as four numbers from 0 to 255 separated by dots, for example **192.168.1.37**; each number is an **octet** (8 bits). Strictly speaking, the address belongs to each **interface** (each connection to a network): that is why a router has one address in each network it joins.",
           "An address has two parts: the **network** (the first bits, the same for every device in that network) and the **host** (the rest). The **prefix** /n says how many bits belong to the network: in 192.168.1.0/24, the first 24 bits (192.168.1) are the network and the last 8, the host.",
           "The **mask** says the same as the prefix, with n ones followed by zeros. /24 is **255.255.255.0**; /26 is **255.255.255.192**, because the last octet is 11000000 in binary, which is 192.",
-          "A /n network has **2^(32−n) addresses**: a /24 has 256 and a /26, 64. The longer the prefix, the fewer addresses the network has. The first one is the **network identifier** (in 192.168.1.0/24, 192.168.1.0) and the last one is the **broadcast** address (192.168.1.255), used to send to every device in the network; the rest are assigned to devices and router interfaces. The size of a network is its number of addresses, not its cells on the board.",
+          "A /n network has **2^(32−n) addresses**: a /24 has 256 and a /26, 64. The longer the prefix, the fewer addresses the network has. The first one is the **network identifier** (in 192.168.1.0/24, 192.168.1.0) and the last one is the **broadcast** address (192.168.1.255), used to send to every device in the network. The other 2^(32−n) − 2 are **usable**: they are assigned to devices and router interfaces (a /24 has 254). The size of a network is its number of addresses, not its cells on the board.",
+          "To find the broadcast address, add the number of addresses minus 1 to the identifier. In 192.168.1.64/26 (64 addresses), 64 + 64 − 1 = 127: the broadcast is **192.168.1.127**, the first usable address is 192.168.1.65 and the last one, 192.168.1.126.",
           "An address belongs to a network if applying the mask to it (**IP AND mask**) gives that network's identifier. For example, for 192.168.1.130 with a /26 mask: 130 AND 192 = 128 (10000010 AND 11000000 = 10000000), so it belongs to **192.168.1.128/26**.",
           "An address block is split into **subnets**. Each subnet has a number of addresses that is a power of two (4, 8, 16, 32, 64, 128…) and starts at a multiple of that number. For example, a /24 can be split into four /26 subnets of 64 addresses, starting at .0, .64, .128 and .192 (multiples of 64). **Tip**: to find which /26 192.168.1.130 belongs to, look for the nearest multiple of 64 below 130, which is 128; the subnet is 192.168.1.128/26 (from .128 to .191). With prefixes shorter than /24, do the same in the octet where the prefix ends: for example, 10.0.37.5 in a /20 (blocks of 16 in the third octet) belongs to 10.0.32.0/20.",
           "With **VLSM** (variable-length subnet masks), the subnets of a block can have different sizes, depending on what each one needs: for example, a /25 (128 addresses) for a lab and a /27 (32) for an office. In a level, networks never overlap, so each address belongs to just one.",
         ],
-        rules: ["named_by_address", "network_size", "ip_network", "prefix_length"],
+        rules: ["named_by_address", "network_size", "ip_network", "special_addresses", "prefix_length"],
       },
     },
 

@@ -5,7 +5,7 @@ from dataclasses import replace
 
 from .addressing import PLANS, Addressing
 from .board import generate_board
-from .content import place_nodes, place_packets
+from .content import and_word, place_nodes, place_packets
 from .difficulty import evaluate
 from .naming import (CATEGORIES, READING_TIERS, SIZE_FORMS, SIZE_NOTE, Namer, category_of, global_level,
                      max_topic, topic_index)
@@ -147,8 +147,7 @@ def _attempt(rng, seed, cfg, attempt):
     # Formas de nombrar: después de la lógica, porque no cambian D ni A.
     namer = Namer(rng, board, nodes, addressing, cfg["maxTopic"])
     if category == "inicial":
-        default = [(0, {n: namer.slot_options(*v)[0] for n, v in c.slots.items()}) for c in clues]
-        clues = namer.apply(clues, default, {})
+        clues = namer.apply(clues, namer.plain(clues), {})
     else:
         ratio = cfg["categoryFormRatio"]
         ratio = rng.uniform(0.3, 0.7) if ratio == "auto" else float(ratio)
@@ -182,6 +181,8 @@ def needed_calculations(ctx, clues, rules, ids, victim, logic):
         if not clue.slots:
             continue
         domain, excluded = uncalculated(ctx, clue)
+        if (domain, excluded) == (clue.domain, clue.excluded):
+            continue   # sin formas con coste (filas y columnas)
         trial = clues[:i] + [replace(clue, domain=domain, excluded=excluded)] + clues[i + 1:]
         solved, _ = propagate(initial_domains(ctx.free_cells, ids, trial), rules, exclude_from_subsets={victim})
         if solved is None or any(len(solved[p]) != 1 for p in ids):
@@ -243,7 +244,9 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
         ],
         "routers": [
             {"id": r.id,
-             "name": f"Router de {board.network(r.networks[0]).name} y {board.network(r.networks[1]).name}",
+             "name": "Router de {} {} {}".format(board.network(r.networks[0]).name,
+                                                 and_word(board.network(r.networks[1]).name),
+                                                 board.network(r.networks[1]).name),
              "connectedNetworks": list(r.networks), "degree": 2,
              "interfaces": {net: str(addressing.assigned[("router", r.id, net)]) for net in r.networks},
              "position": {"kind": "edge", "between": [one_based(c) for c in r.between]},
@@ -297,7 +300,7 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
             "attackerPacketId": attacker.id,
         },
         "generation": {
-            "generator": "netdoku_gen v0.3",
+            "generator": "netdoku_gen v0.3.5",
             "attempt": attempt,
             "clueCount": len(clues),
             "cluesByType": by_type,

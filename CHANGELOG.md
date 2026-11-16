@@ -1,5 +1,19 @@
 # Versiones de Netdoku
 
+## 0.3.5 (16 de noviembre de 2026)
+
+Pistas nuevas para Inicial y Direccionamiento. Los lotes pasan de 50 a 75 niveles por dificultad: los 25 nuevos de cada una usan las pistas nuevas, y el juego los saca antes a quien ya haya jugado los anteriores, porque elige entre los niveles que aún no ha visto.
+
+- Pistas negativas: «El paquete A no estaba en la red Aulas», «no estaba junto al servidor web», «no estaba junto a ningún servidor». Obligan a razonar descartando.
+- Pistas disyuntivas: «estaba en la red Aulas o en la red Servicios».
+- Recuento de equipos: «estaba en una red sin servidores», «… con un solo servidor web», «… con exactamente dos equipos de usuario». Si solo una red cumple la descripción, sirve para nombrarla: «la red sin servidores».
+- Filas y columnas nombradas por lo que hay en ellas: «en la misma fila que el servidor DNS», «en la misma columna que el router que une Aulas y Servicios».
+- Direccionamiento: redes nombradas por su dirección de difusión, por su primera o su última dirección asignable, por su número de direcciones asignables («62 direcciones asignables») y, si es la única con esa longitud de prefijo, por su número de direcciones o su máscara. Costes de interpretación: la primera asignable, 1 (restando 1 sale el identificador, que está en la leyenda); las asignables, el tamaño y la máscara, 2; la difusión y la última asignable, como la red de una dirección (de 1 a 3 según el plan, con el punto de más por estar en el límite entre redes).
+- Fichas de ayuda nuevas («No estaba…», «Una red u otra», «Recuento de equipos», «Difusión y asignables») y teoría de Direccionamiento ampliada con las direcciones asignables y el cálculo de la difusión.
+- En Inicial, cada pista elige al azar cómo nombrar sus redes y filas entre las formas sin cálculo, para que los textos varíen.
+- «y» pasa a «e» ante nombres que empiezan por «I» también en el texto que guarda el generador, como ya hacía el juego.
+- Generador: en cada elección de pista se saltan las candidatas que no quitan ninguna casilla a su paquete y solo se propagan 40 al azar, para que los subtipos nuevos, con muchas instancias, no lo hagan más lento.
+
 ## 0.3.2 (16 de noviembre de 2026)
 
 Sugerencias durante la partida y niveles de Direccionamiento cuya dificultad de interpretación solo cuenta cálculos imprescindibles.

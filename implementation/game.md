@@ -169,7 +169,7 @@ Una sola página con pantalla inicial y cinco apartados:
 
 Progresión:
 
-- Cada categoría corresponde a un bloque temático de la asignatura y muestra cinco niveles, uno por dificultad. Internamente cada dificultad tiene un lote de unos 50 niveles y, al jugarla, sale uno al azar sin repetir hasta haber visto casi todos. Reiniciar da otro nivel de la misma dificultad.
+- Cada categoría corresponde a un bloque temático de la asignatura y muestra cinco niveles, uno por dificultad. Internamente cada dificultad tiene un lote de unos 75 niveles y, al jugarla, sale uno al azar sin repetir hasta haber visto casi todos. Reiniciar da otro nivel de la misma dificultad.
 - Se guarda el mejor resultado de cada dificultad (tres estrellas menos una por fallo o sugerencia); nunca se pierde.
 - Para abrir una dificultad hay que haber resuelto la anterior. Todas las categorías están abiertas desde el principio.
 - En cada nivel, un botón abre la información de su categoría: un resumen corto de teoría y las reglas nuevas que introduce.

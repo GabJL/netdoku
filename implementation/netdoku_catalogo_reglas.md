@@ -100,9 +100,16 @@ Una forma con coste solo se usa si su **cálculo es imprescindible**. Para compr
 | Forma | Ejemplo | Coste | Bloque mínimo | Conocimiento |
 |---|---|---|---|---|
 | `name` | «la red Aulas» | 0 | `T3.dispositivos` | `basic` |
+| `contents` | «la red sin servidores», «la red con un solo equipo de usuario» (solo si ninguna otra red cumple la descripción) | 0 | `T3.dispositivos` | `basic` |
 | `prefix` | «la red 192.168.0.128/25» | 0 | `T3.ip` | `basic` |
 | `size_rank` | «la red con menos direcciones» | 1 | `T3.subredes` | `basic` |
+| `first_host` | «la red cuya primera dirección asignable es 192.168.0.129» | 1 | `T3.subredes` | `basic` |
+| `address_count` | «la red de 128 direcciones» (solo si es la única con esa longitud) | 2 | `T3.subredes` | `basic` |
+| `usable_count` | «la red con 126 direcciones asignables» (ídem) | 2 | `T3.subredes` | `basic` |
+| `mask` | «la red con máscara 255.255.255.128» (ídem) | 2 | `T3.subredes` | `basic` |
 | `ip_member` | «la red de la dirección 192.168.0.130» | C | `T3.subredes` (`T3.vlsm` con el plan `vlsm`) | `basic` |
+| `broadcast` | «la red cuya dirección de difusión es 192.168.0.255» | C | como `ip_member` | `basic` |
+| `last_host` | «la red cuya última dirección asignable es 192.168.0.254» | C | como `ip_member` | `basic` |
 | `router_side` | «la red que une el router de Aulas con …» (pendiente de definir) | 2 | `T3.dispositivos` | `basic` |
 
 **Longitud de prefijo** (solo en `network.prefix_length`):
@@ -111,7 +118,18 @@ Una forma con coste solo se usa si su **cálculo es imprescindible**. Para compr
 |---|---|---|---|---|
 | `prefix_length` | «una red /25» | 1 | `T3.ip` | `basic` |
 | `address_count` | «una red de 128 direcciones» | 2 | `T3.subredes` | `basic` |
+| `usable_count` | «una red con 126 direcciones asignables» | 2 | `T3.subredes` | `basic` |
 | `mask` | «una red con máscara 255.255.255.128» | 2 | `T3.subredes` | `basic` |
+
+**Filas y columnas** (solo en `spatial.in_row` y `spatial.in_column`):
+
+| Forma | Ejemplo | Coste | Bloque mínimo | Conocimiento |
+|---|---|---|---|---|
+| `number` | «en la fila 3» | 0 | `T3.dispositivos` | `basic` |
+| `aligned_node` | «en la misma fila que el servidor DNS» | 0 | el de la forma de nombrar del equipo (`label`, `label_network` o `label_prefix`) | `basic` |
+| `aligned_router` | «en la misma columna que el router que une Aulas y Servicios» | 0 | el de la forma de nombrar del router (`networks`) | `basic` |
+
+`aligned_node` y `aligned_router` nombran la fila (o la columna) por un elemento que está en ella. Un router de borde está en una sola fila si separa dos casillas de esa fila (borde vertical) y en una sola columna si separa dos casillas de esa columna (borde horizontal); solo se usa en ese caso. El equipo o el router se nombran con formas de coste 0, así que no añaden cálculo.
 
 **Equipos:**
 
@@ -145,6 +163,18 @@ C sube un punto, hasta 3, si la dirección está a `addressing.nearBoundaryDista
 
 Las redes de un nivel nunca se solapan: una dirección pertenece a una sola red. Los prefijos solapados y la coincidencia más larga (LPM) aparecen en las tablas de encaminamiento, con la categoría Encaminamiento.
 
+#### Identificador, difusión y direcciones asignables
+
+Una red `/n` tiene `2^(32−n)` direcciones. La primera es el **identificador de red** y la última, la **difusión**; las `2^(32−n) − 2` restantes son **asignables** (a equipos y a interfaces de routers). Cuatro formas de nombrar una red se apoyan en esto (se dice «asignable» y no «para equipos» porque los routers también las usan):
+
+- `first_host` cuesta 1: restando 1 a la primera dirección asignable sale el identificador, que se lee en la leyenda.
+- `broadcast` y `last_host` cuestan C, como `ip_member`: para saber qué red acaba en esa dirección hay que calcular dónde acaban las redes candidatas. Como la difusión y la última asignable están siempre en el límite de su red, se aplica el punto de más por estar cerca del límite cuando la red siguiente es del nivel y alguna de las dos máscaras no acaba en un octeto: salen 1 con `distinct` y `octet_subnets`, 3 con `vlsm` y casi siempre con `bit_subnets` (2 si es la última red del bloque).
+- `usable_count` cuesta 2, como `address_count`: sumar 2 no es un cálculo más difícil, sino una trampa de concepto.
+
+No se nombra la red por su «puerta de enlace»: en los niveles el router no tiene por qué llevar la primera dirección asignable, y una red puede tener varios routers. Estas formas no asignan ninguna dirección a un equipo, así que no dependen de `addressing.allowSpecialAddresses`.
+
+`address_count`, `usable_count` y `mask` sirven también para nombrar una red concreta cuando es la única del nivel con esa longitud de prefijo; si hay varias, la pista es `network.prefix_length`.
+
 #### Equipos nombrados por su dirección
 
 Como el jugador no ve las direcciones de los equipos, «junto al servidor web 192.168.0.130» solo le permite calcular la red: el dominio es el de la clase de equipo dentro de esa red, `D = Libres(m) ∩ ⋃ Ady(n)` para los equipos `n` de esa clase en la red de la dirección. Si la red solo tiene un equipo de esa clase, equivale a nombrar ese equipo.
@@ -157,7 +187,7 @@ La dirección es la que el equipo nombrado tiene en la solución (el nivel guard
 
 En una categoría que no es la primera, una parte de las pistas usa formas de nombrar propias de esa categoría aunque su coste sea 0 (por ejemplo, `prefix` en lugar de `name` en Direccionamiento), para que el nivel trabaje sus conceptos. La proporción la fija `clues.naming.categoryFormRatio` y varía de un nivel a otro. Siempre hay al menos una, porque es la que hace que el nivel pertenezca a la categoría.
 
-La v0.2 solo usa `name` (con el prefijo entre paréntesis, como etiqueta) y `label_network`. La v0.3 añade las formas de redes, longitudes, equipos y routers de esta sección, salvo `router_side` y `service`.
+La v0.2 solo usa `name` (con el prefijo entre paréntesis, como etiqueta) y `label_network`. La v0.3 añade las formas de redes, longitudes, equipos y routers de esta sección, salvo `router_side` y `service`. La v0.3.5 añade `contents`, `first_host`, `broadcast`, `last_host`, `usable_count`, las formas de tamaño para redes concretas y las de filas y columnas. En la categoría Inicial, cada pista elige al azar entre las formas de coste 0 que no son de otra categoría (`name` o `contents`; `number`, `aligned_node` o `aligned_router`).
 
 ### Reglas de colocación y objetivo
 
@@ -173,12 +203,61 @@ Este catálogo recoge solo las reglas que ayudan a **colocar** paquetes. La info
 - **Parámetros:**
   - `networkId`: identificador de una red del nivel.
 - **Plantilla textual:** «El paquete {packet} estaba en la red {network}.», donde `{network}` es la red nombrada con una de sus formas.
-- **Formas de nombrar:** `name` (en la v0.2, con el prefijo entre paréntesis), `prefix`, `size_rank` (solo si la red es la única con más o con menos direcciones), `ip_member`.
+- **Formas de nombrar:** todas las de redes: `name` (en la v0.2, con el prefijo entre paréntesis), `contents`, `prefix`, `size_rank` (solo si la red es la única con más o con menos direcciones), `first_host`, `address_count`, `usable_count`, `mask`, `ip_member`, `broadcast` y `last_host`.
 - **Generación de instancias:** una por paquete: la red de su posición en la solución.
 - **Dominio:** `D = Libres(m) ∩ Casillas(networkId)`.
 - **Anulación común:** `A = ∅` (colocar `m` en `c` solo ocupa `c`; si `|D| = 1`, la colocación directa ya ocupa esa casilla).
-- **Compatibilidad:** las formas que no dan el nombre exigen que la leyenda muestre los prefijos de las redes. `size_rank` exige además la aclaración sobre el [tamaño de una red](#tamaño-de-una-red).
-- **Bloque mínimo:** `T3.dispositivos`, o el de la forma de nombrar (`T3.ip` para `prefix`; `T3.subredes` para `size_rank` e `ip_member`).
+- **Compatibilidad:** las formas que no dan el nombre exigen que la leyenda muestre los prefijos de las redes. Las que hablan del tamaño (`size_rank`, `address_count`, `usable_count`, `mask`) exigen además la aclaración sobre el [tamaño de una red](#tamaño-de-una-red).
+- **Bloque mínimo:** `T3.dispositivos`, o el de la forma de nombrar (`T3.ip` para `prefix`; `T3.subredes` para las demás formas con direcciones).
+- **Conocimiento:** `basic`.
+
+### `network.not_in_network`
+
+- **Descripción:** el paquete **no** está en una red concreta. Obliga a razonar descartando.
+- **Aridad:** unaria.
+- **Restringe:** posición.
+- **Parámetros:**
+  - `networkId`: identificador de una red del nivel en la que no está el paquete.
+- **Plantilla textual:** «El paquete {packet} no estaba en la red {network}.»
+- **Formas de nombrar:** las mismas que `network.in_network`.
+- **Generación de instancias:** para cada paquete, una por cada red que no es la suya.
+- **Dominio:** `D = Libres(m) \ Casillas(networkId)`.
+- **Anulación común:** `A = ∅`.
+- **Compatibilidad:** las de `network.in_network`. Sin hacer el cálculo de una forma con coste no queda nada, como en `network.in_network`.
+- **Bloque mínimo:** el de la forma de nombrar.
+- **Conocimiento:** `basic`.
+
+### `network.in_either_network`
+
+- **Descripción:** el paquete está en una de dos redes (disyunción).
+- **Aridad:** unaria.
+- **Restringe:** posición.
+- **Parámetros:**
+  - `networkIds`: dos redes del nivel; una es la del paquete.
+- **Plantilla textual:** «El paquete {packet} estaba en la red {network1} o en la red {network2}.» Las redes van en el orden de sus identificadores, así que la verdadera puede ser cualquiera de las dos.
+- **Formas de nombrar:** las de `network.in_network`, en cada red por separado.
+- **Generación de instancias:** para cada paquete, una por cada red que no es la suya, emparejada con la suya.
+- **Dominio:** `D = Libres(m) ∩ (Casillas(network1) ∪ Casillas(network2))`.
+- **Anulación común:** `A = ∅`.
+- **Compatibilidad:** las de `network.in_network`. Con cuatro redes equivale a dos pistas negativas, pero se lee de otra forma.
+- **Bloque mínimo:** el más alto de las formas de nombrar.
+- **Conocimiento:** `basic`.
+
+### `network.node_count`
+
+- **Descripción:** el paquete está en una red con un número exacto de equipos de una clase (recuento). El jugador tiene que contar los equipos de cada red.
+- **Aridad:** unaria.
+- **Restringe:** posición.
+- **Parámetros:**
+  - `nodeType` (`client` o `server`) y, opcionalmente, `service` (si `nodeType: server`): la clase de equipo que se cuenta.
+  - `count`: número exacto de equipos de esa clase en la red, de 0 a 3.
+- **Plantilla textual:** «El paquete {packet} estaba en una red sin servidores.» / «… con un solo servidor web.» / «… con exactamente dos equipos de usuario.»
+- **Formas de nombrar:** ninguna.
+- **Generación de instancias:** para la red de cada paquete y cada clase de equipo (equipos de usuario, servidores y servidores de cada servicio del nivel), una instancia con el número de equipos de esa clase en la red, **solo si al menos dos redes tienen ese número y no lo tienen todas**. Si solo lo tiene una, la descripción es la forma `contents` de esa red.
+- **Dominio:** `D = Libres(m) ∩ ⋃ Casillas(r)` para las redes `r` con `count` equipos de la clase.
+- **Anulación común:** `A = ∅`.
+- **Compatibilidad:** ninguna especial.
+- **Bloque mínimo:** `T3.dispositivos`.
 - **Conocimiento:** `basic`.
 
 ### `network.prefix_length`
@@ -234,6 +313,25 @@ Este catálogo recoge solo las reglas que ayudan a **colocar** paquetes. La info
 - **Bloque mínimo:** `T3.dispositivos`.
 - **Conocimiento:** el del tipo de nodo, como en `node.adjacent_to_node`.
 
+### `node.not_adjacent_to_node`
+
+- **Descripción:** el paquete **no** está junto a un nodo concreto, o no está junto a ningún nodo de una clase.
+- **Aridad:** unaria.
+- **Restringe:** posición.
+- **Parámetros:** como en `node.adjacent_to_node`, `nodeId` o bien `nodeType` y, opcionalmente, `service`.
+- **Plantilla textual:**
+  - Nodo concreto: «El paquete {packet} no estaba junto a{l} {node.label}.»
+  - Clase: «El paquete {packet} no estaba junto a ningún {clase}.»
+- **Formas de nombrar** (nodo concreto): las de `node.adjacent_to_node`. Sin hacer el cálculo de `ip`, el jugador solo sabe que no está junto a alguno de los equipos con esa etiqueta, así que solo puede descartar las casillas que están junto a todos ellos.
+- **Generación de instancias:** para cada paquete, una por cada nodo identificable que no tiene al lado y una por cada clase de nodo de la que no tiene ninguno al lado (si la clase existe en el nivel).
+- **Dominio:**
+  - Nodo concreto: `D = Libres(m) \ Ady(nodeId)`.
+  - Clase: `D = Libres(m) \ ⋃ Ady(n)` para todos los nodos `n` de la clase.
+- **Anulación común:** `A = ∅`.
+- **Compatibilidad:** misma condición de identificabilidad del nodo que `node.adjacent_to_node`.
+- **Bloque mínimo:** `T3.dispositivos`, o el de la forma de nombrar.
+- **Conocimiento:** el del tipo de nodo.
+
 ### `router.adjacent_to_router`
 
 - **Descripción:** el paquete está junto a un router concreto.
@@ -257,7 +355,8 @@ Este catálogo recoge solo las reglas que ayudan a **colocar** paquetes. La info
 - **Restringe:** posición.
 - **Parámetros:**
   - `row` (o `column`): índice desde 1.
-- **Plantilla textual:** «El paquete {packet} estaba en la fila {row}.» / «… en la columna {column}.»
+- **Plantilla textual:** «El paquete {packet} estaba {fila}.», donde `{fila}` es «en la fila 3» o «en la misma fila que el servidor DNS» (ídem con columnas).
+- **Formas de nombrar:** las de [filas y columnas](#formas-de-nombrar): `number`, `aligned_node` (cualquier equipo de esa fila o columna) y `aligned_router` (un router de borde que esté en ella).
 - **Generación de instancias:** una de cada por paquete.
 - **Dominio:** `D = Libres(m) ∩ Fila(row)` (o `Columna(column)`).
 - **Anulación común:** `A = ∅`.
@@ -267,24 +366,43 @@ Este catálogo recoge solo las reglas que ayudan a **colocar** paquetes. La info
 
 ## 3. Subtipos previstos
 
-Estos son los ejemplos de [description.md](../description.md) que aún no están definidos. Cada uno se completará con la plantilla de la sección siguiente cuando se vaya a usar.
+Subtipos y formas de nombrar que aún no están definidos, con la versión en que se piensa añadirlos (véase la hoja de ruta). Cada uno se completará con la plantilla de la sección siguiente cuando se vaya a usar.
+
+**v0.4, Rutas y TTL.** Cada paquete tiene origen, destino y TTL inicial visibles, y está en una red de su ruta (camino mínimo único). Todas son unarias:
 
 | Tipo | Subtipo propuesto | Ejemplo de texto | Bloque mínimo |
 |---|---|---|---|
-| `spatial` | `on_board_edge` | «Estaba en el borde del tablero.» | `T3.dispositivos` |
-| `node` | `on_node`, `near_node` (a N casillas) | «Estaba en un cliente.» | `T3.dispositivos` |
-| `router` | `distance_to_router` | «Está exactamente a dos casillas de un router.» | `T3.dispositivos` |
-| `protocol` | `uses_protocol` | «Utiliza HTTPS.» | El del protocolo (`topic` del catálogo). |
-| `protocol` | `uses_transport`, `destination_port` | «Viaja sobre UDP.» | `T4.udp` o `T4.tcp`, y como mínimo el del protocolo que permite deducir. |
-| `endpoint` | `at_origin`, `at_destination`, `in_origin_network`, `in_destination_network` | «Aún no ha abandonado la red origen.» | `T3.ip` |
-| `route` | `about_to_cross_router`, `just_crossed_router` | «Acaba de atravesar un router.» | `T3.ip` |
-| `route` | `next_hop_is_destination_network`, `next_hop` | «El siguiente salto será la red del destino.» | `T3.encaminamiento` |
-| `ttl` | `ttl_value`, `routers_crossed` | «Ha atravesado exactamente tres routers.» | `T3.ip` |
-| `relation` | `closer_to_destination`, `higher_ttl` | «El paquete rojo tiene mayor TTL que el azul.» | `T3.ip` |
-| `relation` | `same_protocol` | «Utiliza el mismo protocolo que el azul.» | El del protocolo. |
-| `relation` | `more_addresses_network` | «El rojo está en una red con más direcciones que el azul.» | `T3.subredes` |
+| `endpoint` | `in_origin_network`, `in_destination_network` | «Aún no había salido de la red de su origen.» | `T3.ip` |
+| `route` | `in_transit_network` | «Estaba pasando por una red de tránsito.» | `T3.ip` |
+| `route` | `just_crossed_router`, `about_to_cross_router` | «Acababa de atravesar el router que une Aulas y Servicios.» | `T3.ip` |
+| `ttl` | `routers_crossed` (y la variante con el TTL actual, coste de interpretación 1) | «Había atravesado exactamente dos routers.» / «Llevaba TTL 2.» | `T3.ip` |
+| `ttl` | `routers_left` | «Le quedaban dos routers para llegar.» | `T3.ip` |
+| `ttl` | `min_routers_crossed` (desigualdad) | «Ya había atravesado algún router.» / «Si hubiera salido con TTL 2, ya lo habrían descartado.» | `T3.ip` |
+| `endpoint` | `broadcast_destination` | «Iba dirigido a 192.168.1.255.» o «Era una petición DHCP»: la difusión no atraviesa routers, así que seguía en su red de origen. | `T3.subredes` (DHCP, `T3.vlsm`) |
+| `link` | `frame_to_router`, `frame_from_router` | «La trama que lo llevaba iba dirigida al router que une Aulas y Servicios.» (la MAC de destino es la del siguiente salto; la IP de destino no cambia) | `T3.subredes` |
 
-Salvo que se indique otra cosa, el conocimiento previsto es `basic`; las pistas de puerto toman el `portKnowledge` del protocolo.
+**Más adelante** (v0.4.x o versiones posteriores):
+
+| Tipo | Subtipo o forma propuesta | Ejemplo de texto | Bloque mínimo | Versión prevista |
+|---|---|---|---|---|
+| `endpoint` | `origin_gateway` | «Su equipo de origen usa como puerta de enlace el router que une Aulas y Servicios.» Solo tiene sentido si el origen no está a la vista. | `T3.ip` | Con los orígenes ocultos |
+| `endpoint` | `at_origin`, `at_destination` | «Aún estaba en su equipo de origen.» | `T3.ip` | Con los orígenes ocultos |
+| `relation` | `same_network` (entrega directa) | «A podría haberse entregado a B directamente, sin pasar por ningún router.» | `T3.ip` | Pistas relacionales |
+| `relation` | `neighbor_networks` | «A y B estaban en redes vecinas, separadas por un solo router.» | `T3.ip` | Pistas relacionales |
+| `relation` | `same_destination` | «A y B iban al mismo destino.» | `T3.ip` | Pistas relacionales |
+| `relation` | `closer_to_destination`, `higher_ttl` | «El paquete rojo tiene mayor TTL que el azul.» | `T3.ip` | Pistas relacionales |
+| `relation` | `more_addresses_network` | «El rojo está en una red con más direcciones que el azul.» | `T3.subredes` | Pistas relacionales |
+| `route` | `next_hop_is_destination_network`, `next_hop` | «El siguiente salto será la red del destino.» | `T3.encaminamiento` | v0.5, Encaminamiento |
+| forma de red | `privacy` | «la única red pública»: exige planes que mezclen redes privadas (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16) y públicas. Coste 1 (2 si hay que fijarse en el rango 172.16.0.0/12). | `T3.nat` | Con NAT |
+| `endpoint` | `source_translated` | «Su IP de origen ya no era privada.» (ya había pasado por el router NAT) | `T3.nat` | Con NAT |
+| `protocol` | `uses_protocol` | «Utiliza HTTPS.» | El del protocolo (`topic` del catálogo). | v0.6, Transporte |
+| `protocol` | `uses_transport`, `destination_port` | «Viaja sobre UDP.» | `T4.udp` o `T4.tcp`, y como mínimo el del protocolo que permite deducir. | v0.6, Transporte |
+| `relation` | `same_protocol` | «Utiliza el mismo protocolo que el azul.» | El del protocolo. | v0.6, Transporte |
+| `spatial` | `on_board_edge` | «Estaba en el borde del tablero.» | `T3.dispositivos` | Sin fecha |
+| `node` | `on_node`, `near_node` (a N casillas) | «Estaba en un cliente.» | `T3.dispositivos` | Sin fecha |
+| `router` | `distance_to_router` | «Está exactamente a dos casillas de un router.» | `T3.dispositivos` | Sin fecha |
+
+Las pistas relacionales exigen restricciones entre paquetes en el solver, técnicas nuevas en la dificultad y en las sugerencias, y textos que las expliquen; por eso van en una versión propia. Salvo que se indique otra cosa, el conocimiento previsto es `basic`; las pistas de puerto toman el `portKnowledge` del protocolo.
 
 ## Plantilla para un subtipo nuevo
 

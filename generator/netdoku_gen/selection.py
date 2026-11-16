@@ -20,12 +20,21 @@ from .solver import initial_domains, propagate, uncertainty
 SUBTYPE_WEIGHTS = {
     "network.in_network": 1.0,
     "network.prefix_length": 2.0,  # solo existe con longitudes repetidas pero no todas iguales
+    # Las negativas y las disyuntivas tienen muchas instancias: pesan menos.
+    "network.not_in_network": 0.9,
+    "network.in_either_network": 0.5,
+    "network.node_count": 1.0,
     "node.adjacent_to_node": 1.0,
     "node.unique_adjacent_to_node": 1.2,
+    "node.not_adjacent_to_node": 0.45,
     "router.adjacent_to_router": 1.0,
     "spatial.in_row": 0.45,
     "spatial.in_column": 0.45,
 }
+
+
+# Pistas candidatas que se evalúan en cada elección.
+MAX_CANDIDATES = 40
 
 
 class Selector:
@@ -59,20 +68,26 @@ class Selector:
     def _pick_from(self, clues, candidates, targets, allow_coordinates):
         d, _ = self.solve(clues)
         base = uncertainty(d, targets)
-        options = []
         with_spatial = {c.packet for c in clues if c.type.startswith("spatial.")}
-        for c in candidates:
-            if not allow_coordinates and c.type.startswith("spatial.") and c.packet in with_spatial:
-                continue
-            d2, _ = self.solve(clues + [c])
-            gain = base - uncertainty(d2, targets)
-            if gain > 1e-9:
-                # Ganancias moderadas: evita que cada pista coloque un paquete.
-                weight = SUBTYPE_WEIGHTS.get(c.type, 1.0) * min(gain, 2.5) ** 0.5
-                options.append((c, weight))
-        if not options:
-            return None
-        return self.rng.choices([o[0] for o in options], weights=[o[1] for o in options])[0]
+        useful = [c for c in candidates
+                  if (allow_coordinates or not c.type.startswith("spatial.") or c.packet not in with_spatial)
+                  # Si no quita nada a su paquete, la propagación daría lo mismo.
+                  and (d is None or c.excluded or not d[c.packet] <= c.domain)]
+        # Se evalúa una muestra al azar (propagar cada candidata es lo que más
+        # tarda); si en ella no hay ninguna que sirva, el resto.
+        self.rng.shuffle(useful)
+        for chunk in (useful[:MAX_CANDIDATES], useful[MAX_CANDIDATES:]):
+            options = []
+            for c in chunk:
+                d2, _ = self.solve(clues + [c])
+                gain = base - uncertainty(d2, targets)
+                if gain > 1e-9:
+                    # Ganancias moderadas: evita que cada pista coloque un paquete.
+                    weight = SUBTYPE_WEIGHTS.get(c.type, 1.0) * min(gain, 2.5) ** 0.5
+                    options.append((c, weight))
+            if options:
+                return self.rng.choices([o[0] for o in options], weights=[o[1] for o in options])[0]
+        return None
 
     def select(self):
         clues = []

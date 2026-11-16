@@ -1,5 +1,6 @@
 """Nodos (equipos) y paquetes."""
 
+import re
 from collections import deque
 from dataclasses import dataclass
 
@@ -31,6 +32,55 @@ class Node:
     @property
     def label(self):
         return CLIENT_LABEL if self.type == "client" else SERVICE_LABELS[self.services[0]]
+
+
+COUNT_WORDS = {2: "dos", 3: "tres"}
+
+
+def and_word(following):
+    """«y» pasa a «e» ante el sonido «i» (Aulas e Investigación), como en el motor."""
+    return "e" if re.match(r"h?[iíIÍ](?![aeiouáéó])", following) else "y"
+
+
+def node_classes(nodes):
+    """Clases de equipo del nivel: equipos de usuario, servidores y servidores de cada servicio."""
+    classes = []
+    if any(n.type == "client" for n in nodes):
+        classes.append({"nodeType": "client"})
+    if any(n.type == "server" for n in nodes):
+        classes.append({"nodeType": "server"})
+    for service in SERVICE_LABELS:
+        if any(service in n.services for n in nodes):
+            classes.append({"nodeType": "server", "service": service})
+    return classes
+
+
+def class_members(nodes, params):
+    return [n for n in nodes if n.type == params["nodeType"]
+            and ("service" not in params or params["service"] in n.services)]
+
+
+def class_label(params, plural=False):
+    """«equipo de usuario», «servidor», «servidor web»… (o su plural)."""
+    if params["nodeType"] == "client":
+        return "equipos de usuario" if plural else CLIENT_LABEL
+    label = SERVICE_LABELS[params["service"]] if "service" in params else "servidor"
+    return label.replace("servidor", "servidores", 1) if plural else label
+
+
+def count_text(params, count):
+    """Cómo describe una red el número exacto de equipos de una clase (de 0 a 3)."""
+    if count == 0:
+        return f"sin {class_label(params, True)}"
+    if count == 1:
+        return f"con un solo {class_label(params)}"
+    return f"con exactamente {COUNT_WORDS[count]} {class_label(params, True)}"
+
+
+def network_counts(nodes, networks, params):
+    """Número de equipos de la clase en cada red."""
+    members = class_members(nodes, params)
+    return {net.id: sum(1 for n in members if n.network == net.id) for net in networks}
 
 
 @dataclass

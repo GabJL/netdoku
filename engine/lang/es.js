@@ -11,6 +11,19 @@
     mail: "servidor de correo", storage: "servidor de ficheros", multimedia: "servidor multimedia",
     dhcp: "servidor DHCP",
   };
+  const PLURAL = {
+    client: "equipos de usuario", server: "servidores", web: "servidores web", dns: "servidores DNS",
+    mail: "servidores de correo", storage: "servidores de ficheros", multimedia: "servidores multimedia",
+    dhcp: "servidores DHCP",
+  };
+  const COUNT = { 2: "dos", 3: "tres" };
+  // Clase de equipo de una pista o de una forma de nombrar ({nodeType, service}).
+  const kind = (v) => v.service || v.nodeType;
+  // «sin servidores», «con un solo servidor web», «con exactamente dos equipos de usuario».
+  const countText = (v) => (v.count === 0 ? `sin ${PLURAL[kind(v)]}`
+    : v.count === 1 ? `con un solo ${NODES[kind(v)]}`
+      : `con exactamente ${COUNT[v.count] || v.count} ${PLURAL[kind(v)]}`);
+  const lengthOf = (prefix) => Number(prefix.split("/")[1]);
 
   // Texto de una pista a partir de sus datos (tipo, parámetros y forma de nombrar
   // cada elemento). L da acceso al nivel: L.network(id), L.node(id), L.router(id),
@@ -22,33 +35,52 @@
 
     const net = (slot) => {
       const n = L.network(slot.ref);
+      const size = 2 ** (32 - lengthOf(n.prefix));
       switch (slot.form) {
         case "prefix": return `la red ${n.prefix}`;
+        case "contents": return `la red ${countText(slot.value)}`;
         case "size_rank": return slot.value === "most" ? "la red con más direcciones" : "la red con menos direcciones";
+        case "address_count": return `la red de ${size} direcciones`;
+        case "usable_count": return `la red con ${size - 2} direcciones asignables`;
+        case "mask": return `la red con máscara ${L.mask(lengthOf(n.prefix))}`;
+        case "first_host": return `la red cuya primera dirección asignable es ${slot.value}`;
+        case "last_host": return `la red cuya última dirección asignable es ${slot.value}`;
+        case "broadcast": return `la red cuya dirección de difusión es ${slot.value}`;
         case "ip_member": return `la red de la dirección ${slot.value}`;
         default: return `la red ${n.name} (${n.prefix})`;
       }
     };
-    const node = (slot) => {
+    // Un equipo sin artículo («servidor web de la red Aulas»).
+    const nodeName = (slot) => {
       const n = L.node(slot.ref);
       const label = L.nodeLabel(n);
       switch (slot.form) {
-        case "label": return `al ${label}`;
-        case "label_prefix": return `al ${label} de la red ${L.network(n.network).prefix}`;
-        case "ip": return `al ${label} ${slot.value}`;
-        default: return `al ${label} de la red ${L.network(n.network).name}`;
+        case "label": return label;
+        case "label_prefix": return `${label} de la red ${L.network(n.network).prefix}`;
+        case "ip": return `${label} ${slot.value}`;
+        default: return `${label} de la red ${L.network(n.network).name}`;
       }
     };
+    const node = (slot) => `al ${nodeName(slot)}`;
     const router = (slot) => {
       const nets = L.router(slot.ref).connectedNetworks.map((id) => L.network(id));
       if (slot.form === "interfaces") return `con las interfaces ${slot.value[0]} y ${slot.value[1]}`;
       const [a, b] = nets.map((n) => (slot.form === "networks_prefix" ? n.prefix : n.name));
       return `que une ${a} ${and(b)} ${b}`;
     };
+    // Una fila o columna: por su número o por un equipo o un router que está en ella.
+    const line = (slot, axis) => {
+      const word = axis === "row" ? "fila" : "columna";
+      const v = slot.value || {};
+      if (slot.form === "aligned_node") return `en la misma ${word} que el ${nodeName({ ref: v.node, form: v.form })}`;
+      if (slot.form === "aligned_router") return `en la misma ${word} que el router ${router({ ref: v.router, form: v.form })}`;
+      return `en la ${word} ${slot.ref}`;
+    };
     const length = (slot) => {
       const n = slot.ref;
       switch (slot.form) {
         case "address_count": return `una red de ${2 ** (32 - n)} direcciones`;
+        case "usable_count": return `una red con ${2 ** (32 - n) - 2} direcciones asignables`;
         case "mask": return `una red con máscara ${L.mask(n)}`;
         default: return `una red /${n}`;
       }
@@ -59,6 +91,15 @@
         return `El paquete ${p} estaba en ${net(s.net || { ref: params.networkId })}.`;
       case "network.prefix_length":
         return `El paquete ${p} estaba en ${length(s.len || { ref: params.prefixLength })}.`;
+      case "network.not_in_network":
+        return `El paquete ${p} no estaba en ${net(s.net || { ref: params.networkId })}.`;
+      case "network.in_either_network":
+        return `El paquete ${p} estaba en ${net(s.net1 || { ref: params.networkIds[0] })} o en ${net(s.net2 || { ref: params.networkIds[1] })}.`;
+      case "network.node_count":
+        return `El paquete ${p} estaba en una red ${countText(params)}.`;
+      case "node.not_adjacent_to_node":
+        if (params.nodeId) return `El paquete ${p} no estaba junto ${node(s.node || { ref: params.nodeId })}.`;
+        return `El paquete ${p} no estaba junto a ningún ${NODES[kind(params)]}.`;
       case "node.adjacent_to_node":
         if (params.nodeId) return `El paquete ${p} estaba junto ${node(s.node || { ref: params.nodeId })}.`;
         return `El paquete ${p} estaba junto a un ${params.service ? NODES[params.service] : NODES[params.nodeType]}.`;
@@ -67,9 +108,9 @@
       case "router.adjacent_to_router":
         return `El paquete ${p} estaba junto al router ${router(s.router || { ref: params.routerId })}.`;
       case "spatial.in_row":
-        return `El paquete ${p} estaba en la fila ${params.row}.`;
+        return `El paquete ${p} estaba ${line(s.row || { ref: params.row }, "row")}.`;
       case "spatial.in_column":
-        return `El paquete ${p} estaba en la columna ${params.column}.`;
+        return `El paquete ${p} estaba ${line(s.column || { ref: params.column }, "column")}.`;
       default:
         return c.text;
     }
@@ -84,6 +125,7 @@
       office: "Secretaría", research: "Investigación",
     },
     nodes: NODES,
+    nodesPlural: PLURAL,
     nodeText: { client: "PC", web: "Web", dns: "DNS", mail: "Correo", storage: "Ficheros", multimedia: "Media", dhcp: "DHCP" },
     clue,
 
@@ -282,6 +324,16 @@
             "Cuidado con las direcciones cerca del límite entre dos redes (como .127 y .128): son las que más fallos dan.",
           ],
         },
+        special_addresses: {
+          chip: "Difusión y asignables",
+          title: "Identificador, difusión y direcciones asignables",
+          text: [
+            "La primera dirección de una red es su identificador (la que aparece en el prefijo) y la última, la de difusión, que sirve para enviar a todos los equipos de la red. Ninguna de las dos se asigna a un equipo.",
+            "Las demás, 2^(32−n) − 2, son asignables: a los equipos y a las interfaces de los routers. Una /26 tiene 64 direcciones y 62 asignables.",
+            "La difusión es el identificador más el número de direcciones menos 1: en 192.168.1.64/26, 64 + 64 − 1 = 127, así que la difusión es 192.168.1.127. La primera asignable es la siguiente al identificador (192.168.1.65) y la última, la anterior a la difusión (192.168.1.126).",
+            "Así, «la red cuya primera dirección asignable es 192.168.1.65» es la del identificador 192.168.1.64: búscala en la leyenda.",
+          ],
+        },
         in_network: {
           chip: "En una red",
           title: "«Estaba en la red X»",
@@ -302,12 +354,42 @@
             "Las direcciones y las máscaras aparecen en las pistas sin el color de su red: averiguarla es parte de la pista.",
           ],
         },
+        negative: {
+          chip: "«No estaba…»",
+          title: "«No estaba en…» y «no estaba junto a…»",
+          text: [
+            "«No estaba en la red X»: el paquete está en cualquier casilla libre de las demás redes.",
+            "«No estaba junto al servidor web»: ninguna de las casillas junto a ese equipo. «No estaba junto a ningún servidor»: ninguna casilla junto a un servidor, sea del tipo que sea.",
+            "Estas pistas no dicen dónde está el paquete, sino dónde no: suelen servir al final, cuando ya quedan pocas casillas.",
+          ],
+          caption: "«No estaba en la red de la derecha»: cualquiera de las casillas con círculo.",
+        },
+        either: {
+          chip: "Una red u otra",
+          title: "«Estaba en la red X o en la red Y»",
+          text: [
+            "El paquete está en una de las dos redes, sin decir cuál: cualquier casilla libre de las dos vale.",
+            "Las redes van en un orden fijo, así que la verdadera puede ser la primera o la segunda.",
+          ],
+          caption: "«En la red de arriba a la izquierda o en la de abajo a la derecha»: cualquiera de las casillas con círculo.",
+        },
+        node_count: {
+          chip: "Recuento de equipos",
+          title: "«Estaba en una red sin servidores»",
+          text: [
+            "Cuenta los equipos de cada red. «Una red sin servidores» es cualquier red que no tenga ninguno; «una red con un solo servidor web», cualquiera que tenga exactamente uno. El número es exacto.",
+            "Si solo una red cumple la descripción, la pista la nombra así: «la red con exactamente dos equipos de usuario».",
+            "«Servidores» incluye todos los servidores, sea cual sea su servicio.",
+          ],
+          caption: "«En una red sin servidores»: las dos redes de abajo solo tienen equipos de usuario.",
+        },
         prefix_length: {
           chip: "Longitud de prefijo",
           title: "«Estaba en una red /26»",
           text: [
             "El paquete está en alguna de las redes con esa longitud de prefijo, que pueden ser varias. Míralo en la leyenda.",
-            "La pista también puede dar el número de direcciones («una red de 64 direcciones») o la máscara («una red con máscara 255.255.255.192»): las tres formas dicen lo mismo.",
+            "La pista también puede dar el número de direcciones («una red de 64 direcciones»), el de direcciones asignables («una red con 62 direcciones asignables») o la máscara («una red con máscara 255.255.255.192»): todas dicen lo mismo.",
+            "Si la longitud solo la tiene una red, la pista nombra esa red: «la red de 64 direcciones».",
           ],
           caption: "Si la red de arriba a la izquierda y la de abajo a la derecha son las únicas /26, el paquete está en una de las casillas con círculo.",
         },
@@ -340,12 +422,13 @@
         },
         spatial: {
           chip: "Fila o columna",
-          title: "«Estaba en la fila N» o «en la columna N»",
+          title: "«Estaba en la fila N» o «en la misma fila que…»",
           text: [
             "Las filas se cuentan de arriba abajo y las columnas de izquierda a derecha. Los números están en el margen del tablero.",
+            "«En la misma fila que el servidor DNS»: en la fila de ese equipo, en cualquier red. Un router está en una fila si está en el borde entre dos casillas de esa fila, y en una columna si está en el borde entre dos casillas de esa columna.",
             "Junto con la regla de un paquete por fila y columna, una de estas pistas descarta esa fila o columna para todos los demás.",
           ],
-          caption: "«En la fila 2»: cualquiera de las casillas libres de esa fila.",
+          caption: "«En la misma fila que el servidor DNS»: cualquiera de las casillas libres de la fila 2.",
         },
         icons: {
           chip: "Iconos",
@@ -371,7 +454,7 @@
           "Los **equipos** (o **nodos**) pueden ser **terminales** o **intermedios**. Los terminales, también llamados **hosts** (ordenadores, móviles, servidores), originan y reciben los datos; los intermedios (switches, puntos de acceso WiFi, routers) solo los reenvían. Un **switch** une equipos dentro de una red, pero no la divide: todos los ordenadores de un laboratorio conectados a sus switches siguen siendo una sola red.",
           "Casi todos los servicios siguen el modelo **cliente/servidor**: el **cliente** pide algo y el **servidor** lo ofrece. Por ejemplo, tu navegador (cliente) pide una página a un **servidor web**. En el juego hay equipos de usuario (clientes) y servidores web, **DNS** (traducen nombres como www.uma.es a direcciones IP), de correo, de ficheros y multimedia.",
         ],
-        rules: ["in_network", "adjacent_to_node", "unique_adjacent", "router", "spatial"],
+        rules: ["in_network", "negative", "either", "node_count", "adjacent_to_node", "unique_adjacent", "router", "spatial"],
       },
       direccionamiento: {
         name: "Direccionamiento",
@@ -380,12 +463,13 @@
           "Cada equipo tiene una **dirección IP**, que es como su «nombre» en la red: lo identifica, y los paquetes llevan la dirección de su origen y la de su destino. En IPv4 son 32 bits que se escriben como cuatro números del 0 al 255 separados por puntos, por ejemplo **192.168.1.37**; cada número es un **octeto** (8 bits). En realidad la dirección es de cada **interfaz** (cada conexión a una red): por eso un router tiene una dirección en cada red que une.",
           "Una dirección tiene dos partes: la **red** (los primeros bits, iguales en todos los equipos de esa red) y el **equipo** o **host** (el resto). El **prefijo** /n indica cuántos bits son de red: en 192.168.1.0/24, los 24 primeros bits (192.168.1) son la red y los 8 últimos, el equipo.",
           "La **máscara** dice lo mismo que el prefijo, con n unos seguidos de ceros. /24 es **255.255.255.0**; /26 es **255.255.255.192**, porque el último octeto es 11000000 en binario, que es 192.",
-          "Una red /n tiene **2^(32−n) direcciones**: una /24 tiene 256 y una /26, 64. Cuanto más largo es el prefijo, menos direcciones tiene la red. La primera es el **identificador de red** (en 192.168.1.0/24, la 192.168.1.0) y la última, la de **difusión** (192.168.1.255), que sirve para enviar a todos los equipos de la red; las demás se asignan a los equipos y a las interfaces de los routers. El tamaño de una red es su número de direcciones, no sus casillas en el tablero.",
+          "Una red /n tiene **2^(32−n) direcciones**: una /24 tiene 256 y una /26, 64. Cuanto más largo es el prefijo, menos direcciones tiene la red. La primera es el **identificador de red** (en 192.168.1.0/24, la 192.168.1.0) y la última, la de **difusión** (192.168.1.255), que sirve para enviar a todos los equipos de la red. Las demás, 2^(32−n) − 2, son **asignables**: se dan a los equipos y a las interfaces de los routers (una /24 tiene 254). El tamaño de una red es su número de direcciones, no sus casillas en el tablero.",
+          "La difusión se calcula sumando al identificador el número de direcciones menos 1. En 192.168.1.64/26 (64 direcciones), 64 + 64 − 1 = 127: la difusión es **192.168.1.127**, la primera dirección asignable es 192.168.1.65 y la última, 192.168.1.126.",
           "Una dirección pertenece a una red si, al aplicarle la máscara (**IP AND máscara**), se obtiene el identificador de esa red. Por ejemplo, para 192.168.1.130 con máscara /26: 130 AND 192 = 128 (10000010 AND 11000000 = 10000000), así que es de la red **192.168.1.128/26**.",
           "Un bloque de direcciones se reparte en **subredes**. Cada subred tiene un número de direcciones que es potencia de dos (4, 8, 16, 32, 64, 128…) y empieza en un múltiplo de ese número. Por ejemplo, una /24 se puede repartir en cuatro /26 de 64 direcciones, que empiezan en .0, .64, .128 y .192 (múltiplos de 64). **Truco**: para saber de qué /26 es 192.168.1.130, busca el múltiplo de 64 más cercano por debajo de 130, que es 128; la subred es 192.168.1.128/26 (de .128 a .191). Con prefijos más cortos que /24 se hace lo mismo en el octeto donde acaba el prefijo: por ejemplo, 10.0.37.5 en una /20 (bloques de 16 en el tercer octeto) es de la red 10.0.32.0/20.",
           "Con **VLSM** (máscara de longitud variable), las subredes de un mismo bloque pueden tener tamaños distintos, según lo que necesite cada una: por ejemplo, una /25 (128 direcciones) para un laboratorio y una /27 (32) para una secretaría. En un nivel las redes nunca se solapan, así que cada dirección pertenece a una sola.",
         ],
-        rules: ["named_by_address", "network_size", "ip_network", "prefix_length"],
+        rules: ["named_by_address", "network_size", "ip_network", "special_addresses", "prefix_length"],
       },
     },
 

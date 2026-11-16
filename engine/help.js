@@ -81,12 +81,42 @@
       category: "rules",
     },
     {
+      id: "special_addresses",
+      category: "rules",
+    },
+    {
       id: "in_network",
       category: "clues",
       mini: {
         grid: ["AABB", "AABB", "CCBB"],
         nodes: [[1, 4, "client"]],
         ok: [[1, 3], [2, 3], [2, 4], [3, 3], [3, 4]],
+      },
+    },
+    {
+      id: "negative",
+      category: "clues",
+      mini: {
+        grid: ["AABB", "AABB", "CCBB"],
+        ok: [[1, 1], [1, 2], [2, 1], [2, 2], [3, 1], [3, 2]],
+        no: [[1, 3], [1, 4], [2, 3], [2, 4], [3, 3], [3, 4]],
+      },
+    },
+    {
+      id: "either",
+      category: "clues",
+      mini: {
+        grid: ["AABB", "AABB", "CCDD"],
+        ok: [[1, 1], [1, 2], [2, 1], [2, 2], [3, 3], [3, 4]],
+      },
+    },
+    {
+      id: "node_count",
+      category: "clues",
+      mini: {
+        grid: ["AABB", "AABB", "CCDD", "CCDD"],
+        nodes: [[1, 1, "web"], [2, 4, "mail"], [3, 1, "client"], [4, 4, "client"]],
+        ok: [[3, 2], [4, 1], [4, 2], [3, 3], [3, 4], [4, 3]],
       },
     },
     {
@@ -159,13 +189,17 @@
   const TYPE_TO_ENTRY = {
     "network.in_network": "in_network",
     "network.prefix_length": "prefix_length",
+    "network.not_in_network": "negative",
+    "network.in_either_network": "either",
+    "network.node_count": "node_count",
     "node.adjacent_to_node": "adjacent_to_node",
     "node.unique_adjacent_to_node": "unique_adjacent",
+    "node.not_adjacent_to_node": "negative",
     "router.adjacent_to_router": "router",
     "spatial.in_row": "spatial",
     "spatial.in_column": "spatial",
   };
-  const USES_ADJACENCY = new Set(["node.adjacent_to_node", "node.unique_adjacent_to_node"]);
+  const USES_ADJACENCY = new Set(["node.adjacent_to_node", "node.unique_adjacent_to_node", "node.not_adjacent_to_node"]);
   // Fichas de reglas que necesitan algunas formas de nombrar (clue.naming).
   const FORM_TO_ENTRY = {
     size_rank: "network_size",
@@ -175,9 +209,15 @@
     ip_member: "ip_network",
     ip: "ip_network",
     interfaces: "ip_network",
+    usable_count: "special_addresses",
+    first_host: "special_addresses",
+    last_host: "special_addresses",
+    broadcast: "special_addresses",
+    contents: "node_count",
   };
   // Formas que nombran algo sin su nombre: explicadas en la ficha named_by_address.
-  const ADDRESS_FORMS = new Set(["prefix", "size_rank", "ip_member", "label_prefix", "ip", "networks_prefix", "interfaces"]);
+  const ADDRESS_FORMS = new Set(["prefix", "size_rank", "ip_member", "label_prefix", "ip", "networks_prefix", "interfaces",
+    "first_host", "last_host", "broadcast"]);
 
   function entry(id) {
     return ENTRIES.find((e) => e.id === id);

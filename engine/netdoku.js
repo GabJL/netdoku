@@ -18,7 +18,7 @@
   const SERVICE_COLORS = { web: "#2f7de1", dns: "#8e44ad", mail: "#e67e22", storage: "#16a085", multimedia: "#c0392b", dhcp: "#7f8c8d" };
   const SVG_NS = "http://www.w3.org/2000/svg";
   // Formas de nombrar que hablan del tamaño de las redes: el objetivo recuerda que las casillas no lo indican.
-  const SIZE_FORMS = new Set(["size_rank", "prefix_length", "address_count", "mask"]);
+  const SIZE_FORMS = new Set(["size_rank", "prefix_length", "address_count", "usable_count", "mask"]);
 
   const $ = (id) => document.getElementById(id);
   // Color del tema actual (variables CSS de netdoku.css).
@@ -271,8 +271,11 @@
     const naming = c.naming || {};
     const patterns = [];
     const word = (s) => `(?<![\\p{L}])${s}(?![\\p{L}])`;
-    if (params.nodeId) {
-      const node = level.nodes.find((n) => n.id === params.nodeId);
+    // El equipo que nombra la pista, o el que da nombre a su fila o columna.
+    const aligned = Object.values(c.slots || {}).find((s) => s.form === "aligned_node");
+    const nodeId = params.nodeId || (aligned && aligned.value && aligned.value.node);
+    if (nodeId) {
+      const node = level.nodes.find((n) => n.id === nodeId);
       if (node) {
         const hidden = naming.node === "ip";
         patterns.push({ re: new RegExp(word(escapeRe(nodeLabel(node))), "iu"),
@@ -283,8 +286,11 @@
         && (!params.service || (n.services || []).includes(params.service)));
       const specific = params.service || params.nodeType === "client";
       const label = specific ? (sample ? nodeLabel(sample) : "") : t("nodes.server");
-      if (label) {
-        patterns.push({ re: new RegExp(word(escapeRe(label)), "iu"),
+      // También en plural («sin servidores web»).
+      const plural = t(`nodesPlural.${params.service || params.nodeType}`);
+      for (const text of [label, plural]) {
+        if (!text || text.startsWith("nodesPlural.")) continue;
+        patterns.push({ re: new RegExp(word(escapeRe(text)), "iu"),
           make: (s) => chip(s, null, specific ? nodeDotColor(sample) : tv("--node-server")) });
       }
     }

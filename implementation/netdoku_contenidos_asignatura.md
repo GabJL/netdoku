@@ -232,7 +232,7 @@ El T3 se reparte en siete clases, así que un número de tema no basta: un nivel
 | `T3.vlan` | 9 | VLAN. | Enlace |
 | `T3.ip` | 10 | Dirección IP, prefijo como etiqueta de la red, TTL, routers atravesados, campo protocolo (como valor), ICMP, `ping` y `tracert`. | Red |
 | `T3.fragmentacion` | 11 | MTU, fragmentación. | Red |
-| `T3.subredes` | 12 | Máscara: pertenencia de una IP a una red, número de direcciones de una red, red «más grande» por prefijo; ARP y MAC del siguiente salto. | Red |
+| `T3.subredes` | 12 | Máscara: pertenencia de una IP a una red, número de direcciones de una red y de direcciones asignables (2^(32−n) − 2), identificador y difusión, red «más grande» por prefijo; ARP y MAC del siguiente salto. | Red |
 | `T3.vlsm` | 13 | VLSM, CIDR, DHCP. | Red |
 | `T3.encaminamiento` | 14 | Tablas de encaminamiento, siguiente salto, ruta por defecto, ruta más corta. | Red |
 | `T3.nat` | 15 | Direcciones privadas y públicas, NAT y NAPT (cambio de IP y de puerto de origen). | Red |
