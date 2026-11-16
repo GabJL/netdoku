@@ -627,7 +627,21 @@
     "node": "label_network"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     3,
+     5
+    ],
+    [
+     4,
+     4
+    ],
+    [
+     4,
+     6
+    ]
+   ]
   },
   {
    "id": "C2",
@@ -648,7 +662,17 @@
     "router": "networks"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     5,
+     2
+    ],
+    [
+     5,
+     3
+    ]
+   ]
   },
   {
    "id": "C3",
@@ -669,7 +693,17 @@
     "node": "label"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     2,
+     4
+    ],
+    [
+     3,
+     5
+    ]
+   ]
   },
   {
    "id": "C4",
@@ -690,7 +724,37 @@
     "net": "name"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     1,
+     2
+    ],
+    [
+     1,
+     3
+    ],
+    [
+     1,
+     4
+    ],
+    [
+     1,
+     5
+    ],
+    [
+     1,
+     6
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     2,
+     6
+    ]
+   ]
   },
   {
    "id": "C5",
@@ -711,7 +775,21 @@
     "node": "label_network"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     3,
+     2
+    ],
+    [
+     4,
+     1
+    ],
+    [
+     5,
+     2
+    ]
+   ]
   },
   {
    "id": "C6",
@@ -732,7 +810,17 @@
     "router": "networks"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     2,
+     2
+    ],
+    [
+     3,
+     2
+    ]
+   ]
   }
  ],
  "solution": {

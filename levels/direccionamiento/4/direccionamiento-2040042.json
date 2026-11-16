@@ -597,7 +597,27 @@
     "node": "label"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     2,
+     4
+    ],
+    [
+     3,
+     3
+    ]
+   ],
+   "excluded": [
+    [
+     2,
+     4
+    ],
+    [
+     3,
+     3
+    ]
+   ]
   },
   {
    "id": "C2",
@@ -610,7 +630,21 @@
    "slots": {},
    "naming": {},
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     2,
+     1
+    ],
+    [
+     3,
+     1
+    ],
+    [
+     5,
+     1
+    ]
+   ]
   },
   {
    "id": "C3",
@@ -632,7 +666,41 @@
     "net": "ip_member"
    },
    "readingCost": 2,
-   "topic": "T3.subredes"
+   "topic": "T3.subredes",
+   "domain": [
+    [
+     2,
+     3
+    ],
+    [
+     2,
+     4
+    ],
+    [
+     3,
+     3
+    ],
+    [
+     4,
+     3
+    ],
+    [
+     5,
+     1
+    ],
+    [
+     5,
+     2
+    ],
+    [
+     5,
+     3
+    ],
+    [
+     5,
+     4
+    ]
+   ]
   },
   {
    "id": "C4",
@@ -657,7 +725,17 @@
     "router": "interfaces"
    },
    "readingCost": 2,
-   "topic": "T3.subredes"
+   "topic": "T3.subredes",
+   "domain": [
+    [
+     4,
+     4
+    ],
+    [
+     5,
+     4
+    ]
+   ]
   },
   {
    "id": "C5",
@@ -679,7 +757,27 @@
     "node": "ip"
    },
    "readingCost": 2,
-   "topic": "T3.subredes"
+   "topic": "T3.subredes",
+   "domain": [
+    [
+     1,
+     5
+    ],
+    [
+     2,
+     6
+    ]
+   ],
+   "excluded": [
+    [
+     1,
+     5
+    ],
+    [
+     2,
+     6
+    ]
+   ]
   }
  ],
  "solution": {

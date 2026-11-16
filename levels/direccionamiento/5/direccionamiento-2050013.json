@@ -581,7 +581,33 @@
     "net": "ip_member"
    },
    "readingCost": 3,
-   "topic": "T3.vlsm"
+   "topic": "T3.vlsm",
+   "domain": [
+    [
+     1,
+     2
+    ],
+    [
+     1,
+     3
+    ],
+    [
+     1,
+     4
+    ],
+    [
+     1,
+     5
+    ],
+    [
+     1,
+     6
+    ],
+    [
+     2,
+     3
+    ]
+   ]
   },
   {
    "id": "C2",
@@ -594,7 +620,25 @@
    "slots": {},
    "naming": {},
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     1,
+     6
+    ],
+    [
+     3,
+     6
+    ],
+    [
+     4,
+     6
+    ],
+    [
+     5,
+     6
+    ]
+   ]
   },
   {
    "id": "C3",
@@ -607,7 +651,33 @@
    "slots": {},
    "naming": {},
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     1,
+     4
+    ],
+    [
+     2,
+     1
+    ],
+    [
+     2,
+     3
+    ],
+    [
+     3,
+     2
+    ],
+    [
+     5,
+     1
+    ],
+    [
+     5,
+     6
+    ]
+   ]
   },
   {
    "id": "C4",
@@ -628,7 +698,27 @@
     "node": "label"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     2,
+     5
+    ],
+    [
+     3,
+     6
+    ]
+   ],
+   "excluded": [
+    [
+     2,
+     5
+    ],
+    [
+     3,
+     6
+    ]
+   ]
   },
   {
    "id": "C5",
@@ -650,7 +740,45 @@
     "net": "ip_member"
    },
    "readingCost": 3,
-   "topic": "T3.vlsm"
+   "topic": "T3.vlsm",
+   "domain": [
+    [
+     3,
+     3
+    ],
+    [
+     4,
+     2
+    ],
+    [
+     4,
+     3
+    ],
+    [
+     5,
+     3
+    ],
+    [
+     5,
+     4
+    ],
+    [
+     5,
+     5
+    ],
+    [
+     6,
+     2
+    ],
+    [
+     6,
+     3
+    ],
+    [
+     6,
+     5
+    ]
+   ]
   },
   {
    "id": "C6",
@@ -675,7 +803,17 @@
     "router": "interfaces"
    },
    "readingCost": 3,
-   "topic": "T3.vlsm"
+   "topic": "T3.vlsm",
+   "domain": [
+    [
+     2,
+     3
+    ],
+    [
+     3,
+     3
+    ]
+   ]
   }
  ],
  "solution": {

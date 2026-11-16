@@ -16,6 +16,9 @@
   --ok-bg: #eef8f1;
   --note: #d9822b;
   --note-bg: #fff4e5;
+  --hint: #7b4fc9;
+  --hint-bg: #f3eefc;
+  --hint-fill: rgba(123, 79, 201, 0.3);
   --badge-bg: #f3dede;
   --switch-off: #c9ccd1;
   --shadow: rgba(0, 0, 0, 0.25);
@@ -71,6 +74,9 @@
     --ok-bg: #1d3326;
     --note: #f0a050;
     --note-bg: #3a2b19;
+    --hint: #b48cf0;
+    --hint-bg: #2b2438;
+    --hint-fill: rgba(180, 140, 240, 0.35);
     --badge-bg: #4a2a2a;
     --switch-off: #4a515b;
     --shadow: rgba(0, 0, 0, 0.6);
@@ -118,6 +124,9 @@
   --ok-bg: #1d3326;
   --note: #f0a050;
   --note-bg: #3a2b19;
+  --hint: #b48cf0;
+  --hint-bg: #2b2438;
+  --hint-fill: rgba(180, 140, 240, 0.35);
   --badge-bg: #4a2a2a;
   --switch-off: #4a515b;
   --shadow: rgba(0, 0, 0, 0.6);
@@ -677,6 +686,82 @@ select, .button {
 .modebar input:checked + .switch::after { transform: translateX(16px); }
 .modebar input:focus-visible + .switch { outline: 2px solid var(--accent); outline-offset: 2px; }
 .modebar.noting { border-color: var(--note); color: var(--note); background: var(--note-bg); }
+
+/* Interruptor y botón de sugerencia en una fila */
+
+.side-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.hint-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hint-button svg { display: block; }
+.hint-button:hover:not(:disabled) { border-color: var(--hint); color: var(--hint); }
+.hint-button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Sugerencia: confirmación y explicación */
+
+.hint-box {
+  position: relative;
+  padding: 12px;
+  border: 1px solid var(--hint);
+  border-radius: 10px;
+  background: var(--hint-bg);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.hint-box h3 {
+  margin: 0 24px 6px 0;
+  font-size: 0.95rem;
+  color: var(--hint);
+}
+
+.hint-box p { margin: 0; }
+.hint-box ol { margin: 0; padding-left: 1.3em; }
+.hint-box li { margin: 0 0 6px; }
+.hint-box li:last-child { margin-bottom: 0; }
+.hint-box li.step { padding: 2px 6px; border-radius: 6px; cursor: pointer; }
+.hint-box li.step:hover { background: var(--panel); }
+.hint-box li.step.active { background: var(--panel); box-shadow: inset 3px 0 0 var(--hint); }
+.hint-box .hint-note { margin-top: 8px; font-size: 0.8rem; color: var(--muted); }
+
+.hint-box .close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  border: none;
+  background: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.hint-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.packet-card.hinted { outline: 2px solid var(--hint); }
+.packet-card li.hinted { background: var(--hint-bg); border-radius: 4px; box-shadow: 0 0 0 2px var(--hint-bg); }
 
 /* ---------- Ventana y página de ayuda ---------- */
 

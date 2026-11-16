@@ -597,7 +597,17 @@
     "router": "networks"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     3,
+     1
+    ],
+    [
+     4,
+     1
+    ]
+   ]
   },
   {
    "id": "C2",
@@ -610,7 +620,41 @@
    "slots": {},
    "naming": {},
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     1,
+     6
+    ],
+    [
+     2,
+     5
+    ],
+    [
+     3,
+     6
+    ],
+    [
+     4,
+     1
+    ],
+    [
+     4,
+     5
+    ],
+    [
+     5,
+     2
+    ],
+    [
+     5,
+     4
+    ],
+    [
+     6,
+     3
+    ]
+   ]
   },
   {
    "id": "C3",
@@ -631,7 +675,45 @@
     "net": "name"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     4,
+     6
+    ],
+    [
+     5,
+     4
+    ],
+    [
+     5,
+     6
+    ],
+    [
+     6,
+     1
+    ],
+    [
+     6,
+     2
+    ],
+    [
+     6,
+     3
+    ],
+    [
+     6,
+     4
+    ],
+    [
+     6,
+     5
+    ],
+    [
+     6,
+     6
+    ]
+   ]
   },
   {
    "id": "C4",
@@ -652,7 +734,17 @@
     "node": "label"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     4,
+     1
+    ],
+    [
+     5,
+     2
+    ]
+   ]
   },
   {
    "id": "C5",
@@ -673,7 +765,17 @@
     "node": "label_network"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     1,
+     4
+    ],
+    [
+     2,
+     5
+    ]
+   ]
   },
   {
    "id": "C6",
@@ -694,7 +796,35 @@
     "node": "label"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     1,
+     6
+    ],
+    [
+     2,
+     5
+    ],
+    [
+     3,
+     6
+    ]
+   ],
+   "excluded": [
+    [
+     1,
+     6
+    ],
+    [
+     2,
+     5
+    ],
+    [
+     3,
+     6
+    ]
+   ]
   },
   {
    "id": "C7",
@@ -716,7 +846,41 @@
     "net": "ip_member"
    },
    "readingCost": 3,
-   "topic": "T3.subredes"
+   "topic": "T3.subredes",
+   "domain": [
+    [
+     3,
+     3
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     4,
+     1
+    ],
+    [
+     4,
+     2
+    ],
+    [
+     4,
+     3
+    ],
+    [
+     4,
+     4
+    ],
+    [
+     4,
+     5
+    ],
+    [
+     5,
+     2
+    ]
+   ]
   }
  ],
  "solution": {

@@ -74,6 +74,8 @@ Esta información únicamente es utilizada por el motor para validar la partida.
 - propiedades visibles (si las hubiera);
 - pistas mostradas al jugador.
 
+Cada pista guarda también lo que dice en forma de casillas: su dominio `domain` (las casillas donde puede estar su paquete, `D`) y, si descarta casillas para los demás paquetes, `excluded` (`A`). No se muestran: el motor los usa para las sugerencias. Un nivel sin ellos se puede jugar, pero sin sugerencias.
+
 De este modo el mismo motor puede ejecutar niveles de distinta dificultad sin modificaciones.
 
 ### Objetivo
@@ -141,6 +143,20 @@ Si es incorrecta:
 
 Al colocar el último paquete, el nivel queda resuelto y se muestra el atacante, que es evidente con el tablero completo; no hay pregunta final.
 
+### Sugerencias
+
+Si el jugador se atasca, el botón **Sugerencia** le explica la siguiente deducción que puede hacer. En el texto del juego se llaman sugerencias para no confundirlas con las pistas de los paquetes.
+
+- Cuesta una vida, y por tanto una estrella. No se puede pedir con la última vida, así que no hace perder el nivel, y con tres vidas caben como mucho dos por nivel. Se pide confirmación antes de gastarla.
+- Se calcula desde el estado real de la partida: los paquetes colocados (que siempre son correctos) y lo que dice cada pista (`domain` y `excluded`). No depende del orden en que el generador resolvió el nivel ni de las notas del jugador.
+- Primero comprueba las ✕ del jugador: si alguna está en la casilla de un paquete, la sugerencia lo dice y resalta esa casilla.
+- Si no, busca con las técnicas del generador (colocación directa, fila o columna obligada, anulación y reservas), de la más sencilla a la más difícil, la cadena de deducciones que deja un paquete en una sola casilla, y quita los pasos que no hacen falta. Además usa dos razonamientos que el generador no necesita porque resuelve en su propio orden: un paquete que solo cabe en una fila o columna se queda esa línea, y las reservas pueden incluir a la víctima.
+- La víctima se deja para el final, porque se deduce por descarte: primero se busca una cadena que no hable de ella; si no la hay, una que la use en filas obligadas o reservas sin colocarla; y solo si tampoco, una que la coloque. En las pruebas, ninguna sugerencia lleva a la víctima mientras quedan otros paquetes por colocar.
+- Explica cada paso con un texto («Los paquetes B y D solo pueden estar en las columnas 5 y 6, uno en cada una…») y resalta en el tablero sus casillas y en el panel sus paquetes y pistas, un paso cada vez. No dice la casilla final: el último paso es «al paquete A solo le queda una casilla posible».
+- La sugerencia se guarda con el progreso del nivel y desaparece al colocar el paquete al que lleva (o al quitar la ✕ equivocada) o al cerrarla.
+
+El razonamiento está en `engine/hints.js`, separado del dibujo. Se ha probado en todos los niveles de los lotes con partidas que colocan los paquetes en órdenes al azar: siempre encuentra una deducción, y la cadena lleva a la casilla correcta.
+
 ## Organización del juego (v0.3)
 
 Una sola página con pantalla inicial y cinco apartados:
@@ -154,7 +170,7 @@ Una sola página con pantalla inicial y cinco apartados:
 Progresión:
 
 - Cada categoría corresponde a un bloque temático de la asignatura y muestra cinco niveles, uno por dificultad. Internamente cada dificultad tiene un lote de unos 50 niveles y, al jugarla, sale uno al azar sin repetir hasta haber visto casi todos. Reiniciar da otro nivel de la misma dificultad.
-- Se guarda el mejor resultado de cada dificultad (tres estrellas menos una por fallo); nunca se pierde.
+- Se guarda el mejor resultado de cada dificultad (tres estrellas menos una por fallo o sugerencia); nunca se pierde.
 - Para abrir una dificultad hay que haber resuelto la anterior. Todas las categorías están abiertas desde el principio.
 - En cada nivel, un botón abre la información de su categoría: un resumen corto de teoría y las reglas nuevas que introduce.
 

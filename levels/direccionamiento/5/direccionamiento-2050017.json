@@ -646,7 +646,17 @@
     "router": "interfaces"
    },
    "readingCost": 3,
-   "topic": "T3.vlsm"
+   "topic": "T3.vlsm",
+   "domain": [
+    [
+     5,
+     5
+    ],
+    [
+     6,
+     5
+    ]
+   ]
   },
   {
    "id": "C2",
@@ -667,7 +677,43 @@
     "node": "label_network"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     4,
+     2
+    ],
+    [
+     5,
+     1
+    ],
+    [
+     5,
+     3
+    ],
+    [
+     6,
+     2
+    ]
+   ],
+   "excluded": [
+    [
+     4,
+     2
+    ],
+    [
+     5,
+     1
+    ],
+    [
+     5,
+     3
+    ],
+    [
+     6,
+     2
+    ]
+   ]
   },
   {
    "id": "C3",
@@ -688,7 +734,17 @@
     "router": "networks"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     3,
+     3
+    ],
+    [
+     3,
+     4
+    ]
+   ]
   },
   {
    "id": "C4",
@@ -701,7 +757,73 @@
    "slots": {},
    "naming": {},
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     1,
+     1
+    ],
+    [
+     1,
+     3
+    ],
+    [
+     1,
+     5
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     2,
+     4
+    ],
+    [
+     2,
+     6
+    ],
+    [
+     3,
+     1
+    ],
+    [
+     3,
+     3
+    ],
+    [
+     3,
+     5
+    ],
+    [
+     4,
+     2
+    ],
+    [
+     4,
+     4
+    ],
+    [
+     4,
+     6
+    ],
+    [
+     5,
+     1
+    ],
+    [
+     5,
+     3
+    ],
+    [
+     6,
+     2
+    ],
+    [
+     6,
+     5
+    ]
+   ]
   },
   {
    "id": "C5",
@@ -722,7 +844,21 @@
     "node": "label_network"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     1,
+     5
+    ],
+    [
+     2,
+     4
+    ],
+    [
+     2,
+     6
+    ]
+   ]
   },
   {
    "id": "C6",
@@ -735,7 +871,25 @@
    "slots": {},
    "naming": {},
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     6,
+     2
+    ],
+    [
+     6,
+     3
+    ],
+    [
+     6,
+     5
+    ],
+    [
+     6,
+     6
+    ]
+   ]
   }
  ],
  "solution": {

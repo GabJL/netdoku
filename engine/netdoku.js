@@ -105,6 +105,10 @@
       solved: saved ? saved.solved : false,
       lost: saved ? saved.lost : false,
       result: saved ? saved.result || null : null, // lo que devolvió onSolve (mejor resultado…)
+      hints: saved ? saved.hints || 0 : 0,          // sugerencias usadas (cada una cuesta una vida)
+      hint: saved ? saved.hint || null : null,      // última sugerencia (datos de NetdokuHints)
+      asking: false,                                // pidiendo confirmación para una sugerencia
+      hintStep: 0,                                  // paso de la sugerencia que se resalta
       selected: null,
     };
     bind();
@@ -117,6 +121,7 @@
     if (bound) return;
     bound = true;
     $("note-mode").addEventListener("change", (e) => { if (state) setMode(e.target.checked ? "note" : "place"); });
+    $("hint-button").addEventListener("click", askHint);
     window.addEventListener("netdoku-theme", () => { if (level) render(); });
     window.addEventListener("netdoku-lang", refresh);
     // Atajo: A activa o desactiva el modo anotar.
@@ -145,6 +150,8 @@
       solved: state.solved,
       lost: state.lost,
       result: state.result,
+      hints: state.hints,
+      hint: state.hint,
     };
   }
 
@@ -327,6 +334,7 @@
     renderBoard();
     renderLegend();
     renderPackets();
+    renderHint();
     renderFinal();
   }
 
@@ -397,6 +405,14 @@
           svg("rect", { x: px(c), y: py(r), width: CELL, height: CELL, fill: `url(#${pattern})`, "pointer-events": "none" }, root);
         }
       }
+    }
+
+    // Casillas de las que habla la sugerencia.
+    for (const [r, c] of hintCells()) {
+      svg("rect", {
+        x: px(c) + 3, y: py(r) + 3, width: CELL - 6, height: CELL - 6, rx: 6,
+        fill: tv("--hint-fill"), stroke: tv("--hint"), "stroke-width": 3, "stroke-dasharray": "7 4", "pointer-events": "none",
+      }, root);
     }
 
     // Bordes entre redes y borde exterior.
@@ -702,6 +718,11 @@
     if (occupied(r, c)) return;
     if (state.marks.has(key)) {
       state.marks.delete(key);
+      if (state.hint && state.hint.kind === "mark" && state.hint.cell.join(",") === key) {
+        state.hint = null;
+        renderHint();
+        renderPackets();
+      }
     } else {
       state.marks.add(key);
       state.notes.delete(key); // al descartar una casilla se borran sus notas
@@ -727,10 +748,12 @@
   function renderPackets() {
     const el = $("packets");
     el.innerHTML = "";
+    const focus = hintFocus();
     for (const p of level.packets.items) {
       const card = document.createElement("div");
       card.className = "packet-card";
       if (state.selected === p.id) card.classList.add("selected");
+      if (focus.packets.has(p.id)) card.classList.add("hinted");
       const placed = p.id in state.placed;
       // Un paquete colocado se compacta; sus pistas se pueden desplegar de nuevo.
       const open = !placed || expanded.has(p.id);
@@ -783,6 +806,7 @@
           const li = document.createElement("li");
           li.appendChild(clueContent(c));
           if (state.struck.has(c.id)) li.className = "done";
+          if (focus.clues.has(c.id)) li.classList.add("hinted");
           li.addEventListener("click", () => {
             state.struck.has(c.id) ? state.struck.delete(c.id) : state.struck.add(c.id);
             save();
@@ -823,8 +847,8 @@
       stars.textContent = "★".repeat(state.lives) + "☆".repeat(START_LIVES - state.lives);
       stars.setAttribute("aria-label", t("game.stars", { n: state.lives, max: START_LIVES }));
       box.appendChild(stars);
-      const errors = START_LIVES - state.lives;
-      para(errors === 0 ? t("game.perfect") : t("game.withErrors", { n: errors }));
+      const errors = START_LIVES - state.lives - state.hints;
+      para(errors === 0 && !state.hints ? t("game.perfect") : t("game.result", { errors, hints: state.hints }));
       if (state.result && state.result.best != null) para(t("game.best", { n: state.result.best }));
       if (state.result && state.result.unlocked) para(t("game.unlocked"));
       para(t("game.attacker", { attacker, net: net ? networkName(net) : "", victim }));
@@ -886,6 +910,8 @@
     if (sr === r && sc === c) {
       state.placed[id] = [r, c];
       state.marks.delete(`${r},${c}`);
+      // La sugerencia llevaba a este paquete: ya está cumplida.
+      if (state.hint && state.hint.kind === "deduction" && state.hint.target === id) state.hint = null;
       // Fuera las notas de ese paquete y las de esa casilla (no es una deducción).
       state.notes.delete(`${r},${c}`);
       for (const [key, ids] of state.notes) {
@@ -906,6 +932,189 @@
       const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
       if (cell) cell.classList.add("wrong");
     }
+  }
+
+  // ---------- Sugerencias ----------
+
+  // Se puede pedir con más de una vida: cuesta una y no debe hacer perder el nivel.
+  function hintState() {
+    if (isOver()) return "over";
+    if (!window.NetdokuHints || !window.NetdokuHints.supported(level)) return "unsupported";
+    if (state.lives <= 1) return "noLives";
+    return "ok";
+  }
+
+  function askHint() {
+    if (hintState() !== "ok") return;
+    state.asking = true;
+    renderHint();
+  }
+
+  function useHint() {
+    state.asking = false;
+    if (hintState() !== "ok") return renderHint();
+    const hint = window.NetdokuHints.next(level, state.placed, state.marks);
+    if (!hint) {
+      say(t("hint.none"), "bad");
+      renderHint();
+      return;
+    }
+    state.lives -= 1;
+    state.hints += 1;
+    state.hint = hint;
+    state.hintStep = 0;
+    save();
+    render();
+    say(t("hint.used"), "");
+  }
+
+  function closeHint() {
+    state.hint = null;
+    save();
+    render();
+  }
+
+  // Lista con la conjunción del idioma: «A, B y C», «A, B, and C».
+  function list(items) {
+    try {
+      return new Intl.ListFormat(I18n.current(), { type: "conjunction" }).format(items.map(String));
+    } catch (err) {
+      return items.join(", ");
+    }
+  }
+
+  function hintText(s, i) {
+    switch (s.t) {
+      case "single":
+        return t(i === 0 ? "hint.single" : "hint.singleAfter", { packet: s.packet });
+      case "line":
+        return t(s.axis === "row" ? "hint.lineRow" : "hint.lineColumn", { packet: s.packet, n: s.line });
+      case "annul":
+        return t("hint.annul", { packet: s.packet });
+      case "subset":
+        if (s.packets.length === 1) {
+          return t(s.key === "row" ? "hint.oneRow" : "hint.oneColumn", { packet: s.packets[0], n: s.values[0] });
+        }
+        if (s.key === "cell") return t("hint.subsetCells", { packets: list(s.packets), n: s.values.length });
+        return t(s.key === "row" ? "hint.subsetRows" : "hint.subsetColumns", { packets: list(s.packets), lines: list(s.values) });
+      default:
+        return "";
+    }
+  }
+
+  // Paso de la sugerencia que se está mirando (se resalta uno cada vez).
+  function hintStep() {
+    const h = state.hint;
+    if (!h || h.kind !== "deduction" || isOver()) return null;
+    return h.steps[Math.min(state.hintStep || 0, h.steps.length - 1)];
+  }
+
+  // Casillas que resalta la sugerencia en el tablero: las del paso elegido.
+  function hintCells() {
+    if (state.hint && state.hint.kind === "mark" && !isOver()) return [state.hint.cell];
+    const s = hintStep();
+    if (!s) return [];
+    const { width, height } = level.board;
+    const cells = new Map();
+    const add = (r, c) => cells.set(`${r},${c}`, [r, c]);
+    const line = (axis, n) => {
+      if (axis === "row") for (let c = 1; c <= width; c++) add(n, c);
+      else for (let r = 1; r <= height; r++) add(r, n);
+    };
+    if (s.t === "line") line(s.axis, s.line);
+    else if (s.t === "annul") s.cells.forEach(([r, c]) => add(r, c));
+    else if (s.t === "subset" && s.key === "cell") s.values.forEach(([r, c]) => add(r, c));
+    else if (s.t === "subset") s.values.forEach((n) => line(s.key, n));
+    return [...cells.values()].filter(([r, c]) => !occupied(r, c));
+  }
+
+  // Paquetes y pistas que resalta la sugerencia en el panel: los del paso elegido.
+  function hintFocus() {
+    const focus = { packets: new Set(), clues: new Set() };
+    const s = hintStep();
+    if (!s) return focus;
+    if (s.t === "single") {
+      focus.packets.add(s.packet);
+      (s.clues || []).forEach((id) => focus.clues.add(id));
+    } else if (s.t === "annul") {
+      focus.clues.add(s.clue);
+    } else if (s.t === "line") {
+      focus.packets.add(s.packet);
+    } else if (s.t === "subset") {
+      s.packets.forEach((p) => focus.packets.add(p));
+    }
+    return focus;
+  }
+
+  function showHintStep(i) {
+    state.hintStep = i;
+    renderBoard();
+    renderPackets();
+    renderHint();
+  }
+
+  function renderHint() {
+    const box = $("hint");
+    const button = $("hint-button");
+    const status = hintState();
+    button.disabled = status !== "ok";
+    button.title = status === "ok" || status === "over" ? t("hint.buttonTitle") : t(`hint.${status}`);
+    box.innerHTML = "";
+    const add = (tag, text, parent) => {
+      const e = document.createElement(tag);
+      if (text) e.textContent = text;
+      (parent || box).appendChild(e);
+      return e;
+    };
+    if (state.asking && status === "ok") {
+      add("p", t("hint.ask"));
+      const row = add("div");
+      row.className = "hint-actions";
+      const yes = add("button", t("hint.yes"), row);
+      yes.type = "button";
+      yes.className = "button primary";
+      yes.addEventListener("click", useHint);
+      const no = add("button", t("hint.no"), row);
+      no.type = "button";
+      no.className = "button";
+      no.addEventListener("click", () => { state.asking = false; renderHint(); });
+    } else if (state.hint && status !== "over") {
+      add("h3", t("hint.title"));
+      const close = add("button", "✕");
+      close.type = "button";
+      close.className = "close";
+      close.setAttribute("aria-label", t("hint.close"));
+      close.title = t("hint.close");
+      close.addEventListener("click", closeHint);
+      if (state.hint.kind === "mark") {
+        const [r, c] = state.hint.cell;
+        add("p", t("hint.mark", { r, c }));
+      } else {
+        const steps = state.hint.steps;
+        const current = Math.min(state.hintStep || 0, steps.length - 1);
+        const ol = add("ol");
+        steps.forEach((s, i) => {
+          const li = add("li", hintText(s, i), ol);
+          if (steps.length < 2) return;
+          // Varios pasos: cada uno se puede elegir para ver sus casillas.
+          li.className = i === current ? "step active" : "step";
+          li.tabIndex = 0;
+          li.setAttribute("aria-current", i === current ? "step" : "false");
+          li.addEventListener("click", () => showHintStep(i));
+          li.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              showHintStep(i);
+            }
+          });
+        });
+        if (steps.length > 1) add("p", t("hint.stepsNote")).className = "hint-note";
+      }
+    } else {
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
   }
 
   function loseLife(message) {

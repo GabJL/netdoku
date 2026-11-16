@@ -283,8 +283,12 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
         "clues": [
             # `text` es el texto en español; el motor lo compone en cada idioma a partir
             # de `type`, `parameters` y `slots` (cómo se nombra cada elemento).
+            # `domain` (D) y `excluded` (A, si la pista anula casillas) los usa el motor
+            # para las sugerencias.
             {"id": c.id, "packet": c.packet, "type": c.type, "text": c.text, "parameters": c.params,
-             "slots": c.slot_data, "naming": c.naming, "readingCost": c.reading_cost, "topic": c.topic}
+             "slots": c.slot_data, "naming": c.naming, "readingCost": c.reading_cost, "topic": c.topic,
+             "domain": sorted(one_based(x) for x in c.domain),
+             **({"excluded": sorted(one_based(x) for x in c.excluded)} if c.excluded else {})}
             for c in clues
         ],
         "solution": {

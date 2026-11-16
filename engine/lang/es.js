@@ -144,7 +144,12 @@
       loseLife: "Pierdes una vida.",
       stars: ({ n, max }) => `${n} de ${max} estrellas`,
       perfect: "¡Perfecto: sin ningún fallo!",
-      withErrors: ({ n }) => `Resuelto con ${n} ${plural(n, "fallo", "fallos")}. Sin fallos se consiguen las tres estrellas.`,
+      result: ({ errors, hints }) => {
+        const parts = [];
+        if (errors) parts.push(`${errors} ${plural(errors, "fallo", "fallos")}`);
+        if (hints) parts.push(`${hints} ${plural(hints, "sugerencia", "sugerencias")}`);
+        return `Resuelto con ${parts.join(" y ")}. Sin fallos ni sugerencias se consiguen las tres estrellas.`;
+      },
       best: ({ n }) => `Tu mejor resultado en esta dificultad: ${n} ${plural(n, "estrella", "estrellas")}.`,
       unlocked: "Has desbloqueado la dificultad siguiente.",
       attacker: ({ attacker, net, victim }) => `¡Atrapado! El atacante es el paquete ${attacker}: el único otro paquete en la red ${net}, donde estaba la víctima ${victim}.`,
@@ -153,6 +158,32 @@
       nextDifficulty: "Siguiente dificultad ›",
       backToCategory: "Volver a la categoría",
       confirmNew: "¿Empezar otro nivel? Se perderá lo que llevas en este.",
+    },
+
+    hint: {
+      button: "Sugerencia",
+      title: "Sugerencia",
+      buttonTitle: "Pide una sugerencia: te explica la siguiente deducción que puedes hacer. Cuesta una vida.",
+      noLives: "Con una sola vida no se pueden pedir sugerencias.",
+      unsupported: "Este nivel no admite sugerencias.",
+      ask: "Una sugerencia te explica la siguiente deducción que puedes hacer, sin decirte la casilla. Cuesta una vida (y, por tanto, una estrella). ¿La quieres?",
+      yes: "Sí, a cambio de una vida",
+      no: "Cancelar",
+      close: "Cerrar la sugerencia",
+      none: "No se ha encontrado ninguna deducción.",
+      stepsNote: "Pulsa un paso para ver en el tablero las casillas de las que habla.",
+      used: "Has usado una sugerencia y pierdes una vida.",
+      mark: ({ r, c }) => `Revisa tus marcas: la ✕ de la fila ${r}, columna ${c} está mal, porque en esa casilla sí había un paquete.`,
+      single: ({ packet }) => `Fíjate en el paquete ${packet}: con sus pistas y las filas y columnas que ya están ocupadas, solo le queda una casilla posible.`,
+      singleAfter: ({ packet }) => `Con esto, al paquete ${packet} solo le queda una casilla posible.`,
+      lineRow: ({ packet, n }) => `En la fila ${n} tiene que haber un paquete y el único que puede ir en ella es ${packet}: ${packet} está en la fila ${n}.`,
+      lineColumn: ({ packet, n }) => `En la columna ${n} tiene que haber un paquete y el único que puede ir en ella es ${packet}: ${packet} está en la columna ${n}.`,
+      annul: ({ packet }) => `Una pista del paquete ${packet} dice que ningún otro paquete estaba junto a ese elemento: las casillas de alrededor (resaltadas) quedan descartadas para los demás.`,
+      oneRow: ({ packet, n }) => `El paquete ${packet} solo puede estar en la fila ${n}: esa fila es suya, así que ningún otro paquete puede ir en ella.`,
+      oneColumn: ({ packet, n }) => `El paquete ${packet} solo puede estar en la columna ${n}: esa columna es suya, así que ningún otro paquete puede ir en ella.`,
+      subsetCells: ({ packets, n }) => `Los paquetes ${packets} solo pueden estar en estas ${n} casillas (resaltadas), una cada uno: ningún otro paquete puede ir en ellas.`,
+      subsetRows: ({ packets, lines }) => `Los paquetes ${packets} solo pueden estar en las filas ${lines}, uno en cada una: ningún otro paquete puede ir en esas filas.`,
+      subsetColumns: ({ packets, lines }) => `Los paquetes ${packets} solo pueden estar en las columnas ${lines}, uno en cada una: ningún otro paquete puede ir en esas columnas.`,
     },
 
     play: {
@@ -201,7 +232,8 @@
             "Colocar: arrastra un paquete a la casilla donde crees que está, o selecciónalo en el panel y pulsa la casilla. Si aciertas, queda fijo; si fallas, vuelve al panel y pierdes una de tus tres vidas.",
             "Anotar: activa el interruptor (o pulsa A), selecciona un paquete y pulsa las casillas donde podría estar. Aparece un circulito de su color; vuelve a pulsar para quitarlo.",
             "Descartar: clic derecho (o pulsación larga) marca una casilla con ✕ y borra sus notas. Pulsa una pista para tacharla cuando ya la hayas usado.",
-            "Al resolver un nivel ganas tres estrellas menos una por fallo, y se guarda tu mejor resultado en esa dificultad. El botón ↺ empieza otro nivel de la misma dificultad. El progreso se guarda en este navegador.",
+            "Sugerencia: si te atascas, el botón Sugerencia te explica la siguiente deducción que puedes hacer (o te avisa si alguna ✕ está mal), sin decirte la casilla. Cuesta una vida, así que no se puede pedir con la última.",
+            "Al resolver un nivel ganas tres estrellas menos una por fallo o sugerencia, y se guarda tu mejor resultado en esa dificultad. El botón ↺ empieza otro nivel de la misma dificultad. El progreso se guarda en este navegador.",
           ],
           caption: "A está colocado; B y C tienen notas; una casilla está descartada.",
         },

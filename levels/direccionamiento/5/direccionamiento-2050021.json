@@ -637,7 +637,45 @@
     "net": "ip_member"
    },
    "readingCost": 3,
-   "topic": "T3.vlsm"
+   "topic": "T3.vlsm",
+   "domain": [
+    [
+     1,
+     1
+    ],
+    [
+     2,
+     1
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     3,
+     2
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     4,
+     1
+    ],
+    [
+     4,
+     2
+    ],
+    [
+     4,
+     3
+    ],
+    [
+     4,
+     4
+    ]
+   ]
   },
   {
    "id": "C2",
@@ -659,7 +697,35 @@
     "node": "ip"
    },
    "readingCost": 3,
-   "topic": "T3.vlsm"
+   "topic": "T3.vlsm",
+   "domain": [
+    [
+     3,
+     2
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     4,
+     3
+    ]
+   ],
+   "excluded": [
+    [
+     3,
+     2
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     4,
+     3
+    ]
+   ]
   },
   {
    "id": "C3",
@@ -680,7 +746,17 @@
     "router": "networks"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     2,
+     6
+    ],
+    [
+     3,
+     6
+    ]
+   ]
   },
   {
    "id": "C4",
@@ -701,7 +777,17 @@
     "node": "label_network"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     5,
+     1
+    ],
+    [
+     6,
+     2
+    ]
+   ]
   },
   {
    "id": "C5",
@@ -722,7 +808,17 @@
     "router": "networks_prefix"
    },
    "readingCost": 0,
-   "topic": "T3.ip"
+   "topic": "T3.ip",
+   "domain": [
+    [
+     2,
+     4
+    ],
+    [
+     3,
+     4
+    ]
+   ]
   }
  ],
  "solution": {

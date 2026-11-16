@@ -579,7 +579,25 @@
    "slots": {},
    "naming": {},
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     1,
+     3
+    ],
+    [
+     2,
+     4
+    ],
+    [
+     4,
+     2
+    ],
+    [
+     5,
+     1
+    ]
+   ]
   },
   {
    "id": "C2",
@@ -601,7 +619,35 @@
     "node": "ip"
    },
    "readingCost": 3,
-   "topic": "T3.vlsm"
+   "topic": "T3.vlsm",
+   "domain": [
+    [
+     3,
+     3
+    ],
+    [
+     4,
+     4
+    ],
+    [
+     5,
+     3
+    ]
+   ],
+   "excluded": [
+    [
+     3,
+     3
+    ],
+    [
+     4,
+     4
+    ],
+    [
+     5,
+     3
+    ]
+   ]
   },
   {
    "id": "C3",
@@ -622,7 +668,17 @@
     "router": "networks"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     3,
+     5
+    ],
+    [
+     4,
+     5
+    ]
+   ]
   },
   {
    "id": "C4",
@@ -644,7 +700,41 @@
     "net": "ip_member"
    },
    "readingCost": 3,
-   "topic": "T3.vlsm"
+   "topic": "T3.vlsm",
+   "domain": [
+    [
+     3,
+     3
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     4,
+     4
+    ],
+    [
+     5,
+     3
+    ],
+    [
+     5,
+     4
+    ],
+    [
+     6,
+     2
+    ],
+    [
+     6,
+     3
+    ],
+    [
+     6,
+     4
+    ]
+   ]
   },
   {
    "id": "C5",
@@ -666,7 +756,45 @@
     "net": "ip_member"
    },
    "readingCost": 3,
-   "topic": "T3.vlsm"
+   "topic": "T3.vlsm",
+   "domain": [
+    [
+     1,
+     1
+    ],
+    [
+     1,
+     2
+    ],
+    [
+     2,
+     1
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     3,
+     1
+    ],
+    [
+     3,
+     2
+    ],
+    [
+     4,
+     1
+    ],
+    [
+     4,
+     2
+    ],
+    [
+     5,
+     1
+    ]
+   ]
   },
   {
    "id": "C6",
@@ -679,7 +807,33 @@
    "slots": {},
    "naming": {},
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     3,
+     1
+    ],
+    [
+     3,
+     2
+    ],
+    [
+     3,
+     3
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     3,
+     5
+    ],
+    [
+     3,
+     6
+    ]
+   ]
   }
  ],
  "solution": {

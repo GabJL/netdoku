@@ -97,12 +97,16 @@
       </section>
 
       <aside class="side">
-        <label class="modebar" data-i18n-title="game.modeShortcut">
-          <input type="checkbox" id="note-mode" role="switch">
-          <span class="switch" aria-hidden="true"></span>
-          <span id="mode-label"></span>
-        </label>
+        <div class="side-tools">
+          <label class="modebar" data-i18n-title="game.modeShortcut">
+            <input type="checkbox" id="note-mode" role="switch">
+            <span class="switch" aria-hidden="true"></span>
+            <span id="mode-label"></span>
+          </label>
+          <button type="button" id="hint-button" class="hint-button"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="hint.button"></span></button>
+        </div>
         <div id="message" class="message" role="status"></div>
+        <div id="hint" class="hint-box" hidden></div>
         <div id="final" class="final" hidden></div>
         <div id="packets" class="packets"></div>
       </aside>
@@ -122,6 +126,7 @@
   </dialog>
 
   <script src="help.js?v=dev"></script>
+  <script src="hints.js?v=dev"></script>
   <script src="netdoku.js?v=dev"></script>
   <script src="app.js?v=dev"></script>
 </body>

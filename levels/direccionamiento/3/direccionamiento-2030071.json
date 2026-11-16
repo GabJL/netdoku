@@ -619,7 +619,13 @@
     "node": "label"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     1,
+     1
+    ]
+   ]
   },
   {
    "id": "C2",
@@ -640,7 +646,27 @@
     "node": "label"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     4,
+     4
+    ],
+    [
+     5,
+     5
+    ]
+   ],
+   "excluded": [
+    [
+     4,
+     4
+    ],
+    [
+     5,
+     5
+    ]
+   ]
   },
   {
    "id": "C3",
@@ -662,7 +688,35 @@
     "node": "ip"
    },
    "readingCost": 2,
-   "topic": "T3.subredes"
+   "topic": "T3.subredes",
+   "domain": [
+    [
+     5,
+     4
+    ],
+    [
+     6,
+     3
+    ],
+    [
+     6,
+     5
+    ]
+   ],
+   "excluded": [
+    [
+     5,
+     4
+    ],
+    [
+     6,
+     3
+    ],
+    [
+     6,
+     5
+    ]
+   ]
   },
   {
    "id": "C4",
@@ -683,7 +737,27 @@
     "node": "label"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     4,
+     1
+    ],
+    [
+     5,
+     2
+    ]
+   ],
+   "excluded": [
+    [
+     4,
+     1
+    ],
+    [
+     5,
+     2
+    ]
+   ]
   },
   {
    "id": "C5",
@@ -696,7 +770,29 @@
    "slots": {},
    "naming": {},
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     1,
+     5
+    ],
+    [
+     2,
+     5
+    ],
+    [
+     3,
+     5
+    ],
+    [
+     5,
+     5
+    ],
+    [
+     6,
+     5
+    ]
+   ]
   }
  ],
  "solution": {

@@ -16,7 +16,7 @@ Después, abrir <http://localhost:8000/engine/> en el navegador. El repositorio 
 
 La pantalla inicial tiene cinco apartados: Cómo se juega, Jugar, Estadísticas, Ayuda y Sobre el juego. En «Jugar» se elige una categoría (cada una corresponde a un bloque de la asignatura) y una de sus cinco dificultades. Cada vez que se juega una dificultad sale un nivel distinto de su lote (unos 50), y ↺ da otro. Para abrir una dificultad hay que superar la anterior; las categorías están todas abiertas. De cada dificultad se guarda el mejor resultado: tres estrellas menos una por fallo, que nunca se pierden.
 
-Mecánica: como mucho un paquete por fila y por columna. Arrastra cada paquete a su casilla (o selecciónalo y pulsa la casilla). Si aciertas, queda fijo; si fallas, vuelve al panel y pierdes una vida. Al colocar el último paquete, el nivel queda resuelto y se muestra el atacante: el único otro paquete en la red de la víctima.
+Mecánica: como mucho un paquete por fila y por columna. Arrastra cada paquete a su casilla (o selecciónalo y pulsa la casilla). Si aciertas, queda fijo; si fallas, vuelve al panel y pierdes una vida. Al colocar el último paquete, el nivel queda resuelto y se muestra el atacante: el único otro paquete en la red de la víctima. Si te atascas, el botón Sugerencia explica la siguiente deducción (sin decir la casilla) a cambio de una vida.
 
 Un interruptor (o la tecla A) cambia entre **Colocar** paquetes y **Anotar**, que marca con un circulito del color del paquete las casillas donde el jugador cree que puede ir (como los candidatos del Sudoku; el juego nunca los rellena solo). El clic derecho (o una pulsación larga en táctil) marca una casilla como descartada con ✕ y borra sus notas.
 

@@ -139,7 +139,12 @@
       loseLife: "You lose a life.",
       stars: ({ n, max }) => `${n} of ${max} stars`,
       perfect: "Perfect: no mistakes!",
-      withErrors: ({ n }) => `Solved with ${n} ${plural(n, "mistake", "mistakes")}. Without mistakes you get all three stars.`,
+      result: ({ errors, hints }) => {
+        const parts = [];
+        if (errors) parts.push(`${errors} ${plural(errors, "mistake", "mistakes")}`);
+        if (hints) parts.push(`${hints} ${plural(hints, "hint", "hints")}`);
+        return `Solved with ${parts.join(" and ")}. Without mistakes or hints you get all three stars.`;
+      },
       best: ({ n }) => `Your best result in this difficulty: ${n} ${plural(n, "star", "stars")}.`,
       unlocked: "You have unlocked the next difficulty.",
       attacker: ({ attacker, net, victim }) => `Caught! The attacker is packet ${attacker}: the only other packet in the ${net} network, where the victim ${victim} was.`,
@@ -148,6 +153,32 @@
       nextDifficulty: "Next difficulty ›",
       backToCategory: "Back to the category",
       confirmNew: "Start another level? Your progress in this one will be lost.",
+    },
+
+    hint: {
+      button: "Hint",
+      title: "Hint",
+      buttonTitle: "Ask for a hint: it explains the next deduction you can make. It costs a life.",
+      noLives: "You can't ask for hints with only one life left.",
+      unsupported: "This level doesn't support hints.",
+      ask: "A hint explains the next deduction you can make, without telling you the cell. It costs a life (and therefore a star). Do you want it?",
+      yes: "Yes, for one life",
+      no: "Cancel",
+      close: "Close the hint",
+      none: "No deduction was found.",
+      stepsNote: "Click a step to see on the board the cells it talks about.",
+      used: "You used a hint and lose a life.",
+      mark: ({ r, c }) => `Check your marks: the ✕ in row ${r}, column ${c} is wrong, because there was a packet in that cell.`,
+      single: ({ packet }) => `Look at packet ${packet}: with its clues and the rows and columns already taken, it has only one possible cell left.`,
+      singleAfter: ({ packet }) => `So packet ${packet} has only one possible cell left.`,
+      lineRow: ({ packet, n }) => `Row ${n} must have a packet and the only one that can go there is ${packet}: ${packet} is in row ${n}.`,
+      lineColumn: ({ packet, n }) => `Column ${n} must have a packet and the only one that can go there is ${packet}: ${packet} is in column ${n}.`,
+      annul: ({ packet }) => `A clue of packet ${packet} says no other packet was next to that element: the cells around it (highlighted) are ruled out for the rest.`,
+      oneRow: ({ packet, n }) => `Packet ${packet} can only be in row ${n}: that row is its own, so no other packet can go there.`,
+      oneColumn: ({ packet, n }) => `Packet ${packet} can only be in column ${n}: that column is its own, so no other packet can go there.`,
+      subsetCells: ({ packets, n }) => `Packets ${packets} can only be in these ${n} cells (highlighted), one each: no other packet can go there.`,
+      subsetRows: ({ packets, lines }) => `Packets ${packets} can only be in rows ${lines}, one in each: no other packet can go in those rows.`,
+      subsetColumns: ({ packets, lines }) => `Packets ${packets} can only be in columns ${lines}, one in each: no other packet can go in those columns.`,
     },
 
     play: {
@@ -196,7 +227,8 @@
             "Place: drag a packet to the cell where you think it is, or select it in the panel and tap the cell. If you are right, it stays there; if not, it goes back to the panel and you lose one of your three lives.",
             "Notes: turn on the switch (or press A), select a packet and tap the cells where it could be. A small circle of its colour appears; tap again to remove it.",
             "Discard: right-click (or long-press) marks a cell with ✕ and clears its notes. Tap a clue to cross it out once you have used it.",
-            "When you solve a level you get three stars minus one per mistake, and your best result in that difficulty is kept. The ↺ button starts another level of the same difficulty. Your progress is saved in this browser.",
+            "Hint: if you get stuck, the Hint button explains the next deduction you can make (or warns you if one of your ✕ is wrong), without telling you the cell. It costs a life, so you can't ask for one with your last life.",
+            "When you solve a level you get three stars minus one per mistake or hint, and your best result in that difficulty is kept. The ↺ button starts another level of the same difficulty. Your progress is saved in this browser.",
           ],
           caption: "A is placed; B and C have notes; one cell is discarded.",
         },

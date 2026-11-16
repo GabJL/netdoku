@@ -603,7 +603,27 @@
     "node": "label_network"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     5,
+     1
+    ],
+    [
+     6,
+     2
+    ]
+   ],
+   "excluded": [
+    [
+     5,
+     1
+    ],
+    [
+     6,
+     2
+    ]
+   ]
   },
   {
    "id": "C2",
@@ -624,7 +644,21 @@
     "node": "label"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     1,
+     6
+    ],
+    [
+     2,
+     5
+    ],
+    [
+     3,
+     6
+    ]
+   ]
   },
   {
    "id": "C3",
@@ -645,7 +679,13 @@
     "node": "label_network"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     3,
+     1
+    ]
+   ]
   },
   {
    "id": "C4",
@@ -666,7 +706,27 @@
     "node": "label"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     5,
+     4
+    ],
+    [
+     6,
+     3
+    ]
+   ],
+   "excluded": [
+    [
+     5,
+     4
+    ],
+    [
+     6,
+     3
+    ]
+   ]
   },
   {
    "id": "C5",
@@ -687,7 +747,27 @@
     "node": "label"
    },
    "readingCost": 0,
-   "topic": "T3.dispositivos"
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     4,
+     5
+    ],
+    [
+     5,
+     6
+    ]
+   ],
+   "excluded": [
+    [
+     4,
+     5
+    ],
+    [
+     5,
+     6
+    ]
+   ]
   }
  ],
  "solution": {

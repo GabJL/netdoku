@@ -1,7 +1,11 @@
 # Versiones de Netdoku
 
-## Sin publicar
+## 0.3.2 (16 de noviembre de 2026)
 
+Sugerencias durante la partida y niveles de Direccionamiento cuya dificultad de interpretación solo cuenta cálculos imprescindibles.
+
+- Sugerencias: si te atascas, el botón Sugerencia explica la siguiente deducción que puedes hacer, paso a paso y con sus casillas resaltadas, sin decir la casilla final. Si alguna ✕ tuya tapa un paquete, te lo avisa. Cuesta una vida (y una estrella), pide confirmación y no se puede usar con la última vida. Se calcula desde tu partida, sea cual sea el orden en que hayas colocado los paquetes, y deja la víctima para el final. Las estrellas son tres menos una por fallo o sugerencia.
+- Las pistas de los niveles guardan sus casillas posibles (`domain`) y las que anulan (`excluded`), que usa el motor para las sugerencias. Se han añadido a los 500 niveles de los lotes sin cambiar nada más.
 - Las pistas solo exigen cálculos imprescindibles. Antes, al nombrar un equipo por su dirección o un router por sus interfaces, a veces el resto de pistas ya dejaba claro a cuál se refería y el cálculo se podía saltar: el nivel era más fácil de lo que indicaba su dificultad. El generador comprueba ahora cada pista sustituyéndola por lo que dice sin calcular («junto a algún servidor DNS») y, si el nivel sigue saliendo igual, la nombra sin dirección. Se han sustituido los 58 niveles de Direccionamiento que tenían algún cálculo esquivable (10 de dificultad 2, 16 de 3, 14 de 4 y 18 de 5); en 35 de ellos la dificultad real era menor que la indicada.
 - `generate.py --retire` quita niveles de los lotes. Los nombres retirados se apuntan en `levels/retired.txt` y no se reutilizan, para que el progreso guardado de un jugador nunca se aplique a un nivel distinto.
 
