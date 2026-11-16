@@ -76,7 +76,49 @@
       }
     };
 
+    // Route and TTL clues: from the frame (MAC) or with the current TTL.
+    const mac = s.view && s.view.form === "mac_view";
+    const ttlValue = s.ttl && s.ttl.form === "ttl_value";
+    const ttl0 = L.ttl(p);
+    const WORDS = { 1: "one", 2: "two", 3: "three", 4: "four", 5: "five" };
+    const routers = (n) => `${WORDS[n] || n} router${n === 1 ? "" : "s"}`;
+
     switch (c.type) {
+      case "endpoint.in_origin_network":
+        return mac ? `The frame carrying packet ${p} had been sent by its own source device.`
+          : `Packet ${p} had not left its source network yet.`;
+      case "endpoint.in_destination_network":
+        return mac ? `The frame carrying packet ${p} was addressed directly to its destination device.`
+          : `Packet ${p} had already reached its destination network.`;
+      case "route.in_transit_network":
+        return `Packet ${p} was passing through a transit network.`;
+      case "route.last_router": {
+        const r = router(s.router || { ref: params.routerId });
+        return mac ? `The frame carrying packet ${p} had been sent by the router ${r}.`
+          : `The last router packet ${p} had crossed was the router ${r}.`;
+      }
+      case "route.next_router": {
+        const r = router(s.router || { ref: params.routerId });
+        return mac ? `The frame carrying packet ${p} was addressed to the router ${r}.`
+          : `The next router packet ${p} was going to cross was the router ${r}.`;
+      }
+      case "ttl.routers_crossed": {
+        const n = params.count;
+        if (ttlValue) return `Packet ${p} had TTL ${ttl0 - n}.`;
+        return n === 0 ? `Packet ${p} had not crossed any router.` : `Packet ${p} had crossed exactly ${routers(n)}.`;
+      }
+      case "ttl.routers_left":
+        return `Packet ${p} had ${routers(params.count)} left to reach its destination network.`;
+      case "ttl.routers_crossed_range": {
+        if (params.min !== undefined) {
+          const n = params.min;
+          if (ttlValue) return n === 1 ? `The TTL of packet ${p} was already lower than the initial one.` : `The TTL of packet ${p} was at most ${ttl0 - n}.`;
+          return n === 1 ? `Packet ${p} had already crossed some router.` : `Packet ${p} had crossed at least ${routers(n)}.`;
+        }
+        const n = params.max;
+        if (ttlValue) return `The TTL of packet ${p} was at least ${ttl0 - n}.`;
+        return `Packet ${p} had crossed at most ${routers(n)}.`;
+      }
       case "network.in_network":
         return `Packet ${p} was in ${net(s.net || { ref: params.networkId })}.`;
       case "network.prefix_length":
@@ -112,7 +154,7 @@
     networks: {
       admin: "Administration", services: "Services", lab: "Lab", dev: "Development",
       management: "Management", classrooms: "Classrooms", library: "Library", guests: "Guests",
-      office: "Office", research: "Research",
+      office: "Office", research: "Research", backbone: "Backbone",
     },
     nodes: NODES,
     nodesPlural: PLURAL,
@@ -131,6 +173,7 @@
         stats: "Statistics",
         help: "Help",
         about: "About",
+        test: "Tests",
       },
       loadError: "The level list could not be read. Serve the folder with a web server (see README.md).",
       levelLoadError: "The level could not be loaded.",
@@ -163,6 +206,14 @@
       objective: ({ victim }) => `Alert! Someone has tampered with packet ${victim}. There was only one other packet in its network: the attacker. Use the clues to work out where each packet was (at most one per row and per column) and unmask the attacker before the attack spreads.`,
       sizeNote: "Cells do not show the size of a network: its size is its number of addresses.",
       routerName: ({ a, b }) => `Router between ${a} and ${b}`,
+      routeNote: "Each packet's card shows its source, its destination and its initial TTL: it was in a network on its route that its TTL let it reach.",
+      origin: "Source",
+      destination: "Destination",
+      ttlInitial: "Initial TTL",
+      endpoint: ({ label, net }) => `${label} in ${net}`,
+      broadcastTo: ({ address }) => `broadcast (${address})`,
+      originTag: "source",
+      destinationTag: "destination",
       resumed: "Your progress in this level has been restored.",
       selectFirst: "First select a packet in the panel to take notes.",
       occupiedNode: "That cell is taken by a device.",
@@ -208,6 +259,7 @@
       mark: ({ r, c }) => `Check your marks: the ✕ in row ${r}, column ${c} is wrong, because there was a packet in that cell.`,
       single: ({ packet }) => `Look at packet ${packet}: with its clues and the rows and columns already taken, it has only one possible cell left.`,
       singleAfter: ({ packet }) => `So packet ${packet} has only one possible cell left.`,
+      singleRoute: ({ packet }) => `Look at packet ${packet}: with its route, its TTL, its clues and the rows and columns already taken, it has only one possible cell left.`,
       lineRow: ({ packet, n }) => `Row ${n} must have a packet and the only one that can go there is ${packet}: ${packet} is in row ${n}.`,
       lineColumn: ({ packet, n }) => `Column ${n} must have a packet and the only one that can go there is ${packet}: ${packet} is in column ${n}.`,
       annul: ({ packet }) => `A clue of packet ${packet} says no other packet was next to that element: the cells around it (highlighted) are ruled out for the rest.`,
@@ -240,6 +292,36 @@
     info: {
       theory: "Theory",
       newRules: "New rules in this category",
+    },
+
+    // Temporary test view.
+    test: {
+      title: "Tests",
+      intro: "Fixed levels from the game's pools to check the rules and texts: each clue subtype appears on at least three boards, and each naming form and each addressing plan on at least one. Play them, tick the ones that are right and send the list of seeds. They do not count for the statistics.",
+      askKey: "Key for the test view:",
+      wrongKey: "Wrong key.",
+      loadError: "The list of test levels (levels/test.json) could not be read.",
+      count: ({ done, total }) => `Validated: ${done} of ${total}.`,
+      copy: "Copy",
+      copied: "Seeds copied.",
+      seed: "Seed {seed}",
+      detail: ({ logic, reading, clues }) => `Logic ${logic}, interpretation ${reading} · ${clues} ${clues === 1 ? "clue" : "clues"}`,
+      subtypes: "Subtypes",
+      forms: "Forms",
+      plan: "Plan",
+      features: "With",
+      feature: {
+        broadcast: "broadcast packet",
+        transit: "transit network",
+        shortTtl: "TTL that does not reach the destination",
+      },
+      play: "Play",
+      validated: "Validated",
+      playing: "Test level {seed}: it does not count for the statistics.",
+      gameTitle: "{category} · {tier} · seed {seed}",
+      mark: "Mark as validated",
+      unmark: "Remove the validated mark",
+      back: "Back to the tests",
     },
 
     howto: {
@@ -420,6 +502,66 @@
           ],
           caption: "«In the same row as the DNS server»: any of the free cells in row 2.",
         },
+        route_trace: {
+          chip: "Routes",
+          title: "Source, destination and route of a packet",
+          text: [
+            "In this category, each packet's card shows its source, its destination and its initial TTL. Hover over the card (or select the packet) to see its source and destination devices on the board.",
+            "The packet's route is the shortest path, the one with the fewest routers, between the network of its source and that of its destination. In every level that path is unique: follow it from router to router.",
+            "The packet was in a free cell of a network on its route: its source network, its destination network or one in between, as long as its TTL lets it get there (see the TTL card).",
+            "A transit network (Backbone) has no devices: it only joins routers. Packets may pass through it, but they never start or end there.",
+            "If the destination is the broadcast of its network, the packet goes to every device in that network and no router forwards it: it stays in its source network.",
+          ],
+          caption: "From the user computer on the left to the web server on the right with initial TTL 2: it can only cross one router, so it is in one of the circled cells.",
+        },
+        ttl: {
+          chip: "TTL",
+          title: "TTL: time to live",
+          text: [
+            "Each packet leaves its source with an initial TTL (in the game, between 2 and 6). Each router it crosses subtracts 1; switches and access points do not change it.",
+            "Current TTL = initial TTL − routers crossed. A packet with TTL 1 is still alive, but the next router will bring it to 0, drop it and notify the source with an ICMP message.",
+            "So a packet with initial TTL 3 can only have crossed 0, 1 or 2 routers, even if its route has more: if its TTL does not reach, it will never get to its destination.",
+          ],
+        },
+        frames: {
+          chip: "Frames and MAC",
+          title: "The frame carrying a packet",
+          text: [
+            "Inside each network, the packet travels in a link-layer frame, which goes from one device or router to the next one in that same network. Each of them is identified by its MAC address.",
+            "The packet's source and destination IP addresses do not change along the way. The frame's MAC addresses change in each network: it is sent by the previous device or router and addressed to the next hop.",
+            "So «the frame had been sent by its own source device» means the packet had not left its source network yet; «the frame was addressed to the router X», that the next router on its route was X; «the frame had been sent by the router X», that the last router it had crossed was X; and «the frame was addressed directly to its destination device», that it was already in its destination network.",
+          ],
+        },
+        route_position: {
+          chip: "Source, destination or transit",
+          title: "«It had not left its source network yet»",
+          text: [
+            "«It had not left its source network yet»: the packet is in the network of its source device; it has not crossed any router.",
+            "«It had already reached its destination network»: it is in the network of its destination device.",
+            "«It was passing through a transit network»: it is in the network with no devices on its route.",
+          ],
+          caption: "«It had not left its source network yet»: any of the circled cells.",
+        },
+        route_router: {
+          chip: "Last or next router",
+          title: "«The last router it had crossed…»",
+          text: [
+            "«The last router it had crossed was the router joining X and Y»: the packet had just gone through that router, so it is in whichever of the two networks it was heading to. You need to know which way it is going.",
+            "«The next router it was going to cross was…»: it is in whichever of the two networks it came from. This holds even if its TTL will not let it cross that router.",
+          ],
+          caption: "«The last router it had crossed was the one on the left»: it goes from left to right, so it is in the middle network.",
+        },
+        ttl_count: {
+          chip: "Routers crossed",
+          title: "«It had crossed exactly two routers»",
+          text: [
+            "Count the routers on its route from the source network: after crossing two, the packet is in the third network of its route.",
+            "«It had two routers left to reach its destination network»: count backwards from the destination network.",
+            "«It had already crossed some router», «at least two», «at most one»: the packet is in any network on its route that meets the condition.",
+            "«It had TTL 2»: subtract it from the initial TTL on its card to know how many routers it has crossed (with initial TTL 4, two). «Its TTL was at most 2» is the same as «it had crossed at least two routers».",
+          ],
+          caption: "«It had already crossed some router»: any network on its route except the source one.",
+        },
         icons: {
           chip: "Icons",
           title: "Board icons",
@@ -460,6 +602,20 @@
           "With **VLSM** (variable-length subnet masks), the subnets of a block can have different sizes, depending on what each one needs: for example, a /25 (128 addresses) for a lab and a /27 (32) for an office. In a level, networks never overlap, so each address belongs to just one.",
         ],
         rules: ["named_by_address", "network_size", "ip_network", "special_addresses", "prefix_length"],
+      },
+      encaminamiento: {
+        name: "Routing",
+        short: "Routes and TTL: follow each packet from router to router, from its source to its destination.",
+        theory: [
+          "When a packet's source and destination are in different networks, the packet has to cross **routers**. Each router decides which network to forward it on to bring it closer to its destination: that is **routing**. The sequence of networks and routers it goes through is its **route**.",
+          "In the game, the route is the **shortest path**, the one crossing the fewest routers, between the source network and the destination network, as the RIP routing protocol does by counting hops. In every level of this category that path is unique.",
+          "The packet's source and destination IP addresses do not change along the way. What changes in each network is the link-layer **frame** carrying it: it goes from the previous device or router to the **next hop**, identified by their **MAC** addresses. The next hop's MAC address is found with **ARP**.",
+          "The **TTL** (time to live) is a field of the IP header. The source gives it an initial value and each router subtracts 1. If a router brings it to 0, it drops the packet and notifies the source with an **ICMP** message (that is how tracert works). It keeps a packet from looping forever if there is a routing error.",
+          "Current TTL = initial TTL − routers crossed. A packet with initial TTL 3 can only have crossed two routers: if its route has more, it will not reach its destination. Switches and access points do not count, because they do not look at the IP header.",
+          "A **transit network** has no devices: it only joins routers, like the links between the routers of a company or a provider. Packets cross it, but never start or end there.",
+          "**Broadcast** (for example, the DHCP request of a device that has no address yet) goes to every device in a network, but routers do not forward it: a broadcast packet does not leave its source network.",
+        ],
+        rules: ["route_trace", "ttl", "frames", "route_position", "route_router", "ttl_count"],
       },
     },
 

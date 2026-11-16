@@ -9,7 +9,8 @@ from .content import and_word, place_nodes, place_packets
 from .difficulty import evaluate
 from .naming import (CATEGORIES, READING_TIERS, SIZE_FORMS, SIZE_NOTE, Namer, category_of, global_level,
                      max_topic, topic_index)
-from .rules import KNOWLEDGE, Context, generate_instances, uncalculated
+from .routes import assign_routes, choose_transit
+from .rules import KNOWLEDGE, ROUTE_FAMILIES, Context, generate_instances, uncalculated
 from .selection import Selector
 from .solver import Rules, count_solutions, initial_domains, propagate
 
@@ -31,6 +32,18 @@ DEFAULTS = {
     "nearBoundaryDistance": 4,     # addressing.nearBoundaryDistance
     "target": None,                # dificultad global buscada (1-5); None = la que salga
     "maxSpatial": None,            # máximo de pistas de fila o columna; None = sin límite
+    "routes": False,               # features.routes/ttl: origen, destino, ruta y TTL de cada paquete
+    "transitProbability": 0.5,     # probabilidad de una red de tránsito (nodes.emptyNetworks.max = 1)
+    "broadcastProbability": 0.3,   # endpoints.broadcastPackets.probability
+    "shortRatio": None,            # ttl.shortRatio; None = auto (0,15-0,3)
+    "categoryMinClues": 0,         # clues.categoryMinClues
+}
+
+# Valores que cambia cada categoría (categoryProfiles en la configuración global).
+# `networks` puede ser una lista: se elige una en cada intento.
+CATEGORY_PROFILES = {
+    "encaminamiento": {"height": 7, "width": 7, "networks": [5, 6], "packets": 7, "routes": True,
+                       "categoryMinClues": 3},
 }
 
 # Dificultad de interpretación con la que se busca cada dificultad global en
@@ -59,9 +72,11 @@ def one_based(cell):
 
 
 def build(seed, config=None, max_attempts=200):
-    cfg = {**DEFAULTS, **(config or {})}
-    if cfg["category"] not in CATEGORIES:
-        raise ValueError(f"Categoría desconocida: {cfg['category']}")
+    config = {k: v for k, v in (config or {}).items() if v is not None}
+    category = config.get("category", DEFAULTS["category"])
+    if category not in CATEGORIES:
+        raise ValueError(f"Categoría desconocida: {category}")
+    cfg = {**DEFAULTS, **CATEGORY_PROFILES.get(category, {}), **config}
     rng = random.Random(seed)
     last_error = None
     for attempt in range(1, max_attempts + 1):
@@ -96,11 +111,20 @@ def _attempt(rng, seed, cfg, attempt):
     else:
         reading = cfg["reading"] or rng.choice([1, 2, 3, 4, 5])
     plan = _choose_plan(rng, cfg, reading)
-    board = generate_board(rng, cfg["height"], cfg["width"], cfg["networks"], cfg["minNetworkSize"], plan)
+    networks = cfg["networks"]
+    if isinstance(networks, (list, tuple)):
+        networks = rng.choice(networks)
+    board = generate_board(rng, cfg["height"], cfg["width"], networks, cfg["minNetworkSize"], plan)
     addressing = Addressing(plan, board.prefixes, cfg["nearBoundaryDistance"])
-    nodes = place_nodes(rng, board)
+    transit = choose_transit(rng, board, cfg["transitProbability"]) if cfg["routes"] else None
+    nodes = place_nodes(rng, board, empty={transit} if transit else ())
     packets, victim_net = place_packets(rng, board, nodes, cfg["packets"])
-    ctx = Context(board, nodes, packets, addressing)
+    routes = None
+    if cfg["routes"]:
+        victim_id = next(p.id for p in packets if p.role == "victim")
+        routes = assign_routes(rng, board, nodes, packets, victim_id, transit, cfg["broadcastProbability"],
+                               cfg["shortRatio"])
+    ctx = Context(board, nodes, packets, addressing, routes, transit)
     # network.prefix_length cuesta como mínimo 1: no cabe en Inicial ni en interpretación 1.
     disabled = {"network.prefix_length"} if category == "inicial" or reading == 1 else set()
     pool = generate_instances(ctx, cfg["enabledRuleSubtypes"], disabled)
@@ -119,20 +143,23 @@ def _attempt(rng, seed, cfg, attempt):
     if cfg["maxSpatial"] is not None:
         candidates = [c for c in candidates
                       if sum(1 for x in c if x.type.startswith("spatial.")) <= cfg["maxSpatial"]]
+    if cfg["categoryMinClues"]:
+        candidates = [c for c in candidates
+                      if sum(1 for x in c if x.type.split(".")[0] in ROUTE_FAMILIES) >= cfg["categoryMinClues"]]
     if not candidates:
         raise RuntimeError("Las pistas disponibles no bastan para resolver el nivel")
     ids = [p.id for p in packets]
     if target:
         # Solo valen las selecciones cuya dificultad lógica da, con esta interpretación, la global buscada.
         fitting = [c for c in candidates
-                   if global_level(evaluate(ctx.free_cells, ids, c, rules, victim.id)["logic"], reading) == target]
+                   if global_level(evaluate(ctx.base, ids, c, rules, victim.id)["logic"], reading) == target]
         if not fitting:
             raise RuntimeError(f"Ninguna selección de pistas tiene la dificultad {target}")
         candidates = fitting
     clues = min(candidates, key=_spatial_score)
 
     # Validación independiente: una única solución y que sea la generada.
-    domains = initial_domains(ctx.free_cells, ids, clues)
+    domains = initial_domains(ctx.base, ids, clues)
     if count_solutions(domains, limit=2) != 1:
         raise RuntimeError("El nivel no tiene solución única")
     solved, max_subset = propagate(domains, rules, exclude_from_subsets={victim.id})
@@ -142,7 +169,7 @@ def _attempt(rng, seed, cfg, attempt):
     if sorted(p.id for p in in_victim_net) != sorted([victim.id, attacker.id]):
         raise RuntimeError("La red de la víctima no tiene exactamente dos paquetes")
 
-    report = evaluate(ctx.free_cells, ids, clues, rules, victim.id)
+    report = evaluate(ctx.base, ids, clues, rules, victim.id)
 
     # Formas de nombrar: después de la lógica, porque no cambian D ni A.
     namer = Namer(rng, board, nodes, addressing, cfg["maxTopic"])
@@ -150,23 +177,31 @@ def _attempt(rng, seed, cfg, attempt):
         clues = namer.apply(clues, namer.plain(clues), {})
     else:
         ratio = cfg["categoryFormRatio"]
-        ratio = rng.uniform(0.3, 0.7) if ratio == "auto" else float(ratio)
+        if ratio == "auto":
+            ratio = rng.uniform(0.2, 0.5) if cfg["routes"] else rng.uniform(0.3, 0.7)
+        ratio = float(ratio)
         needed = needed_calculations(ctx, clues, rules, ids, victim.id, report["logic"])
-        assigned = namer.assign(clues, reading, ratio, needed)
+        assigned = namer.assign(clues, reading, ratio, needed, require_category=not cfg["routes"])
         if assigned is None:
             raise RuntimeError(f"No se pueden nombrar las pistas con dificultad de interpretación {reading}")
         clues = namer.apply(clues, *assigned)
         if any(c.reading_cost and c.id not in needed for c in clues):
             raise RuntimeError("Una pista con coste de interpretación se resuelve sin hacer su cálculo")
     namer.assign_remaining(nodes, board.routers)
-    topic = max_topic([c.topic for c in clues])
-    if category_of(topic) != category:
+    topics = [c.topic for c in clues]
+    if routes:
+        # Origen, destino y TTL en la ficha (T3.ip); un destino de difusión, T3.subredes.
+        topics.append("T3.ip")
+        if any(r.broadcast for r in routes.values()):
+            topics.append("T3.subredes")
+    topic = max_topic(topics)
+    if not cfg["routes"] and category_of(topic) != category:
         raise RuntimeError("Las pistas no corresponden a la categoría pedida")
     report["reading"] = reading
     report["readingCosts"] = [c.reading_cost for c in clues]
     report["global"] = global_level(report["logic"], reading)
     return to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victim_net, max_subset, report,
-                   addressing, category, topic)
+                   addressing, category, topic, ctx)
 
 
 def needed_calculations(ctx, clues, rules, ids, victim, logic):
@@ -184,12 +219,12 @@ def needed_calculations(ctx, clues, rules, ids, victim, logic):
         if (domain, excluded) == (clue.domain, clue.excluded):
             continue   # sin formas con coste (filas y columnas)
         trial = clues[:i] + [replace(clue, domain=domain, excluded=excluded)] + clues[i + 1:]
-        solved, _ = propagate(initial_domains(ctx.free_cells, ids, trial), rules, exclude_from_subsets={victim})
+        solved, _ = propagate(initial_domains(ctx.base, ids, trial), rules, exclude_from_subsets={victim})
         if solved is None or any(len(solved[p]) != 1 for p in ids):
             needed.add(clue.id)
             continue
         try:
-            if evaluate(ctx.free_cells, ids, trial, rules, victim)["logic"] > logic:
+            if evaluate(ctx.base, ids, trial, rules, victim)["logic"] > logic:
                 needed.add(clue.id)
         except RuntimeError:
             needed.add(clue.id)
@@ -202,15 +237,32 @@ def _spatial_score(clues):
     return len(spatial) + 4 * coordinates + 0.2 * len(clues)
 
 
+def _route_fields(ctx, p):
+    """Origen, destino, TTL inicial, ruta y casillas de partida de un paquete (Encaminamiento)."""
+    route = ctx.routes.get(p.id)
+    if route is None:
+        return {}
+    destination = ({"broadcast": route.broadcast, "network": route.networks[0]} if route.broadcast
+                   else {"node": route.destination})
+    return {"origin": {"node": route.origin}, "destination": destination, "ttl": {"initial": route.ttl},
+            "route": {"networks": route.networks, "routers": route.routers},
+            # Casillas de su ruta a las que le llega el TTL (regla packetOnRoute): las usan las sugerencias.
+            "domain": sorted(one_based(x) for x in ctx.base[p.id])}
+
+
 def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victim_net, max_subset, report,
-            addressing, category, topic):
+            addressing, category, topic, ctx):
     level_id = f"{category}-{seed}"
+    routes = ctx.routes
     by_type = {}
     for c in clues:
         by_type[c.type] = by_type.get(c.type, 0) + 1
     objective = ("Coloca los paquetes para descubrir al atacante. En cada fila y en cada columna hay "
                  f"como mucho un paquete. La víctima es el paquete {victim.id}: en su red solo había "
                  "otro paquete, el atacante.")
+    if routes:
+        objective += (" La ficha de cada paquete dice su origen, su destino y su TTL inicial: estaba en una red"
+                      " de su ruta a la que le llegaba el TTL.")
     if any(form in SIZE_FORMS for c in clues for form in c.naming.values()):
         objective += " " + SIZE_NOTE
     g = report["global"]
@@ -235,10 +287,12 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
             "coordinateSystem": {"origin": "top-left", "rowIndexStartsAt": 1, "columnIndexStartsAt": 1},
             "networkGrid": board.grid,
         },
-        "rules": {"onePacketPerCell": True, "onePacketPerRow": True, "onePacketPerColumn": True},
+        "rules": {"onePacketPerCell": True, "onePacketPerRow": True, "onePacketPerColumn": True,
+                  **({"packetOnRoute": True} if routes else {})},
         "networks": [
             {"id": n.id, "name": n.name, "nameKey": n.name_key, "prefix": n.prefix,
              "addresses": addressing.size(n.id),
+             **({"transit": True} if n.id == ctx.transit else {}),
              "cellCount": len(n.cells), "cells": [one_based(c) for c in n.cells]}
             for n in board.networks
         ],
@@ -272,7 +326,10 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
             "items": [
                 {"id": p.id, "color": p.color, "colorName": p.color_name,
                  **({"role": p.role} if p.role != "other" else {}),
-                 "solution": {"position": one_based(p.cell), "network": board.network_of(p.cell)}}
+                 **_route_fields(ctx, p),
+                 "solution": {"position": one_based(p.cell), "network": board.network_of(p.cell),
+                              **({"routersCrossed": routes[p.id].crossed, "ttl": routes[p.id].current_ttl}
+                                 if routes else {})}}
                 for p in packets
             ],
         },
@@ -300,7 +357,7 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
             "attackerPacketId": attacker.id,
         },
         "generation": {
-            "generator": "netdoku_gen v0.3.5",
+            "generator": "netdoku_gen v0.4",
             "attempt": attempt,
             "clueCount": len(clues),
             "cluesByType": by_type,

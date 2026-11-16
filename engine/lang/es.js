@@ -24,6 +24,9 @@
     : v.count === 1 ? `con un solo ${NODES[kind(v)]}`
       : `con exactamente ${COUNT[v.count] || v.count} ${PLURAL[kind(v)]}`);
   const lengthOf = (prefix) => Number(prefix.split("/")[1]);
+  const NUM = { 1: "un", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco" };
+  // «un router», «dos routers».
+  const routers = (n) => `${NUM[n] || n} router${n === 1 ? "" : "s"}`;
 
   // Texto de una pista a partir de sus datos (tipo, parámetros y forma de nombrar
   // cada elemento). L da acceso al nivel: L.network(id), L.node(id), L.router(id),
@@ -86,7 +89,50 @@
       }
     };
 
+    // Pistas de ruta y TTL: desde la trama (MAC) o con el TTL actual.
+    const mac = s.view && s.view.form === "mac_view";
+    const ttlValue = s.ttl && s.ttl.form === "ttl_value";
+    const ttl0 = L.ttl(p);
+
     switch (c.type) {
+      case "endpoint.in_origin_network":
+        return mac ? `La trama que llevaba el paquete ${p} la había enviado su propio equipo de origen.`
+          : `El paquete ${p} aún no había salido de la red de su origen.`;
+      case "endpoint.in_destination_network":
+        return mac ? `La trama que llevaba el paquete ${p} iba dirigida directamente a su equipo de destino.`
+          : `El paquete ${p} ya había llegado a la red de su destino.`;
+      case "route.in_transit_network":
+        return `El paquete ${p} estaba pasando por una red de tránsito.`;
+      case "route.last_router": {
+        const r = router(s.router || { ref: params.routerId });
+        return mac ? `La trama que llevaba el paquete ${p} la había enviado el router ${r}.`
+          : `El último router que había atravesado el paquete ${p} era el router ${r}.`;
+      }
+      case "route.next_router": {
+        const r = router(s.router || { ref: params.routerId });
+        return mac ? `La trama que llevaba el paquete ${p} iba dirigida al router ${r}.`
+          : `El siguiente router que iba a atravesar el paquete ${p} era el router ${r}.`;
+      }
+      case "ttl.routers_crossed": {
+        const n = params.count;
+        if (ttlValue) return `El paquete ${p} llevaba TTL ${ttl0 - n}.`;
+        return n === 0 ? `El paquete ${p} no había atravesado ningún router.`
+          : `El paquete ${p} había atravesado exactamente ${routers(n)}.`;
+      }
+      case "ttl.routers_left": {
+        const n = params.count;
+        return `Al paquete ${p} le ${n === 1 ? "quedaba" : "quedaban"} ${routers(n)} para llegar a la red de su destino.`;
+      }
+      case "ttl.routers_crossed_range": {
+        if (params.min !== undefined) {
+          const n = params.min;
+          if (ttlValue) return n === 1 ? `El TTL del paquete ${p} ya era menor que el inicial.` : `El TTL del paquete ${p} era como mucho ${ttl0 - n}.`;
+          return n === 1 ? `El paquete ${p} ya había atravesado algún router.` : `El paquete ${p} había atravesado al menos ${routers(n)}.`;
+        }
+        const n = params.max;
+        if (ttlValue) return `El TTL del paquete ${p} era al menos ${ttl0 - n}.`;
+        return `El paquete ${p} había atravesado como mucho ${routers(n)}.`;
+      }
       case "network.in_network":
         return `El paquete ${p} estaba en ${net(s.net || { ref: params.networkId })}.`;
       case "network.prefix_length":
@@ -122,7 +168,7 @@
     networks: {
       admin: "Administración", services: "Servicios", lab: "Laboratorio", dev: "Desarrollo",
       management: "Dirección", classrooms: "Aulas", library: "Biblioteca", guests: "Invitados",
-      office: "Secretaría", research: "Investigación",
+      office: "Secretaría", research: "Investigación", backbone: "Troncal",
     },
     nodes: NODES,
     nodesPlural: PLURAL,
@@ -141,6 +187,7 @@
         stats: "Estadísticas",
         help: "Ayuda",
         about: "Sobre el juego",
+        test: "Pruebas",
       },
       loadError: "No se ha podido leer la lista de niveles. Sirve la carpeta con un servidor web (véase README.md).",
       levelLoadError: "No se ha podido cargar el nivel.",
@@ -172,6 +219,14 @@
       title: "{category} · {tier}",
       objective: ({ victim }) => `¡Alerta! Alguien ha manipulado el paquete ${victim}. En su red solo había otro paquete: el atacante. Usa las pistas para averiguar dónde estaba cada paquete (como mucho uno por fila y por columna) y desenmascáralo antes de que el ataque se extienda.`,
       sizeNote: "Las casillas no indican el tamaño de una red: su tamaño es su número de direcciones.",
+      routeNote: "La ficha de cada paquete dice su origen, su destino y su TTL inicial: estaba en una red de su ruta a la que le llegaba el TTL.",
+      origin: "Origen",
+      destination: "Destino",
+      ttlInitial: "TTL inicial",
+      endpoint: ({ label, net }) => `${label} de ${net}`,
+      broadcastTo: ({ address }) => `difusión (${address})`,
+      originTag: "origen",
+      destinationTag: "destino",
       routerName: ({ a, b }) => `Router de ${a} ${and(b)} ${b}`,
       resumed: "Se ha recuperado tu progreso en este nivel.",
       selectFirst: "Selecciona primero un paquete en el panel para anotarlo.",
@@ -218,6 +273,7 @@
       mark: ({ r, c }) => `Revisa tus marcas: la ✕ de la fila ${r}, columna ${c} está mal, porque en esa casilla sí había un paquete.`,
       single: ({ packet }) => `Fíjate en el paquete ${packet}: con sus pistas y las filas y columnas que ya están ocupadas, solo le queda una casilla posible.`,
       singleAfter: ({ packet }) => `Con esto, al paquete ${packet} solo le queda una casilla posible.`,
+      singleRoute: ({ packet }) => `Fíjate en el paquete ${packet}: con su ruta, su TTL, sus pistas y las filas y columnas que ya están ocupadas, solo le queda una casilla posible.`,
       lineRow: ({ packet, n }) => `En la fila ${n} tiene que haber un paquete y el único que puede ir en ella es ${packet}: ${packet} está en la fila ${n}.`,
       lineColumn: ({ packet, n }) => `En la columna ${n} tiene que haber un paquete y el único que puede ir en ella es ${packet}: ${packet} está en la columna ${n}.`,
       annul: ({ packet }) => `Una pista del paquete ${packet} dice que ningún otro paquete estaba junto a ese elemento: las casillas de alrededor (resaltadas) quedan descartadas para los demás.`,
@@ -250,6 +306,36 @@
     info: {
       theory: "Teoría",
       newRules: "Reglas nuevas en esta categoría",
+    },
+
+    // Vista temporal de pruebas.
+    test: {
+      title: "Pruebas",
+      intro: "Niveles fijos de los lotes del juego para comprobar las reglas y los textos: cada subtipo de pista sale en al menos tres tableros, y cada forma de nombrar y cada plan de direcciones, en al menos uno. Juégalos, marca los que estén bien y pasa la lista de semillas. No cuentan para las estadísticas.",
+      askKey: "Clave de la vista de pruebas:",
+      wrongKey: "Clave incorrecta.",
+      loadError: "No se ha podido leer la lista de niveles de prueba (levels/test.json).",
+      count: ({ done, total }) => `Validados: ${done} de ${total}.`,
+      copy: "Copiar",
+      copied: "Semillas copiadas.",
+      seed: "Semilla {seed}",
+      detail: ({ logic, reading, clues }) => `Lógica ${logic}, interpretación ${reading} · ${clues} ${plural(clues, "pista", "pistas")}`,
+      subtypes: "Subtipos",
+      forms: "Formas",
+      plan: "Plan",
+      features: "Con",
+      feature: {
+        broadcast: "paquete de difusión",
+        transit: "red de tránsito",
+        shortTtl: "TTL que no llega al destino",
+      },
+      play: "Jugar",
+      validated: "Validado",
+      playing: "Nivel de prueba {seed}: no cuenta para las estadísticas.",
+      gameTitle: "{category} · {tier} · semilla {seed}",
+      mark: "Marcar como validado",
+      unmark: "Quitar la marca de validado",
+      back: "Volver a las pruebas",
     },
 
     howto: {
@@ -430,6 +516,66 @@
           ],
           caption: "«En la misma fila que el servidor DNS»: cualquiera de las casillas libres de la fila 2.",
         },
+        route_trace: {
+          chip: "Rutas",
+          title: "Origen, destino y ruta de un paquete",
+          text: [
+            "En esta categoría, la ficha de cada paquete dice su origen, su destino y su TTL inicial. Pasa el ratón por la ficha (o selecciona el paquete) para ver en el tablero su equipo de origen y el de destino.",
+            "La ruta del paquete es el camino más corto, con menos routers, entre la red de su origen y la de su destino. En todos los niveles ese camino es único: síguelo de router en router.",
+            "El paquete estaba en alguna casilla libre de una red de su ruta: la de su origen, la de su destino o una intermedia, siempre que le llegue el TTL para alcanzarla (véase la ficha del TTL).",
+            "Una red de tránsito (Troncal) no tiene equipos: solo une routers. Los paquetes pueden pasar por ella, pero nunca empiezan ni acaban en ella.",
+            "Si el destino es la difusión de su red, el paquete va a todos los equipos de esa red y ningún router lo reenvía: sigue en la red de su origen.",
+          ],
+          caption: "Del equipo de usuario de la izquierda al servidor web de la derecha con TTL inicial 2: solo le llega para atravesar un router, así que está en una de las casillas con círculo.",
+        },
+        ttl: {
+          chip: "TTL",
+          title: "TTL: tiempo de vida",
+          text: [
+            "Cada paquete sale de su origen con un TTL inicial (en el juego, entre 2 y 6). Cada router que atraviesa le resta 1; los switches y los puntos de acceso no lo cambian.",
+            "TTL actual = TTL inicial − routers atravesados. Un paquete con TTL 1 aún está vivo, pero el siguiente router lo dejará a 0, lo descartará y avisará al origen con un mensaje ICMP.",
+            "Por eso un paquete con TTL inicial 3 solo puede haber atravesado 0, 1 o 2 routers, aunque su ruta tenga más: si no le llega, nunca alcanzará su destino.",
+          ],
+        },
+        frames: {
+          chip: "Tramas y MAC",
+          title: "La trama que lleva un paquete",
+          text: [
+            "Dentro de cada red, el paquete viaja en una trama de la capa de enlace, que va de un equipo o router al siguiente de esa misma red. Cada uno se identifica por su dirección MAC.",
+            "Las direcciones IP de origen y destino del paquete no cambian en todo el camino. Las MAC de la trama cambian en cada red: la envía el equipo o router anterior y va dirigida al siguiente salto.",
+            "Así, «la trama la había enviado su propio equipo de origen» quiere decir que el paquete aún no había salido de la red de su origen; «la trama iba dirigida al router X», que el siguiente router de su ruta era X; «la trama la había enviado el router X», que el último router que había atravesado era X; y «la trama iba dirigida directamente a su equipo de destino», que ya estaba en la red de su destino.",
+          ],
+        },
+        route_position: {
+          chip: "Origen, destino o tránsito",
+          title: "«Aún no había salido de la red de su origen»",
+          text: [
+            "«Aún no había salido de la red de su origen»: el paquete está en la red de su equipo de origen; no ha atravesado ningún router.",
+            "«Ya había llegado a la red de su destino»: está en la red de su equipo de destino.",
+            "«Estaba pasando por una red de tránsito»: está en la red sin equipos de su ruta.",
+          ],
+          caption: "«Aún no había salido de la red de su origen»: cualquiera de las casillas con círculo.",
+        },
+        route_router: {
+          chip: "Último o siguiente router",
+          title: "«El último router que había atravesado…»",
+          text: [
+            "«El último router que había atravesado era el router que une X e Y»: el paquete acababa de pasar ese router, así que está en la red de las dos hacia la que iba. Hay que saber en qué sentido va.",
+            "«El siguiente router que iba a atravesar era…»: está en la red de las dos de la que venía. Vale aunque el TTL no le llegue para atravesarlo.",
+          ],
+          caption: "«El último router que había atravesado era el de la izquierda»: va de izquierda a derecha, así que está en la red del centro.",
+        },
+        ttl_count: {
+          chip: "Routers atravesados",
+          title: "«Había atravesado exactamente dos routers»",
+          text: [
+            "Cuenta los routers de su ruta desde la red de origen: con dos atravesados, el paquete está en la tercera red de su ruta.",
+            "«Le quedaban dos routers para llegar a la red de su destino»: cuenta hacia atrás desde la red de destino.",
+            "«Ya había atravesado algún router», «al menos dos», «como mucho uno»: el paquete está en cualquiera de las redes de su ruta que cumplen la condición.",
+            "«Llevaba TTL 2»: réstalo del TTL inicial de su ficha para saber cuántos routers ha atravesado (con TTL inicial 4, dos). «Su TTL era como mucho 2» equivale a «había atravesado al menos dos routers».",
+          ],
+          caption: "«Ya había atravesado algún router»: cualquier red de su ruta salvo la de origen.",
+        },
         icons: {
           chip: "Iconos",
           title: "Iconos del tablero",
@@ -470,6 +616,20 @@
           "Con **VLSM** (máscara de longitud variable), las subredes de un mismo bloque pueden tener tamaños distintos, según lo que necesite cada una: por ejemplo, una /25 (128 direcciones) para un laboratorio y una /27 (32) para una secretaría. En un nivel las redes nunca se solapan, así que cada dirección pertenece a una sola.",
         ],
         rules: ["named_by_address", "network_size", "ip_network", "special_addresses", "prefix_length"],
+      },
+      encaminamiento: {
+        name: "Encaminamiento",
+        short: "Rutas y TTL: sigue cada paquete de router en router, desde su origen hasta su destino.",
+        theory: [
+          "Cuando el origen y el destino de un paquete están en redes distintas, el paquete tiene que atravesar **routers**. Cada router decide por qué red lo reenvía para acercarlo a su destino: es el **encaminamiento**. La sucesión de redes y routers por la que pasa es su **ruta**.",
+          "En el juego, la ruta es el **camino más corto**, el que atraviesa menos routers, entre la red del origen y la del destino, como hace el protocolo de encaminamiento RIP, que cuenta saltos. En todos los niveles de esta categoría ese camino es único.",
+          "Las direcciones IP de origen y destino del paquete no cambian en todo el camino. Lo que cambia en cada red es la **trama** de la capa de enlace que lo lleva: va del equipo o router anterior al **siguiente salto**, identificados por sus direcciones **MAC**. La MAC del siguiente salto se averigua con **ARP**.",
+          "El **TTL** (tiempo de vida) es un campo de la cabecera IP. El origen le da un valor inicial y cada router le resta 1. Si un router lo deja a 0, descarta el paquete y avisa al origen con un mensaje **ICMP** (así funciona tracert). Sirve para que un paquete no dé vueltas para siempre si hay un error en las rutas.",
+          "TTL actual = TTL inicial − routers atravesados. Un paquete con TTL inicial 3 solo puede haber atravesado dos routers: si su ruta tiene más, no llegará a su destino. Los switches y los puntos de acceso no cuentan, porque no miran la cabecera IP.",
+          "Una **red de tránsito** no tiene equipos: solo une routers, como los enlaces entre los routers de una empresa o de un proveedor. Los paquetes la atraviesan, pero nunca empiezan ni acaban en ella.",
+          "La **difusión** (por ejemplo, la petición DHCP de un equipo que aún no tiene dirección) va a todos los equipos de una red, pero los routers no la reenvían: un paquete de difusión no sale de la red de su origen.",
+        ],
+        rules: ["route_trace", "ttl", "frames", "route_position", "route_router", "ttl_count"],
       },
     },
 

@@ -26,6 +26,8 @@ colocación directa, el nivel se atasca ahí (cuello de botella).
 from dataclasses import dataclass
 from itertools import combinations
 
+from .solver import start_cells
+
 TECHNIQUES = {
     "single": ("Colocación directa", 1),
     "line": ("Fila o columna obligada", 2),
@@ -105,9 +107,9 @@ def _options(domains, placed, applied_annuls, clues, rules, victim):
     return found
 
 
-def evaluate(free_cells, packet_ids, clues, rules, victim):
+def evaluate(base, packet_ids, clues, rules, victim):
     """Recorre la resolución más sencilla y devuelve el informe de dificultad."""
-    domains = {p: set(free_cells) for p in packet_ids}
+    domains = {p: set(start_cells(base, p)) for p in packet_ids}
     for clue in clues:
         domains[clue.packet] &= clue.domain
     placed, applied_annuls = set(), set()

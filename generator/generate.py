@@ -41,7 +41,7 @@ EXTRA_DIR = LEVELS_DIR / "extra"
 RETIRED = LEVELS_DIR / "retired.txt"
 DIFFICULTIES = range(1, 6)
 # Primera semilla de cada lote: categoría y dificultad no comparten semillas.
-SEED_BASE = {"inicial": 1_000_000, "direccionamiento": 2_000_000}
+SEED_BASE = {"inicial": 1_000_000, "direccionamiento": 2_000_000, "encaminamiento": 3_000_000}
 # Filtros de los lotes: como mucho una pista de fila o columna por nivel.
 POOL_CONFIG = {"maxSpatial": 1}
 
@@ -184,8 +184,8 @@ def main():
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("-n", "--count", type=int, default=1)
     parser.add_argument("--seeds", help="lista de semillas separadas por comas (en lugar de --seed y -n)")
-    parser.add_argument("--packets", type=int, default=6)
-    parser.add_argument("--networks", type=int, default=4)
+    parser.add_argument("--packets", type=int, help="paquetes (por defecto, los de la categoría)")
+    parser.add_argument("--networks", type=int, help="redes (por defecto, las de la categoría)")
     parser.add_argument("--category", choices=list(CATEGORIES),
                         help="categoría (por defecto: todas con --pool, inicial sin él)")
     parser.add_argument("--target", type=int, choices=DIFFICULTIES, help="dificultad global buscada")
@@ -230,6 +230,11 @@ def main():
         print(f"{path.relative_to(ROOT)}: {summary(level)}")
         if args.print:
             print(ascii_board(level))
+            for p in level["packets"]["items"]:
+                if "route" in p:
+                    dest = p["destination"].get("node") or f"difusión {p['destination']['broadcast']}"
+                    print(f"  {p['id']}: {p['origin']['node']} -> {dest}, TTL {p['ttl']['initial']}, "
+                          f"ruta {'-'.join(p['route']['networks'])}, atravesados {p['solution']['routersCrossed']}")
             for c in level["clues"]:
                 print(f"  {c['id']} [{c['readingCost']}]: {c['text']}")
             print(f"  Víctima: {level['packets']['victimId']}  Atacante: {level['packets']['attackerId']}")

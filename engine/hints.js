@@ -36,9 +36,13 @@
       packet: c.packet,
       excluded: new Set((c.excluded || []).map(idx)),
     }));
-    for (const c of level.clues) {
-      const allowed = new Set(c.domain.map(idx));
-      const d = domains.get(c.packet);
+    // Encaminamiento: cada paquete parte de las casillas de su ruta a las que le
+    // llega el TTL (packets.items[].domain, regla packetOnRoute).
+    const limits = level.clues.map((c) => [c.packet, c.domain])
+      .concat(level.packets.items.filter((p) => Array.isArray(p.domain)).map((p) => [p.id, p.domain]));
+    for (const [packet, cells] of limits) {
+      const allowed = new Set(cells.map(idx));
+      const d = domains.get(packet);
       for (const k of [...d]) if (!allowed.has(k)) d.delete(k);
     }
     const rules = level.rules || {};

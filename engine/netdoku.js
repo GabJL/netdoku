@@ -34,6 +34,8 @@
   let options = {};
   // Paquetes ya colocados cuyas pistas el jugador ha vuelto a desplegar.
   let expanded = new Set();
+  // Encaminamiento: paquete bajo el ratón, cuyo origen y destino se marcan en el tablero.
+  let routeFocus = null;
   let bound = false;
 
   // ---------- Nombres en el idioma activo ----------
@@ -76,6 +78,7 @@
     nodeLabel,
     router: (id) => level.routers.find((r) => r.id === id),
     mask: maskOf,
+    ttl: (id) => ((packetById(id) || {}).ttl || {}).initial,
   };
 
   function clueText(c) {
@@ -93,6 +96,7 @@
     level = data;
     options = opts || {};
     expanded = new Set();
+    routeFocus = null;
     const saved = options.saved;
     state = {
       lives: saved ? saved.lives : START_LIVES,
@@ -190,6 +194,7 @@
     $("level-meta").textContent = meta;
 
     let objective = t("game.objective", { victim: level.objective.victimPacketId });
+    if ((level.rules || {}).packetOnRoute) objective += " " + t("game.routeNote");
     if (level.clues.some((c) => Object.values(c.naming || {}).some((f) => SIZE_FORMS.has(f)))) {
       objective += " " + t("game.sizeNote");
     }
@@ -456,6 +461,7 @@
     }
 
     for (const n of level.nodes) drawNode(root, n);
+    drawRouteEnds(root);
     if (look.netNames) drawNetworkNames(root);
 
     // Paquetes colocados.
@@ -583,6 +589,26 @@
       text(g, cx, y + CELL - 14, caption, { "font-size": 10, "font-weight": 700, fill: tv("--node-part") });
     }
     svg("title", {}, g).textContent = `${capitalize(nodeLabel(n))} (${n.id})`;
+  }
+
+  // Encaminamiento: recuadro del color del paquete en su equipo de origen y en
+  // el de destino, con su rótulo. Se ven al pasar el ratón por su ficha o con
+  // el paquete seleccionado (en pantallas táctiles no hay ratón).
+  function drawRouteEnds(root) {
+    const p = packetById(routeFocus || state.selected);
+    if (!p || !p.origin) return;
+    const ends = [[p.origin.node, "game.originTag"], [p.destination && p.destination.node, "game.destinationTag"]];
+    for (const [id, key] of ends) {
+      const n = id && level.nodes.find((x) => x.id === id);
+      if (!n) continue;
+      const [r, c] = n.position;
+      const g = svg("g", { "pointer-events": "none" }, root);
+      svg("rect", { x: px(c) + 3, y: py(r) + 3, width: CELL - 6, height: CELL - 6, rx: 12, fill: "none", stroke: p.color, "stroke-width": 5 }, g);
+      const label = t(key);
+      const w = 8 + label.length * 6.4;
+      svg("rect", { x: px(c) + CELL / 2 - w / 2, y: py(r) - 2, width: w, height: 15, rx: 7, fill: p.color }, g);
+      text(g, px(c) + CELL / 2, py(r) + 9, label, { "font-size": 11, "font-weight": 700, fill: "#fff" });
+    }
   }
 
   function drawServiceBadge(g, service, bx, by) {
@@ -765,6 +791,10 @@
       const open = !placed || expanded.has(p.id);
       if (placed) card.classList.add("placed");
       if (!open) card.classList.add("compact");
+      if (p.origin) {
+        card.addEventListener("mouseenter", () => { routeFocus = p.id; renderBoard(); });
+        card.addEventListener("mouseleave", () => { if (routeFocus === p.id) { routeFocus = null; renderBoard(); } });
+      }
 
       const token = document.createElement("div");
       token.className = "token" + (placed ? " placed" : "");
@@ -804,6 +834,7 @@
           title.appendChild(toggle);
         }
       }
+      if (open && p.origin) card.appendChild(routeInfo(p));
       if (!open) {
         // Compacto: solo ficha, nombre, posición y el botón para desplegar.
       } else if (clues.length) {
@@ -829,6 +860,31 @@
       }
       el.appendChild(card);
     }
+  }
+
+  // Origen, destino y TTL inicial de un paquete (Encaminamiento). El destino de
+  // difusión se escribe con su dirección, sin el color de su red.
+  function routeInfo(p) {
+    const box = document.createElement("div");
+    box.className = "route-info";
+    const endpoint = (id) => {
+      const node = level.nodes.find((n) => n.id === id);
+      return chip(t("game.endpoint", { label: nodeLabel(node), net: networkName(networkById(node.network)) }),
+        networkColor(node.network), nodeDotColor(node));
+    };
+    const row = (key, content) => {
+      const line = document.createElement("div");
+      const label = document.createElement("span");
+      label.className = "label";
+      label.textContent = `${t(key)}: `;
+      line.append(label, content);
+      box.appendChild(line);
+    };
+    row("game.origin", endpoint(p.origin.node));
+    row("game.destination", p.destination.node ? endpoint(p.destination.node)
+      : chip(t("game.broadcastTo", { address: p.destination.broadcast }), null, null, "addr"));
+    row("game.ttlInitial", document.createTextNode(String(p.ttl.initial)));
+    return box;
   }
 
   // Recuadro final: nivel resuelto (estrellas y atacante) o sin vidas, con los
@@ -992,7 +1048,8 @@
   function hintText(s, i) {
     switch (s.t) {
       case "single":
-        return t(i === 0 ? "hint.single" : "hint.singleAfter", { packet: s.packet });
+        if (i > 0) return t("hint.singleAfter", { packet: s.packet });
+        return t((packetById(s.packet) || {}).route ? "hint.singleRoute" : "hint.single", { packet: s.packet });
       case "line":
         return t(s.axis === "row" ? "hint.lineRow" : "hint.lineColumn", { packet: s.packet, n: s.line });
       case "annul":

@@ -1,7 +1,8 @@
 // Aplicación de Netdoku: menú, vistas y progresión de niveles. La partida en sí
 // está en netdoku.js (NetdokuGame). La vista se elige con el fragmento de la URL:
 // #menu, #howto, #play[/categoría], #stats, #help, #about,
-// #game/categoría/dificultad y #free (nivel cargado desde un fichero).
+// #game/categoría/dificultad, #free (nivel cargado desde un fichero) y, de forma
+// temporal, #test y #test/semilla (niveles fijos de prueba, con clave).
 //
 // Cada categoría tiene cinco dificultades y cada dificultad, un lote de niveles
 // (levels/index.json). Al jugar una dificultad sale uno del lote al azar, sin
@@ -18,7 +19,10 @@
   const MAX_STARS = 3;
   const RECORD_KEY = "netdoku:record";
   const SLOT_PREFIX = "netdoku:slot:";
-  const VIEWS = ["menu", "howto", "play", "stats", "help", "about", "game"];
+  const TEST_STORE = "netdoku:test";
+  // Solo aparta a los jugadores de la vista de pruebas: no protege nada.
+  const TEST_KEY = "redes";
+  const VIEWS = ["menu", "howto", "play", "stats", "help", "about", "test", "game"];
 
   const $ = (id) => document.getElementById(id);
   const I18n = window.NetdokuI18n;
@@ -75,6 +79,19 @@
   const slotKey = (cat, d) => `${SLOT_PREFIX}${cat}:${d}`;
   const readSlot = (cat, d) => ({ file: null, progress: null, played: [], ...readJson(slotKey(cat, d), {}) });
   const writeSlot = (cat, d, slot) => writeJson(slotKey(cat, d), slot);
+
+  // Pruebas: { unlocked, validated: [semillas], progress: { fichero: progreso } }.
+  // Aparte del resto: no cuentan para las estadísticas.
+  const testStore = () => ({ unlocked: false, validated: [], progress: {}, ...readJson(TEST_STORE, {}) });
+  const writeTest = (store) => writeJson(TEST_STORE, store);
+  const isValidated = (seed) => testStore().validated.includes(seed);
+
+  function toggleValidated(seed) {
+    const store = testStore();
+    store.validated = store.validated.includes(seed)
+      ? store.validated.filter((s) => s !== seed) : [...store.validated, seed];
+    writeTest(store);
+  }
 
   const finished = (progress) => !!progress && (progress.solved || progress.lost);
   const inProgress = (progress) => !!progress && !finished(progress)
@@ -148,6 +165,17 @@
     } else if (view === "free") {
       route = { view: "game", free: true };
       openFree();
+    } else if (view === "test") {
+      if (!testUnlocked()) {
+        go("menu");
+      } else if (parts[1]) {
+        route = { view: "game", test: Number(parts[1]) };
+        openTest(route.test);
+      } else {
+        route = { view: "test" };
+        showView("test");
+        renderView();
+      }
     } else if (VIEWS.includes(view)) {
       route = { view, cat: parts[1] };
       showView(view);
@@ -172,6 +200,7 @@
       case "stats": renderStats(); break;
       case "help": renderHelp(); break;
       case "about": renderAbout(); break;
+      case "test": renderTest(); break;
       default: break;
     }
   }
@@ -186,16 +215,20 @@
     const cat = route.free ? freeLevel && freeLevel.level && freeLevel.level.category : route.cat;
     const known = !!cat && !!I18n.get(`categories.${cat}`);
     $("category-info").hidden = !known;
-    $("new-level").hidden = !!route.free;
+    $("new-level").hidden = !!route.free || !!route.test;
     if (route.free) {
       $("game-title").textContent = known ? categoryName(cat) : "";
+    } else if (route.test) {
+      $("game-title").textContent = known
+        ? t("test.gameTitle", { category: categoryName(cat), tier: t(`tiers.${route.d}`), seed: route.test }) : "";
     } else {
       $("game-title").textContent = t("game.title", { category: categoryName(cat), tier: t(`tiers.${route.d}`) });
     }
   }
 
   function goBack() {
-    if (route.view === "game" && !route.free && route.cat) go(`play/${route.cat}`);
+    if (route.view === "game" && route.test) go("test");
+    else if (route.view === "game" && !route.free && route.cat) go(`play/${route.cat}`);
     else go("menu");
   }
 
@@ -270,7 +303,7 @@
 
   // ↺: otro nivel de la misma dificultad.
   function newLevel(skipConfirm) {
-    if (!current || current.free) return;
+    if (!current || current.free || current.test) return;
     if (!skipConfirm && window.NetdokuGame.hasProgress() && !window.confirm(t("game.confirmNew"))) return;
     pickLevel(current.cat, current.d, current.file);
     openGame(current.cat, current.d);
@@ -308,6 +341,77 @@
       category: freeLevel.level && freeLevel.level.category,
       message: t("ui.freePlay"),
       actions: () => [{ label: t("ui.toMenu"), primary: true, onClick: () => go("menu") }],
+    });
+  }
+
+  // ---------- Pruebas (temporal) ----------
+  // Niveles fijos de los lotes (levels/test.json) elegidos para que cada subtipo
+  // de pista salga en tres tableros. Se juegan sin puntuar y se marcan como
+  // validados.
+
+  let testSet = null;
+
+  async function loadTestSet() {
+    if (!testSet) {
+      const res = await fetch(`${LEVELS}test.json`, { cache: "no-store" });
+      if (!res.ok) throw new Error(res.statusText);
+      testSet = (await res.json()).levels || [];
+    }
+    return testSet;
+  }
+
+  // La clave se pide una sola vez en cada navegador.
+  function testUnlocked() {
+    const store = testStore();
+    if (store.unlocked) return true;
+    const answer = window.prompt(t("test.askKey"));
+    if (answer === null) return false;
+    if (answer.trim().toLowerCase() !== TEST_KEY) {
+      notice(t("test.wrongKey"));
+      return false;
+    }
+    writeTest({ ...store, unlocked: true });
+    return true;
+  }
+
+  async function openTest(seed) {
+    const ticket = ++loading;
+    let entry;
+    let data;
+    try {
+      entry = (await loadTestSet()).find((x) => x.seed === seed);
+      if (!entry) throw new Error(String(seed));
+      const res = await fetch(LEVELS + entry.file, { cache: "no-store" });
+      if (!res.ok) throw new Error(res.statusText);
+      data = await res.json();
+    } catch (err) {
+      if (ticket !== loading) return;
+      notice(t("ui.levelLoadError"));
+      go("test");
+      return;
+    }
+    if (ticket !== loading) return;
+    route = { view: "game", test: seed, cat: entry.category, d: entry.difficulty.global };
+    current = { test: seed };
+    showView("game");
+    // Un nivel ya terminado se empieza de nuevo.
+    const saved = testStore().progress[entry.file];
+    window.NetdokuGame.start(data, {
+      saved: finished(saved) ? null : saved,
+      category: entry.category,
+      message: t("test.playing", { seed }),
+      onSave: (progress) => {
+        const store = testStore();
+        store.progress[entry.file] = progress;
+        writeTest(store);
+      },
+      actions: () => {
+        const done = isValidated(seed);
+        return [
+          { label: t(done ? "test.unmark" : "test.mark"), primary: !done, onClick: () => { toggleValidated(seed); go("test"); } },
+          { label: t("test.back"), primary: done, onClick: () => go("test") },
+        ];
+      },
     });
   }
 
@@ -416,6 +520,77 @@
     el("p", { text: t("about.credits") }, credits);
     const source = el("p", { className: "muted", text: `${t("about.license")} ${t("about.source")} ` }, credits);
     el("a", { href: REPOSITORY, target: "_blank", rel: "noopener", text: REPOSITORY.replace("https://", "") }, source);
+  }
+
+  // Pruebas: niveles por categoría, con su semilla, lo que prueban y si ya se
+  // han validado. Arriba, la lista de semillas validadas para copiarla.
+  async function renderTest() {
+    const root = $("test-body");
+    let list;
+    try {
+      list = await loadTestSet();
+    } catch (err) {
+      root.innerHTML = "";
+      el("p", { className: "error", text: t("test.loadError") }, root);
+      return;
+    }
+    if (route.view !== "test") return;
+    root.innerHTML = "";
+    const store = testStore();
+    const validated = list.filter((x) => store.validated.includes(x.seed)).map((x) => x.seed);
+
+    const summary = el("div", { className: "test-summary" }, root);
+    el("p", { text: t("test.count", { done: validated.length, total: list.length }) }, summary);
+    if (validated.length) {
+      const row = el("div", { className: "test-seeds" }, summary);
+      el("code", { text: validated.join(", ") }, row);
+      const copy = el("button", { type: "button", className: "button", text: t("test.copy") }, row);
+      copy.addEventListener("click", () => {
+        if (navigator.clipboard) navigator.clipboard.writeText(validated.join(", ")).then(() => notice(t("test.copied")), () => {});
+      });
+    }
+
+    const codes = (parent, label, values) => {
+      if (!values.length) return;
+      const p = el("p", { className: "test-codes" }, parent);
+      el("span", { className: "label", text: `${label}: ` }, p);
+      values.forEach((v, i) => {
+        if (i) p.appendChild(document.createTextNode(" "));
+        el("code", { text: v }, p);
+      });
+    };
+
+    for (const cat of [...new Set(list.map((x) => x.category))]) {
+      sectionTitle(root, categoryName(cat));
+      const grid = el("div", { className: "test-list" }, root);
+      for (const x of list.filter((y) => y.category === cat)) {
+        const done = store.validated.includes(x.seed);
+        const card = el("article", { className: `test-item${done ? " validated" : ""}` }, grid);
+        const head = el("div", { className: "test-head" }, card);
+        el("strong", { text: t("test.seed", { seed: x.seed }) }, head);
+        el("span", { className: "dots", text: dots(x.difficulty.global) }, head);
+        el("span", { text: t(`tiers.${x.difficulty.global}`) }, head);
+        el("p", { className: "muted", text: t("test.detail", { logic: x.difficulty.logic, reading: x.difficulty.reading, clues: x.clues }) }, card);
+        codes(card, t("test.subtypes"), x.subtypes);
+        codes(card, t("test.forms"), x.forms);
+        if (x.plan) codes(card, t("test.plan"), [x.plan]);
+        if (x.features.length) {
+          el("p", { className: "test-codes", text: `${t("test.features")}: ${x.features.map((f) => t(`test.feature.${f}`)).join(", ")}` }, card);
+        }
+        const actions = el("div", { className: "test-actions" }, card);
+        const play = el("button", { type: "button", className: "button primary", text: t("test.play") }, actions);
+        play.addEventListener("click", () => go(`test/${x.seed}`));
+        if (inProgress(store.progress[x.file])) el("span", { className: "tag", text: t("play.inProgress") }, actions);
+        const check = el("label", { className: "test-check" }, actions);
+        const box = el("input", { type: "checkbox" }, check);
+        box.checked = done;
+        check.appendChild(document.createTextNode(` ${t("test.validated")}`));
+        box.addEventListener("change", () => {
+          toggleValidated(x.seed);
+          renderTest();
+        });
+      }
+    }
   }
 
   function renderPlay() {

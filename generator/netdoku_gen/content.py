@@ -107,8 +107,8 @@ def _connected(cells):
     return len(seen) == len(cells)
 
 
-def place_nodes(rng, board, min_free_ratio=0.4, client_prob=0.35):
-    """Coloca entre 1 y 3 nodos por red.
+def place_nodes(rng, board, min_free_ratio=0.4, client_prob=0.35, empty=()):
+    """Coloca entre 1 y 3 nodos por red (ninguno en las redes de `empty`, las de tránsito).
 
     Restricciones: dos nodos no comparten lado; ningún nodo ocupa una casilla de
     apoyo de un router; las casillas libres de cada red siguen siendo conexas;
@@ -119,6 +119,8 @@ def place_nodes(rng, board, min_free_ratio=0.4, client_prob=0.35):
     nodes = []
     occupied = set()
     for net in board.networks:
+        if net.id in empty:
+            continue
         size = len(net.cells)
         wanted = rng.randint(min(2, max(1, size // 4)), max(1, min(3, size // 4)))
         placed = 0

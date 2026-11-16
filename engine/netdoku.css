@@ -580,6 +580,16 @@ select, .button {
 .packet-card li.done .clue-chip { opacity: 0.55; font-weight: 400; }
 .packet-card .no-clues { grid-column: 2; font-size: 0.85rem; color: var(--muted); }
 
+/* Encaminamiento: origen, destino y TTL inicial del paquete. */
+.packet-card .route-info {
+  grid-column: 2;
+  display: grid;
+  gap: 3px;
+  margin: 4px 0 2px;
+  font-size: 0.85rem;
+}
+.packet-card .route-info .label { color: var(--muted); }
+
 .token {
   width: 36px;
   height: 36px;
@@ -1123,7 +1133,7 @@ figcaption {
 .difficulty .stars { font-size: 1.4rem; letter-spacing: 2px; color: var(--note); }
 .difficulty .stars.muted { color: var(--muted); }
 
-.difficulty .tag {
+.difficulty .tag, .test-actions .tag {
   font-size: 0.75rem;
   padding: 1px 8px;
   border-radius: 999px;
@@ -1165,6 +1175,71 @@ figcaption {
 
 @media (max-width: 520px) {
   .stats-table th, .stats-table td { padding: 6px; font-size: 0.85rem; }
+}
+
+/* Pruebas (temporal): botón discreto en el menú y lista de niveles fijos. */
+.menu-button.test-button {
+  border-style: dashed;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 8px 18px;
+}
+
+.test-summary p { margin: 6px 0; }
+
+.test-seeds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.test-seeds code {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  overflow-wrap: anywhere;
+}
+
+.test-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.test-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.test-item.validated { border-color: var(--ok); }
+.test-item p { margin: 0; font-size: 0.85rem; line-height: 1.45; }
+.test-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.test-head .dots { color: var(--accent); letter-spacing: 1px; }
+.test-codes .label { color: var(--muted); }
+.test-codes code { font-size: 0.78rem; overflow-wrap: anywhere; }
+
+.test-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.test-check { display: inline-flex; align-items: center; gap: 4px; font-size: 0.9rem; cursor: pointer; }
+
+@media (max-width: 520px) {
+  .test-list { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Ventana de teoría y reglas de una categoría (ancha). */

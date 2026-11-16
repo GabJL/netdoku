@@ -21,9 +21,9 @@ Cada tipo agrupa subtipos relacionados y depende de una familia de propiedades (
 | `node` | `nodes` | Relación con nodos: junto a, sobre, cerca de. | Definido parcialmente |
 | `router` | `spatial` + `networks` | Relación con routers: junto a un router, a N casillas de un router. | Definido parcialmente |
 | `protocol` | `protocols` | Protocolo, transporte y puerto del paquete. | Previsto |
-| `endpoint` | `origins` / `destinations` | Origen y destino del paquete. | Previsto |
-| `route` | `routes` / `hops` | Ruta seguida, routers atravesados, siguiente salto. | Previsto |
-| `ttl` | `ttl` | Valor del TTL y comparaciones de TTL. | Previsto |
+| `endpoint` | `origins` / `destinations` | Origen y destino del paquete. | Definido parcialmente (v0.4) |
+| `route` | `routes` / `hops` | Ruta seguida, routers atravesados, siguiente salto. | Definido parcialmente (v0.4) |
+| `ttl` | `ttl` | Valor del TTL y comparaciones de TTL. | Definido parcialmente (v0.4) |
 | `relation` | según las propiedades comparadas | Comparaciones entre varios paquetes. | Previsto |
 
 Para añadir un tipo nuevo se añade una fila a esta tabla y, si hace falta, una familia nueva en `features`.
@@ -129,6 +129,17 @@ Una forma con coste solo se usa si su **cálculo es imprescindible**. Para compr
 | `aligned_node` | «en la misma fila que el servidor DNS» | 0 | el de la forma de nombrar del equipo (`label`, `label_network` o `label_prefix`) | `basic` |
 | `aligned_router` | «en la misma columna que el router que une Aulas y Servicios» | 0 | el de la forma de nombrar del router (`networks`) | `basic` |
 
+**Pistas de ruta y TTL** (formas de toda la pista, no de un elemento; véase [Encaminamiento](#encaminamiento-rutas-y-ttl-v04)):
+
+| Forma | Ejemplo | Coste | Bloque mínimo | Conocimiento |
+|---|---|---|---|---|
+| `ip_view` | «El siguiente router que iba a atravesar era el que une Aulas y Servicios» | 0 | `T3.ip` | `basic` |
+| `mac_view` | «La trama que lo llevaba iba dirigida al router que une Aulas y Servicios» | 1 | `T3.subredes` (ARP y MAC del siguiente salto) | `basic` |
+| `count` | «Había atravesado exactamente dos routers» | 0 | `T3.ip` | `basic` |
+| `ttl_value` | «Llevaba TTL 2» (con TTL inicial 4 en su ficha) | 1 | `T3.ip` | `basic` |
+
+`mac_view` dice lo mismo desde la capa de enlace: la IP de destino de un paquete no cambia en todo el camino, pero la trama que lo lleva por cada red va dirigida a la MAC del siguiente salto (un router o, en la red del destino, el propio destino) y la envía el equipo o router anterior. Es la duda del ejercicio «Viaje con escalas» del resumen de la asignatura. `ttl_value` obliga a restar: routers atravesados = TTL inicial − TTL actual. Si la pista nombra además un router por sus interfaces, su coste es el mayor de los dos.
+
 `aligned_node` y `aligned_router` nombran la fila (o la columna) por un elemento que está en ella. Un router de borde está en una sola fila si separa dos casillas de esa fila (borde vertical) y en una sola columna si separa dos casillas de esa columna (borde horizontal); solo se usa en ese caso. El equipo o el router se nombran con formas de coste 0, así que no añaden cálculo.
 
 **Equipos:**
@@ -161,7 +172,7 @@ Las direcciones IP de los equipos no se muestran en el tablero. `ip_member`, `ip
 
 C sube un punto, hasta 3, si la dirección está a `addressing.nearBoundaryDistance` direcciones o menos del límite con otra red del nivel y alguna de las dos máscaras no acaba en un octeto (192.168.0.130 con dos /25; no 172.16.1.254 frente a 172.16.2.0/24, que se distingue comparando el tercer octeto). Las direcciones de red y de difusión solo se usan con `addressing.allowSpecialAddresses`.
 
-Las redes de un nivel nunca se solapan: una dirección pertenece a una sola red. Los prefijos solapados y la coincidencia más larga (LPM) aparecen en las tablas de encaminamiento, con la categoría Encaminamiento.
+Las redes de un nivel nunca se solapan: una dirección pertenece a una sola red. Los prefijos solapados y la coincidencia más larga (LPM) aparecen en las tablas de encaminamiento (v0.5).
 
 #### Identificador, difusión y direcciones asignables
 
@@ -181,7 +192,7 @@ Como el jugador no ve las direcciones de los equipos, «junto al servidor web 19
 
 En la v0.3, `label_prefix` e `ip` solo se usan con equipos cuya etiqueta se repite en otras redes pero es única en la suya (los únicos que el generador nombra uno a uno). Así la dirección identifica un equipo concreto, y nombrarla tiene sentido: si el equipo fuera el único con su etiqueta en todo el tablero, el jugador podría ignorar la dirección, y el coste de interpretación sería falso.
 
-La dirección es la que el equipo nombrado tiene en la solución (el nivel guarda la dirección de cada equipo). Mientras el solver no razone sobre qué dirección tiene cada equipo (previsto para la categoría Rutas y TTL), el generador no pone en un mismo nivel dos pistas con direcciones distintas de equipos de la misma clase y la misma red: el jugador deduciría que están junto a equipos distintos, información que el solver no tiene en cuenta.
+La dirección es la que el equipo nombrado tiene en la solución (el nivel guarda la dirección de cada equipo). Mientras el solver no razone sobre qué dirección tiene cada equipo (previsto para más adelante), el generador no pone en un mismo nivel dos pistas con direcciones distintas de equipos de la misma clase y la misma red: el jugador deduciría que están junto a equipos distintos, información que el solver no tiene en cuenta.
 
 #### Proporción de formas nuevas
 
@@ -348,6 +359,97 @@ Este catálogo recoge solo las reglas que ayudan a **colocar** paquetes. La info
 - **Bloque mínimo:** `T3.dispositivos`, o el de la forma de nombrar.
 - **Conocimiento:** `basic`.
 
+### Encaminamiento: rutas y TTL (v0.4)
+
+En la categoría Encaminamiento, la ficha de cada paquete muestra su **origen** (un equipo), su **destino** (un equipo o la difusión de su red) y su **TTL inicial**. El jugador no ve la ruta: la traza él en el mapa. Para que pueda hacerlo sin las tablas de encaminamiento, previstas para la v0.5, el generador solo usa pares de origen y destino con un **único camino mínimo** en el grafo Red↔Router.
+
+Conceptos que usan los subtipos de esta sección:
+
+- **Ruta** de un paquete: las redes `r0, r1, …, rL`, desde la de su origen (`r0`) hasta la de su destino (`rL`), y los routers `R1, …, RL`, donde `Ri` une `r(i−1)` y `ri`. `L` es el número de routers del camino.
+- **Routers atravesados** `k`: el paquete está en una casilla libre de la red `rk` de su ruta.
+- **TTL actual** = TTL inicial − `k`. Un paquete en el tablero tiene siempre TTL ≥ 1, así que `k ≤ TTL inicial − 1`. Si `L` es mayor, el paquete no llegará a su destino: lo descartará el router `R(TTL inicial)`, como en el ejercicio «No time to die».
+- **Alcanzables(m)**: casillas libres de las redes `r0, …, rK` de la ruta de `m`, con `K = min(L, TTL inicial − 1)`.
+
+**Restricción implícita (regla del nivel, no pista):** cada paquete está en una casilla de `Alcanzables(m)`. El nivel la declara en `rules.packetOnRoute` y el solver la aplica desde el principio, como la regla de un paquete por fila y columna. Leer la ficha y trazar la ruta es el trabajo propio de la categoría. En los subtipos de esta sección, `Libres(m)` ya está dentro de `Alcanzables(m)`.
+
+**Paquetes de difusión.** No es una pista sino una clase de paquete: su destino es la **dirección de difusión de su red**, como una petición DHCP. La ficha muestra «Destino: difusión (192.168.1.255)». Como la difusión no atraviesa routers, su ruta es solo la red de su origen (`L = 0`) y el paquete está en ella. Como mucho uno por nivel. Bloque mínimo `T3.subredes` (difusión; con DHCP, `T3.vlsm`).
+
+Todos los subtipos de esta sección son unarios, restringen la posición y tienen `A = ∅`; su conocimiento es `basic`.
+
+Varios dicen a menudo lo mismo: para un paquete que ha atravesado un router, «había atravesado exactamente un router», «el último router que había atravesado era…» y «el siguiente router que iba a atravesar era…» tienen el mismo `D`. Por eso, en estos subtipos, dos pistas solo se consideran repetidas si además son del mismo subtipo (en el resto, basta con que tengan el mismo `D` y la misma `A`), y en la selección pesan más que las demás. Cada nivel de la categoría tiene al menos tres (`clues.categoryMinClues`).
+
+Para comprobar que un cálculo es imprescindible (véase [Coste C](#coste-c-de-calcular-la-red-de-una-dirección)), sin entender la trama (`mac_view`) ni restar el TTL (`ttl_value`) la pista no dice nada; de un router nombrado por sus interfaces queda que el paquete había atravesado alguno (`last_router`) o que le quedaba alguno por atravesar (`next_router`).
+
+#### `endpoint.in_origin_network`
+
+- **Descripción:** el paquete aún no ha salido de la red de su origen (`k = 0`).
+- **Plantilla textual:** «El paquete {packet} aún no había salido de la red de su origen.» Con `mac_view`: «La trama que llevaba el paquete {packet} la había enviado su propio equipo de origen.»
+- **Formas:** `ip_view`, `mac_view`.
+- **Generación de instancias:** una por paquete con `k = 0` cuya ruta no sea solo esa red (si no, no dice nada).
+- **Dominio:** `D = Libres(m) ∩ Casillas(r0)`.
+- **Bloque mínimo:** `T3.ip`; `T3.subredes` con `mac_view`.
+
+#### `endpoint.in_destination_network`
+
+- **Descripción:** el paquete ya ha llegado a la red de su destino (`k = L`).
+- **Plantilla textual:** «El paquete {packet} ya había llegado a la red de su destino.» Con `mac_view`: «La trama que llevaba el paquete {packet} iba dirigida directamente a su equipo de destino.» (entrega directa).
+- **Formas:** `ip_view`, `mac_view`.
+- **Generación de instancias:** una por paquete con `k = L > 0`.
+- **Dominio:** `D = Libres(m) ∩ Casillas(rL)`.
+- **Bloque mínimo:** `T3.ip`; `T3.subredes` con `mac_view`.
+
+#### `route.in_transit_network`
+
+- **Descripción:** el paquete está pasando por una red de tránsito (sin equipos).
+- **Plantilla textual:** «El paquete {packet} estaba pasando por una red de tránsito.»
+- **Generación de instancias:** una por paquete situado en una red de tránsito.
+- **Dominio:** `D = Libres(m) ∩ ⋃ Casillas(ri)` para las redes de tránsito de su ruta.
+- **Bloque mínimo:** `T3.ip`.
+
+#### `route.last_router`
+
+- **Descripción:** el último router que atravesó el paquete es uno concreto (`Rk`, con `k ≥ 1`). Hay que saber en qué sentido va el paquete para saber a qué lado del router está.
+- **Plantilla textual:** «El último router que había atravesado el paquete {packet} era el router {router}.» Con `mac_view`: «La trama que llevaba el paquete {packet} la había enviado el router {router}.»
+- **Formas:** las del router (`networks`, `networks_prefix`, `interfaces`) y, para toda la pista, `ip_view` o `mac_view`.
+- **Generación de instancias:** una por paquete con `k ≥ 1`.
+- **Dominio:** `D = Libres(m) ∩ Casillas(rk)`, la red en la que entró al atravesar `Rk`.
+- **Bloque mínimo:** `T3.ip`, o el de las formas.
+
+#### `route.next_router`
+
+- **Descripción:** el siguiente router que atravesará el paquete es uno concreto (`R(k+1)`, con `k < L`).
+- **Plantilla textual:** «El siguiente router que iba a atravesar el paquete {packet} era el router {router}.» Con `mac_view`: «La trama que llevaba el paquete {packet} iba dirigida al router {router}.»
+- **Formas:** como en `route.last_router`.
+- **Generación de instancias:** una por paquete con `k < L`, aunque el TTL no le alcance para atravesarlo (el paquete aún no lo sabe).
+- **Dominio:** `D = Libres(m) ∩ Casillas(rk)`, la red anterior a `R(k+1)`.
+- **Bloque mínimo:** `T3.ip`, o el de las formas.
+
+#### `ttl.routers_crossed`
+
+- **Descripción:** el paquete ha atravesado exactamente `n` routers.
+- **Plantilla textual:** «El paquete {packet} había atravesado exactamente {n} routers.» Con `ttl_value`: «El paquete {packet} llevaba TTL {t}.»
+- **Formas:** `count`, `ttl_value`.
+- **Generación de instancias:** una por paquete, con `n = k`.
+- **Dominio:** `D = Libres(m) ∩ Casillas(rn)`.
+- **Bloque mínimo:** `T3.ip`.
+
+#### `ttl.routers_left`
+
+- **Descripción:** al paquete le quedan `n` routers para llegar a la red de su destino (`k = L − n`).
+- **Plantilla textual:** «Al paquete {packet} le quedaban {n} routers para llegar a la red de su destino.»
+- **Generación de instancias:** una por paquete con `k < L` que llegará a su destino (`L ≤ TTL inicial − 1`).
+- **Dominio:** `D = Libres(m) ∩ Casillas(r(L−n))`.
+- **Bloque mínimo:** `T3.ip`.
+
+#### `ttl.routers_crossed_range`
+
+- **Descripción:** desigualdad sobre los routers atravesados: al menos `n` o como mucho `n`.
+- **Plantilla textual:** «El paquete {packet} ya había atravesado algún router.» (al menos 1), «… al menos {n} routers», «… como mucho {n} routers». Con `ttl_value`: «El TTL del paquete {packet} ya era menor que el inicial.» (al menos 1), «… era como mucho {t}», «… era al menos {t}».
+- **Formas:** `count`, `ttl_value`.
+- **Generación de instancias:** las desigualdades verdaderas que dejan al menos dos redes de `Alcanzables(m)` y quitan al menos una (si no, equivalen a `routers_crossed` o no dicen nada).
+- **Dominio:** `D = Libres(m) ∩ ⋃ Casillas(ri)` para las `i` del intervalo.
+- **Bloque mínimo:** `T3.ip`.
+
 ### `spatial.in_row` y `spatial.in_column`
 
 - **Descripción:** el paquete está en una fila (o columna) concreta del tablero.
@@ -368,20 +470,9 @@ Este catálogo recoge solo las reglas que ayudan a **colocar** paquetes. La info
 
 Subtipos y formas de nombrar que aún no están definidos, con la versión en que se piensa añadirlos (véase la hoja de ruta). Cada uno se completará con la plantilla de la sección siguiente cuando se vaya a usar.
 
-**v0.4, Rutas y TTL.** Cada paquete tiene origen, destino y TTL inicial visibles, y está en una red de su ruta (camino mínimo único). Todas son unarias:
+Las pistas de la v0.4 (categoría Encaminamiento) están en la [sección 2](#encaminamiento-rutas-y-ttl-v04): las previstas `just_crossed_router` y `about_to_cross_router` pasan a ser `route.last_router` y `route.next_router`; `min_routers_crossed`, `ttl.routers_crossed_range`; la difusión que no atraviesa routers, los paquetes de difusión; y las pistas de MAC, la forma `mac_view`.
 
-| Tipo | Subtipo propuesto | Ejemplo de texto | Bloque mínimo |
-|---|---|---|---|
-| `endpoint` | `in_origin_network`, `in_destination_network` | «Aún no había salido de la red de su origen.» | `T3.ip` |
-| `route` | `in_transit_network` | «Estaba pasando por una red de tránsito.» | `T3.ip` |
-| `route` | `just_crossed_router`, `about_to_cross_router` | «Acababa de atravesar el router que une Aulas y Servicios.» | `T3.ip` |
-| `ttl` | `routers_crossed` (y la variante con el TTL actual, coste de interpretación 1) | «Había atravesado exactamente dos routers.» / «Llevaba TTL 2.» | `T3.ip` |
-| `ttl` | `routers_left` | «Le quedaban dos routers para llegar.» | `T3.ip` |
-| `ttl` | `min_routers_crossed` (desigualdad) | «Ya había atravesado algún router.» / «Si hubiera salido con TTL 2, ya lo habrían descartado.» | `T3.ip` |
-| `endpoint` | `broadcast_destination` | «Iba dirigido a 192.168.1.255.» o «Era una petición DHCP»: la difusión no atraviesa routers, así que seguía en su red de origen. | `T3.subredes` (DHCP, `T3.vlsm`) |
-| `link` | `frame_to_router`, `frame_from_router` | «La trama que lo llevaba iba dirigida al router que une Aulas y Servicios.» (la MAC de destino es la del siguiente salto; la IP de destino no cambia) | `T3.subredes` |
-
-**Más adelante** (v0.4.x o versiones posteriores):
+**Después de la v0.4:**
 
 | Tipo | Subtipo o forma propuesta | Ejemplo de texto | Bloque mínimo | Versión prevista |
 |---|---|---|---|---|

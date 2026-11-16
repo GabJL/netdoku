@@ -172,6 +172,19 @@ El **tamaño de una red** es siempre su **número de direcciones**, 2^(32−n) p
 - Pertenece a una red /30.
 - El origen está en una red con más direcciones que el destino.
 
+### Rutas y TTL (categoría Encaminamiento)
+
+La ficha de cada paquete dice su origen, su destino y su TTL inicial (entre 2 y 6). El jugador traza la ruta, el camino con menos routers entre las dos redes, que en estos niveles es único, y sabe que el paquete está en una red de su ruta a la que le llega el TTL. Algunas redes de tránsito (Troncal) no tienen equipos y solo unen routers. Un paquete de difusión no sale de la red de su origen.
+
+- Aún no había salido de la red de su origen. / La trama que lo llevaba la había enviado su propio equipo de origen.
+- Ya había llegado a la red de su destino. / La trama iba dirigida directamente a su equipo de destino.
+- Estaba pasando por una red de tránsito.
+- El último router que había atravesado era el que une Aulas y Servicios. / La trama la había enviado ese router.
+- El siguiente router que iba a atravesar era el que une Aulas y Servicios. / La trama iba dirigida a ese router.
+- Había atravesado exactamente dos routers. / Llevaba TTL 2 (con TTL inicial 4).
+- Le quedaba un router para llegar a la red de su destino.
+- Ya había atravesado algún router. / Había atravesado como mucho un router. / Su TTL era como mucho 2.
+
 ### TTL
 
 Suponiendo un TTL inicial de 64:

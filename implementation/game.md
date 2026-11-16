@@ -117,7 +117,7 @@ Ejemplos:
 
 Cada paquete aparece como una tarjeta.
 
-La tarjeta no posee campos fijos, sino que muestra únicamente la información que el nivel haya decidido revelar.
+La tarjeta no posee campos fijos, sino que muestra únicamente la información que el nivel haya decidido revelar. En la categoría Encaminamiento muestra el origen, el destino y el TTL inicial del paquete; al pasar el ratón por ella (o con el paquete seleccionado, en pantallas táctiles), el tablero marca su equipo de origen y el de destino.
 
 Puede contener:
 

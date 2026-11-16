@@ -25,6 +25,17 @@
     get title() { return t(`help.categories.${id}`); },
   }));
 
+  // Fichas de Encaminamiento: tres redes en fila unidas por dos routers, con el
+  // origen (equipo de usuario) a la izquierda y el destino (servidor web) a la derecha.
+  const ROUTE_MINI = {
+    grid: ["AABBCC", "AABBCC", "AABBCC"],
+    nodes: [[2, 1, "client"], [2, 6, "web"]],
+    routers: [[[2, 2], [2, 3]], [[2, 4], [2, 5]]],
+  };
+  const ROUTE_A = [[1, 1], [1, 2], [2, 2], [3, 1], [3, 2]];
+  const ROUTE_B = [[1, 3], [1, 4], [2, 3], [2, 4], [3, 3], [3, 4]];
+  const ROUTE_C = [[1, 5], [1, 6], [2, 5], [3, 5], [3, 6]];
+
   // Mini tableros: grid (una letra de red por casilla), nodes [f, c, tipo],
   // routers [[f, c], [f, c]], packets [f, c, letra, color], notes [f, c, letra,
   // color, hueco], ok / no (casillas posibles / descartadas) y shade (casillas
@@ -166,6 +177,34 @@
       },
     },
     {
+      id: "route_trace",
+      category: "rules",
+      mini: { ...ROUTE_MINI, ok: [...ROUTE_A, ...ROUTE_B], no: ROUTE_C },
+    },
+    {
+      id: "ttl",
+      category: "rules",
+    },
+    {
+      id: "frames",
+      category: "rules",
+    },
+    {
+      id: "route_position",
+      category: "clues",
+      mini: { ...ROUTE_MINI, ok: ROUTE_A },
+    },
+    {
+      id: "route_router",
+      category: "clues",
+      mini: { ...ROUTE_MINI, ok: ROUTE_B },
+    },
+    {
+      id: "ttl_count",
+      category: "clues",
+      mini: { ...ROUTE_MINI, ok: [...ROUTE_B, ...ROUTE_C] },
+    },
+    {
       id: "icons",
       category: "icons",
       mini: {
@@ -198,6 +237,14 @@
     "router.adjacent_to_router": "router",
     "spatial.in_row": "spatial",
     "spatial.in_column": "spatial",
+    "endpoint.in_origin_network": "route_position",
+    "endpoint.in_destination_network": "route_position",
+    "route.in_transit_network": "route_position",
+    "route.last_router": "route_router",
+    "route.next_router": "route_router",
+    "ttl.routers_crossed": "ttl_count",
+    "ttl.routers_left": "ttl_count",
+    "ttl.routers_crossed_range": "ttl_count",
   };
   const USES_ADJACENCY = new Set(["node.adjacent_to_node", "node.unique_adjacent_to_node", "node.not_adjacent_to_node"]);
   // Fichas de reglas que necesitan algunas formas de nombrar (clue.naming).
@@ -214,6 +261,8 @@
     last_host: "special_addresses",
     broadcast: "special_addresses",
     contents: "node_count",
+    mac_view: "frames",
+    ttl_value: "ttl",
   };
   // Formas que nombran algo sin su nombre: explicadas en la ficha named_by_address.
   const ADDRESS_FORMS = new Set(["prefix", "size_rank", "ip_member", "label_prefix", "ip", "networks_prefix", "interfaces",
@@ -226,6 +275,8 @@
   // Fichas que usa un nivel, en el orden del catálogo.
   function forLevel(level) {
     const ids = new Set(["how_to_play", "objective", "row_column", "icons"]);
+    // Encaminamiento: cada paquete está en una red de su ruta a la que le llega el TTL.
+    if ((level.rules || {}).packetOnRoute) ["route_trace", "ttl"].forEach((id) => ids.add(id));
     for (const clue of level.clues || []) {
       if (TYPE_TO_ENTRY[clue.type]) ids.add(TYPE_TO_ENTRY[clue.type]);
       if (USES_ADJACENCY.has(clue.type)) ids.add("adjacent");

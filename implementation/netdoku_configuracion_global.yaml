@@ -27,6 +27,8 @@ packets:
   # Regla básica: como mucho un paquete por fila y por columna.
   onePerRow: true
   onePerColumn: true
+  # Propiedades que muestra la ficha del paquete: origin, destination, ttlInitial.
+  visibleProperties: []
 
 features:
   spatial: true
@@ -127,6 +129,8 @@ nodes:
   allowEmptyNetworks: false
   emptyNetworks:
     max: 1
+    # Probabilidad de una red de tránsito (Troncal) si alguna une al menos dos routers.
+    probability: 0.5
     requireTransit: true
   # Tipos de nodo: client, server (con lista de servicios) e infraestructura
   # (firewall, switch, access_point), desactivada por defecto.
@@ -209,6 +213,12 @@ endpoints:
   allowSameNode: false
   allowSameNetwork: true
   requireProtocolCompatibility: true
+  # Origen y destino con etiqueta única en su red, para nombrarlos en la ficha.
+  requireIdentifiable: true
+  # Paquetes cuyo destino es la difusión de su red (no salen de ella).
+  broadcastPackets:
+    probability: 0.3
+    max: 1
   originNodeTypes: null
   destinationNodeTypes: null
 
@@ -222,6 +232,8 @@ routes:
     tieBreak: random
     hostGateway: shortest
     store: true
+  # Solo pares con un único camino mínimo: la ruta se traza sin ver las tablas.
+  requireUniqueShortestPath: true
   minHops: 0
   maxHops: null
   finalPositionPolicy: weighted
@@ -245,6 +257,8 @@ ttl:
     128: 0.25
     255: 0.10
   fixedInitialValue: null
+  # Proporción de paquetes cuyo TTL no alcanza para llegar al destino (auto: 0,15-0,3).
+  shortRatio: auto
   decrementPerRouter: 1
   minRemaining: 1
   requireConsistency: true
@@ -268,6 +282,8 @@ clues:
   naming:
     # Proporción de pistas con formas de nombrar de la categoría (prefix, ip_member…).
     categoryFormRatio: auto
+  # Mínimo de pistas de los tipos propios de la categoría (Encaminamiento: endpoint, route, ttl).
+  categoryMinClues: 0
   avoidRedundant: true
   avoidSemanticallyEquivalent: true
   requireLogicalSolvability: true
@@ -341,6 +357,29 @@ repair:
   regenerateNodes: true
   regenerateRouters: true
   regenerateNetworks: true
+
+# Valores que cambia cada categoría de niveles (véase la sección 21 del documento de parámetros).
+categoryProfiles:
+  inicial: &initial_profile
+    board: {width: 6, height: 6}
+    packets: {count: 6}
+    topology: {networks: {min: 4, max: 4}}
+  direccionamiento: *initial_profile
+  encaminamiento:
+    board: {width: 7, height: 7}
+    packets:
+      count: 7
+      visibleProperties: [origin, destination, ttlInitial]
+    topology: {networks: {min: 5, max: 6}}
+    features: {origins: true, destinations: true, routes: true, ttl: true}
+    endpoints: {allowSameNetwork: false}
+    nodes:
+      allowEmptyNetworks: true
+      emptyNetworks: {max: 1}
+    ttl:
+      initialValues: [2, 3, 4, 5, 6]
+      initialValueWeights: {2: 0.15, 3: 0.25, 4: 0.25, 5: 0.20, 6: 0.15}
+    clues: {categoryMinClues: 3}
 
 limits:
   maxNetworks: 20

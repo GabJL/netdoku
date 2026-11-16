@@ -263,7 +263,7 @@ Sigue el orden de la asignatura:
 
 1. **Redes, equipos, routers y paquetes** (T3): pertenencia a red y adyacencias.
 2. **Prefijos y máscaras** (T3): «está en una red /24», «su destino es 10.0.3.7».
-3. **Rutas y TTL** (T3 y P2): routers atravesados, siguiente salto, TTL.
+3. **Encaminamiento** (T3 y P2): routers atravesados, siguiente salto, TTL (v0.4) y, más adelante, tablas de encaminamiento.
 4. **Switches y WiFi** (T2 y T3): están dentro de una red y no cuentan como salto.
 5. **Transporte y puertos** (T4): TCP/UDP, puerto destino, campo protocolo.
 6. **Protocolos y servicios** (T5): servidor destino de cada protocolo.

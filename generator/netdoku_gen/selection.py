@@ -13,6 +13,7 @@
 
 from dataclasses import replace
 
+from .rules import ROUTE_FAMILIES
 from .solver import initial_domains, propagate, uncertainty
 
 # Peso relativo de cada subtipo al elegir. Las pistas de fila y columna son
@@ -28,6 +29,15 @@ SUBTYPE_WEIGHTS = {
     "node.unique_adjacent_to_node": 1.2,
     "node.not_adjacent_to_node": 0.45,
     "router.adjacent_to_router": 1.0,
+    # Encaminamiento: pesan más que las demás para que la categoría se note.
+    "endpoint.in_origin_network": 1.6,
+    "endpoint.in_destination_network": 1.6,
+    "route.in_transit_network": 2.0,
+    "route.last_router": 1.8,
+    "route.next_router": 1.8,
+    "ttl.routers_crossed": 1.6,
+    "ttl.routers_left": 1.4,
+    "ttl.routers_crossed_range": 1.6,
     "spatial.in_row": 0.45,
     "spatial.in_column": 0.45,
 }
@@ -47,12 +57,16 @@ class Selector:
         self.others = [p for p in self.packet_ids if p != victim_id]
         self.rules = rules
 
-    def solve(self, clues):
-        d = initial_domains(self.ctx.free_cells, self.packet_ids, clues)
+    def solve(self, clues, victim_route=True):
+        base = self.ctx.base
+        if not victim_route:
+            base = {**base, self.victim: self.ctx.free_cells}
+        d = initial_domains(base, self.packet_ids, clues)
         return propagate(d, self.rules, exclude_from_subsets={self.victim})
 
     def others_solved(self, clues):
-        d, _ = self.solve([c for c in clues if c.packet != self.victim])
+        # Sin nada de la víctima (ni sus pistas ni su ruta): se deduce al final.
+        d, _ = self.solve([c for c in clues if c.packet != self.victim], victim_route=False)
         return d is not None and all(len(d[p]) == 1 for p in self.others)
 
     def all_solved(self, clues):
@@ -66,7 +80,9 @@ class Selector:
                 or self._pick_from(clues, candidates, targets, allow_coordinates=True))
 
     def _pick_from(self, clues, candidates, targets, allow_coordinates):
-        d, _ = self.solve(clues)
+        # Mientras se eligen pistas de los demás, la ruta de la víctima no cuenta.
+        with_victim = self.victim in targets
+        d, _ = self.solve(clues, with_victim)
         base = uncertainty(d, targets)
         with_spatial = {c.packet for c in clues if c.type.startswith("spatial.")}
         useful = [c for c in candidates
@@ -79,7 +95,7 @@ class Selector:
         for chunk in (useful[:MAX_CANDIDATES], useful[MAX_CANDIDATES:]):
             options = []
             for c in chunk:
-                d2, _ = self.solve(clues + [c])
+                d2, _ = self.solve(clues + [c], with_victim)
                 gain = base - uncertainty(d2, targets)
                 if gain > 1e-9:
                     # Ganancias moderadas: evita que cada pista coloque un paquete.
@@ -114,7 +130,8 @@ class Selector:
         # Quitar redundancias.
         order = clues[:]
         self.rng.shuffle(order)
-        order.sort(key=lambda c: not c.type.startswith("spatial."))  # espaciales primero
+        # Primero se intentan quitar las espaciales y, en Encaminamiento, antes las demás que las de ruta y TTL.
+        order.sort(key=lambda c: (not c.type.startswith("spatial."), c.type.split(".")[0] in ROUTE_FAMILIES))
         for c in order:
             trial = [x for x in clues if x is not c]
             if self.all_solved(trial) and self.others_solved(trial):

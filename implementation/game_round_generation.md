@@ -263,7 +263,7 @@ La colocación debe garantizar que:
 
 #### Redes de tránsito
 
-Por defecto toda red tiene al menos un equipo. Si el nivel usa rutas, saltos o TTL, se pueden dejar algunas redes sin equipos (`nodes.emptyNetworks`), como los enlaces /30 entre routers de la asignatura. Estas **redes de tránsito**:
+Por defecto toda red tiene al menos un equipo. Si el nivel usa rutas, saltos o TTL, se pueden dejar algunas redes sin equipos (`nodes.emptyNetworks`), como los enlaces /30 entre routers de la asignatura. Para jugar basta saber que es una red sin equipos que solo une routers, así que su bloque es `T3.ip` (propuesta de la v0.4; antes figuraba `T3.encaminamiento`). Estas **redes de tránsito**:
 
 - solo se eligen entre las redes que unen al menos dos routers (`requireTransit`); una red vacía en un extremo de la topología no aportaría nada;
 - nunca son red de origen ni de destino de un paquete, porque no tienen equipos;
@@ -343,6 +343,43 @@ La ruta no tiene por qué almacenarse necesariamente como una secuencia exacta d
 - camino completo dentro del tablero.
 
 La representación elegida dependerá de la precisión necesaria para las reglas disponibles.
+
+#### Implementación en la v0.4 (categoría Encaminamiento)
+
+Implementada en `generator/netdoku_gen/routes.py`. Las pistas están en el [catálogo de reglas](netdoku_catalogo_reglas.md#encaminamiento-rutas-y-ttl-v04).
+
+Primera versión de las rutas, pensada para que el jugador las trace sin tablas de encaminamiento.
+
+**Tablero.** 7×7 con 7 paquetes (uno en cada fila y en cada columna), 5 o 6 redes y routers de grado 2 sobre un árbol generador más, a veces, un router que cierra un ciclo. Con probabilidad 0,5 (`nodes.emptyNetworks.probability`), una **red de tránsito**, elegida al azar entre las que unen al menos dos routers, que se llama Troncal. Con 4 redes en un 6×6 las rutas tendrían como mucho 2 o 3 routers y darían poco juego.
+
+**Orden de la generación.** Para no tener que sortear rutas hasta que encajen en las casillas, primero se colocan los paquetes y después se les asigna una ruta que pase por su red:
+
+1. Tablero, routers y equipos, como ahora, dejando vacía la red de tránsito.
+2. Posiciones de los paquetes: una por fila y columna, con la víctima y el atacante solos en una red (como ahora).
+3. Para cada paquete en la red `X`, se sortea un par de origen y destino cuya ruta pase por `X`, según el papel que se quiera para `X` (`routes.finalPositionWeights`: origen 15 %, intermedia 60 %, destino 25 %; en una red de tránsito, siempre intermedia). Origen y destino están en redes distintas, se prefieren las rutas largas y las que no lleva ya otro paquete, y dos paquetes no tienen el mismo par de equipos si se puede evitar. Solo valen pares con un **único camino mínimo** (`routes.requireUniqueShortestPath`) y equipos que se puedan nombrar sin ambigüedad en la ficha (su etiqueta es única en su red). Con probabilidad `endpoints.broadcastPackets.probability`, uno de los paquetes que están en una red con equipos pasa a ser de difusión: su origen es un equipo de esa red y su destino, la difusión de la red.
+4. TTL inicial: un valor de `ttl.initialValues` que mantenga vivo al paquete donde está (`TTL inicial ≥ k + 1`). Una parte de los paquetes (`ttl.shortRatio`) recibe un TTL que no le alcanza para llegar a su destino (`TTL inicial − 1 < L`), para que aparezca la deducción de «No time to die»: con TTL 3 solo puede haber atravesado dos routers.
+5. `Alcanzables(m)` de cada paquete (las redes de su ruta hasta `min(L, TTL inicial − 1)`), que es su dominio de partida en el solver, en la medida de la dificultad, en la validación y en las sugerencias.
+6. Pistas, selección, validación y dificultad, como ahora. Las pistas de ruta y TTL pesan más que las demás, y cada nivel debe tener al menos tres (`clues.categoryMinClues`), para que la categoría se note. Mientras se eligen las pistas de los demás paquetes no cuenta la ruta de la víctima, que se sigue deduciendo al final.
+7. Formas de nombrar: como en Direccionamiento, con la misma dificultad de interpretación por dificultad global, pero sin exigir formas de la categoría (la categoría la dan las pistas de ruta y TTL) y con `clues.naming.categoryFormRatio` entre 0,2 y 0,5.
+
+Las tablas de encaminamiento todavía no se calculan: llegan con la v0.5.
+
+**Lo que no entra en la v0.4:** pistas relacionales entre dos paquetes, orígenes o destinos ocultos (y deducir la IP de cada equipo), routers de grado 3 o 4, rutas con empates (exigen tablas) y `hostGateway: default_gateway`.
+
+**Formato del nivel.** Cada paquete añade:
+
+```json
+"origin": {"node": "N3"},
+"destination": {"node": "N7"},            // o {"broadcast": "192.168.1.255", "network": "net2"}
+"ttl": {"initial": 4},
+"route": {"networks": ["net1", "net3", "net2"], "routers": ["R1", "R4"]},
+"domain": [[1, 2], [1, 3], ...],          // Alcanzables: lo usan las sugerencias
+"solution": {"position": [3, 4], "network": "net3", "routersCrossed": 1, "ttl": 3}
+```
+
+y `rules.packetOnRoute: true`; la red de tránsito lleva `"transit": true`. La ficha del paquete muestra origen, destino y TTL inicial; `route`, `domain` y `solution` no se muestran. Al pasar el ratón por la ficha (o con el paquete seleccionado), el tablero marca su equipo de origen y el de destino.
+
+**Medidas:** un nivel tarda unos 20 s (con un proceso por núcleo); en un móvil de 380 px de ancho el tablero 7×7 cabe, con casillas de unos 45 px.
 
 ### 6. Validación de la solución
 
@@ -563,7 +600,7 @@ La **dificultad global** es la mayor de las dos, más un punto si ambas son 3 o 
 
 Los niveles se organizan en **categoría → dificultad → nivel**:
 
-1. **Categoría:** el conocimiento que exige el nivel, es decir, el bloque temático más alto entre los de sus pistas y formas de nombrar (`requirements.topic`). Son acumulativas: un nivel de una categoría puede usar todo lo de las anteriores. Por ejemplo: Inicial (`T3.dispositivos`, sin conocimientos previos), Direccionamiento (`T3.ip` a `T3.vlsm`), Encaminamiento (`T3.encaminamiento`), Transporte y aplicación (`T4` a `T6`).
+1. **Categoría:** el conocimiento que exige el nivel, es decir, el bloque temático más alto entre los de sus pistas y formas de nombrar (`requirements.topic`). Son acumulativas: un nivel de una categoría puede usar todo lo de las anteriores. Por ejemplo: Inicial (`T3.dispositivos`, sin conocimientos previos), Direccionamiento (`T3.ip` a `T3.vlsm`), Encaminamiento, Transporte y aplicación (`T4` a `T6`). Encaminamiento (v0.4) es la excepción: no la define un bloque sino que los paquetes tengan ruta, porque el TTL y los routers atravesados se ven en la clase 10, antes que las máscaras; las tablas de encaminamiento (`T3.encaminamiento`, previstas para la v0.5) se añadirán después. Sus niveles van después de Direccionamiento en el menú y pueden usar sus formas de nombrar (hasta `T3.vlsm`); las más fáciles solo exigen `T3.ip`, y `requirements.topic` dice siempre lo que exige cada nivel.
 2. **Dificultad:** la global, de 1 a 5, a partir de la lógica y la de interpretación.
 3. **Nivel:** varios por cada combinación, elegidos de un lote grande generado.
 

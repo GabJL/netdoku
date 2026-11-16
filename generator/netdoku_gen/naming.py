@@ -14,7 +14,7 @@ from .content import and_word, count_text, network_counts, node_classes
 TOPICS = ["T3.dispositivos", "T3.vlan", "T3.ip", "T3.fragmentacion", "T3.subredes", "T3.vlsm",
           "T3.encaminamiento", "T3.nat", "T4.udp", "T4.tcp", "T5.dns", "T5.web",
           "T5.ficheros_correo", "T6"]
-CATEGORIES = {"inicial": "Inicial", "direccionamiento": "Direccionamiento"}
+CATEGORIES = {"inicial": "Inicial", "direccionamiento": "Direccionamiento", "encaminamiento": "Encaminamiento"}
 READING_TIERS = {1: "Muy fácil", 2: "Fácil", 3: "Media", 4: "Difícil", 5: "Muy difícil"}
 # Formas que hablan del tamaño de las redes: exigen la aclaración sobre las casillas.
 SIZE_FORMS = {"size_rank", "prefix_length", "address_count", "usable_count", "mask"}
@@ -201,11 +201,22 @@ class Namer:
         import ipaddress
         return ipaddress.IPv4Network(f"0.0.0.0/{length}").netmask
 
+    @staticmethod
+    def view_options(_):
+        """Pistas de ruta: desde la capa de red (la IP no cambia) o desde la trama (MAC del siguiente salto)."""
+        return [Option("ip_view", "", 0, "T3.ip", False), Option("mac_view", "", 1, "T3.subredes", True)]
+
+    @staticmethod
+    def ttl_options(_):
+        """Pistas de TTL: routers atravesados o TTL actual (hay que restarlo del inicial)."""
+        return [Option("count", "", 0, "T3.ip", False), Option("ttl_value", "", 1, "T3.ip", True)]
+
     def slot_options(self, kind, value):
         maker = {"network": self.network_options, "node": self.node_options,
                  "router": self.router_options, "length": self.length_options,
                  "row": lambda v: self.line_options("row", v),
-                 "column": lambda v: self.line_options("column", v)}[kind]
+                 "column": lambda v: self.line_options("column", v),
+                 "view": self.view_options, "ttl": self.ttl_options}[kind]
         return [o for o in maker(value) if self._allowed(o)]
 
     def plain(self, clues):
@@ -237,19 +248,21 @@ class Namer:
             combos.append((max(o.cost for o in choice), dict(zip(names, choice))))
         return combos
 
-    def assign(self, clues, reading, ratio, needed=None, tries=30):
+    def assign(self, clues, reading, ratio, needed=None, tries=30, require_category=True):
         """Elige formas para obtener la dificultad de interpretación `reading` (o None si no se puede).
 
         `needed`: ids de las pistas cuyo cálculo es imprescindible (None = todas);
-        las demás solo pueden usar formas de coste 0.
+        las demás solo pueden usar formas de coste 0. `require_category`: al
+        menos una forma de la categoría (en Encaminamiento no hace falta: la
+        categoría la dan las pistas de ruta y TTL).
         """
         for _ in range(tries):
-            result = self._try_assign(clues, reading, ratio, needed)
+            result = self._try_assign(clues, reading, ratio, needed, require_category)
             if result is not None:
                 return result
         return None
 
-    def _try_assign(self, clues, reading, ratio, needed):
+    def _try_assign(self, clues, reading, ratio, needed, require_category=True):
         rng = self.rng
         options = [self.clue_options(c, needed is None or c.id in needed) for c in clues]
         chosen = [None] * len(clues)
@@ -290,7 +303,7 @@ class Namer:
                 return None
         low_cap = {1: 0, 2: 1, 3: 1, 4: 2, 5: 2}[reading]
         namable = [i for i in range(len(clues)) if any(is_cat(o) for o in options[i])]
-        wanted = max(1, round(ratio * len(namable)))
+        wanted = max(1 if require_category else 0, round(ratio * len(namable)))
         have = sum(1 for o in chosen if o is not None and is_cat(o))
         for i in order:
             if chosen[i] is not None:
@@ -304,7 +317,7 @@ class Namer:
             chosen[i] = pick(i, lambda o: not is_cat(o) and o[0] == 0) or pick(i, lambda o: o[0] <= low_cap)
             if chosen[i] is None:
                 return None
-        if have < 1 or reading_level([o[0] for o in chosen]) != reading:
+        if (require_category and have < 1) or reading_level([o[0] for o in chosen]) != reading:
             return None
         # Los equipos y routers nombrados por dirección deben ser coherentes entre pistas.
         fixed = {}
@@ -327,12 +340,17 @@ class Namer:
         result = []
         for clue, (cost, slots) in zip(clues, chosen):
             texts = {n: o.text for n, o in slots.items()}
+            template = clue.template
+            if isinstance(template, dict):
+                # Pistas de ruta y TTL: la forma de toda la pista elige la frase.
+                whole = slots.get("view") or slots.get("ttl")
+                template = template[whole.form]
             topics = [clue.topic] + [o.topic for o in slots.values()]
             data = {}
             for n, o in slots.items():
                 kind, ref = clue.slots[n]
                 data[n] = {"kind": kind, "ref": ref, "form": o.form, **({"value": o.value} if o.value else {})}
-            result.append(replace(clue, text=clue.template.format(**texts) if slots else clue.text,
+            result.append(replace(clue, text=template.format(**texts) if slots else clue.text,
                                   naming={n: o.form for n, o in slots.items()}, slot_data=data,
                                   reading_cost=cost, topic=max_topic(topics)))
         return result

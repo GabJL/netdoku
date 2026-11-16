@@ -1,5 +1,17 @@
 # Versiones de Netdoku
 
+## 0.4 (16 de noviembre de 2026)
+
+Categoría nueva, Encaminamiento: rutas y TTL. 375 niveles nuevos (75 por dificultad), en tableros de 7×7 con 7 paquetes y 5 o 6 redes.
+
+- La ficha de cada paquete muestra su origen, su destino y su TTL inicial (de 2 a 6). El paquete está en una red de su ruta, el camino con menos routers entre su origen y su destino, a la que le llega el TTL: con TTL inicial 3 solo puede haber atravesado dos routers, como en el ejercicio «No time to die». Al pasar el ratón por la ficha, o con el paquete seleccionado, el tablero marca su equipo de origen y el de destino.
+- Redes de tránsito (Troncal), sin equipos, que solo unen routers, y paquetes de difusión, que no salen de la red de su origen.
+- Pistas nuevas: «aún no había salido de la red de su origen», «ya había llegado a la red de su destino», «estaba pasando por una red de tránsito», «el último router que había atravesado era…», «el siguiente router que iba a atravesar era…», «había atravesado exactamente dos routers», «le quedaba un router para llegar a la red de su destino» y «ya había atravesado algún router» (o «al menos», «como mucho»). Cada nivel tiene al menos tres.
+- Formas con coste de interpretación 1: la de la trama («la trama que lo llevaba iba dirigida al router…»: la MAC es la del siguiente salto, mientras que la IP de destino no cambia) y la del TTL actual («llevaba TTL 2», que hay que restar del inicial). Las redes, los equipos y los routers se pueden nombrar como en Direccionamiento.
+- Fichas de ayuda nuevas (Rutas, TTL, Tramas y MAC, y las de las pistas nuevas) y teoría de la categoría. Las sugerencias tienen en cuenta la ruta y el TTL de cada paquete.
+- Generador: módulo `routes.py`, perfil de categoría (`categoryProfiles` en la configuración) y `--category encaminamiento`; `--packets` y `--networks` toman por defecto los de la categoría.
+- Vista de pruebas temporal (botón «Pruebas» del menú, con clave): una veintena de niveles fijos de los lotes, con su semilla, elegidos para que cada subtipo de pista salga en tres tableros, y cada forma de nombrar y cada plan de direcciones en uno (`generator/test_set.py`). Se juegan sin puntuar y se marcan como validados.
+
 ## 0.3.5 (16 de noviembre de 2026)
 
 Pistas nuevas para Inicial y Direccionamiento. Los lotes pasan de 50 a 75 niveles por dificultad: los 25 nuevos de cada una usan las pistas nuevas, y el juego los saca antes a quien ya haya jugado los anteriores, porque elige entre los niveles que aún no ha visto.

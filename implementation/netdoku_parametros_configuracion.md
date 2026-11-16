@@ -159,6 +159,13 @@ Solo cuenta lo que el jugador ve o necesita para resolver: las pistas, los datos
 - **Valor por defecto:** `true`.
 - **Descripción:** exige que cada paquete ocupe una casilla diferente.
 
+### `packets.visibleProperties`
+
+- **Carácter:** opcional.
+- **Dominio:** lista con valores de `origin`, `destination`, `ttlInitial`.
+- **Valor por defecto:** `[]`.
+- **Descripción:** propiedades que muestra la ficha de cada paquete. En la categoría Encaminamiento (v0.4) son las tres: el origen y el destino se nombran por su etiqueta y su red («equipo de usuario de Aulas»), o el destino como «difusión (192.168.1.255)». Las propiedades visibles cuentan para el bloque mínimo del nivel.
+
 ### `packets.onePerRow` y `packets.onePerColumn`
 
 - **Carácter:** opcional.
@@ -608,7 +615,7 @@ En esta sección, «tamaño» (`networkSize`) es el **número de casillas** que 
 - **Carácter:** opcional.
 - **Dominio:** booleano.
 - **Valor por defecto:** `false`.
-- **Descripción:** permite **redes de tránsito**, sin equipos, que solo unen routers (como los enlaces /30 de la asignatura). Solo tiene efecto si está activa alguna de `features.routes`, `features.hops` o `features.ttl`; sin ellas, una red vacía apenas admite pistas y no se genera. Las redes vacías no cuentan para `nodes.perNetwork.min`. Ningún paquete tiene origen ni destino en ellas, pero pueden contener paquetes de paso. Pertenecen al bloque `T3.encaminamiento`.
+- **Descripción:** permite **redes de tránsito**, sin equipos, que solo unen routers (como los enlaces /30 de la asignatura). Solo tiene efecto si está activa alguna de `features.routes`, `features.hops` o `features.ttl`; sin ellas, una red vacía apenas admite pistas y no se genera. Las redes vacías no cuentan para `nodes.perNetwork.min`. Ningún paquete tiene origen ni destino en ellas, pero pueden contener paquetes de paso. Pertenecen al bloque `T3.ip`: para jugar basta saber que son redes sin equipos que solo unen routers (propuesta de la v0.4; antes, `T3.encaminamiento`).
 
 ### `nodes.emptyNetworks.max`
 
@@ -616,6 +623,13 @@ En esta sección, «tamaño» (`networkSize`) es el **número de casillas** que 
 - **Dominio:** entero mayor o igual que `0` o `null`.
 - **Valor por defecto:** `1`.
 - **Descripción:** número máximo de redes de tránsito. Solo se aplica si `nodes.allowEmptyNetworks` es `true`.
+
+### `nodes.emptyNetworks.probability`
+
+- **Carácter:** opcional.
+- **Dominio:** número real entre `0` y `1`.
+- **Valor por defecto:** `0.5`.
+- **Descripción:** probabilidad de que un nivel tenga una red de tránsito, si `nodes.allowEmptyNetworks` es `true` y alguna red une al menos dos routers. La red de tránsito se llama Troncal.
 
 ### `nodes.emptyNetworks.requireTransit`
 
@@ -851,6 +865,26 @@ El nivel de conocimiento de un nivel de juego es el más alto de lo que usan sus
 - **Dominio:** booleano.
 - **Valor por defecto:** `true`.
 
+### `endpoints.requireIdentifiable`
+
+- **Carácter:** opcional.
+- **Dominio:** booleano.
+- **Valor por defecto:** `true`.
+- **Descripción:** el origen y el destino de un paquete deben poder nombrarse sin ambigüedad en su ficha: su etiqueta es única en su red («el servidor web de Aulas»).
+
+### `endpoints.broadcastPackets.probability`
+
+- **Carácter:** opcional.
+- **Dominio:** número real entre `0` y `1`.
+- **Valor por defecto:** `0.3`.
+- **Descripción:** probabilidad de que un nivel con orígenes y destinos tenga un **paquete de difusión**: su destino es la dirección de difusión de su red (por ejemplo, una petición DHCP), así que no sale de la red de su origen. Véase el [catálogo de reglas](netdoku_catalogo_reglas.md#encaminamiento-rutas-y-ttl-v04).
+
+### `endpoints.broadcastPackets.max`
+
+- **Carácter:** opcional.
+- **Dominio:** entero mayor o igual que `0`.
+- **Valor por defecto:** `1`.
+
 ### `endpoints.originNodeTypes`
 
 - **Carácter:** opcional.
@@ -870,6 +904,8 @@ El nivel de conocimiento de un nivel de juego es el más alto de lo que usan sus
 - **Carácter:** opcional.
 - **Dominio:** número real entre `0` y `1`.
 - **Valor por defecto:** `1.0` si se activa alguna propiedad de ruta; en otro caso `0.0`.
+
+En la v0.4 (categoría Encaminamiento) todavía no hay tablas: la ruta de cada paquete es el camino mínimo único entre su origen y su destino (`routes.requireUniqueShortestPath`). Lo que sigue describe el modelo previsto para la v0.5.
 
 Las rutas no se sortean paquete a paquete. Como en la asignatura, cada router decide el siguiente salto con su **tabla de encaminamiento**, de modo que el tráfico que llega a un router con destino a una red sigue siempre el mismo camino. El generador calcula las tablas una vez por nivel y la ruta de cada paquete se deriva de ellas. La ruta de A a B puede no coincidir con la de B a A.
 
@@ -907,6 +943,13 @@ Las rutas no se sortean paquete a paquete. Como en la asignatura, cada router de
 - **Dominio:** booleano.
 - **Valor por defecto:** `true`.
 - **Descripción:** guarda las tablas en el fichero de nivel (`routing.tables`) para que puedan usarlas pistas del bloque `T3.encaminamiento` (por ejemplo, «el siguiente salto de R1 hacia la red X es R2») y para comprobar la coherencia de las rutas.
+
+### `routes.requireUniqueShortestPath`
+
+- **Carácter:** opcional.
+- **Dominio:** booleano.
+- **Valor por defecto:** `true`.
+- **Descripción:** solo se usan pares de origen y destino con un único camino mínimo en el grafo Red↔Router, para que el jugador pueda trazar la ruta sin ver las tablas de encaminamiento (v0.4). Con `false`, los empates los deciden las tablas (`routes.tables.tieBreak`), y la ruta solo se puede deducir con ellas (tablas de encaminamiento, v0.5).
 
 ### `routes.minHops`
 
@@ -969,6 +1012,13 @@ Las rutas no se sortean paquete a paquete. Como en la asignatura, cada router de
 - **Carácter:** opcional.
 - **Dominio:** entero positivo o `null`.
 - **Valor por defecto:** `null`.
+
+### `ttl.shortRatio`
+
+- **Carácter:** opcional.
+- **Dominio:** número real entre `0` y `1` o `auto`.
+- **Valor por defecto:** `auto`.
+- **Descripción:** proporción de paquetes cuyo TTL inicial no les alcanza para llegar a su destino (`TTL inicial − 1` menor que el número de routers de su ruta), como en el ejercicio «No time to die»: el jugador deduce que el paquete no puede haber pasado de cierto router. Con `auto` se sortea en cada nivel entre 0,15 y 0,3. Solo tiene efecto con valores iniciales pequeños.
 
 ### `ttl.decrementPerRouter`
 
@@ -1076,6 +1126,13 @@ Las rutas no se sortean paquete a paquete. Como en la asignatura, cada router de
 - **Dominio:** número real entre `0` y `1` o `auto`.
 - **Valor por defecto:** `auto`.
 - **Descripción:** proporción de pistas que usan [formas de nombrar](netdoku_catalogo_reglas.md#proporción-de-formas-nuevas) propias de la categoría del nivel (por ejemplo, `prefix` o `ip_member` en Direccionamiento), aunque su coste de interpretación sea 0. Siempre hay al menos una. Con `auto` se sortea en cada nivel entre 0,3 y 0,7, para que unos niveles usen más formas nuevas que otros. Las formas con coste mayor que el permitido por `difficulty.reading` no se usan, sea cual sea la proporción.
+
+### `clues.categoryMinClues`
+
+- **Carácter:** opcional.
+- **Dominio:** entero mayor o igual que `0`.
+- **Valor por defecto:** `0`.
+- **Descripción:** número mínimo de pistas de los tipos propios de la categoría del nivel (en Encaminamiento, `endpoint`, `route` y `ttl`). Con `0` no se exige nada.
 
 ### `clues.avoidRedundant`
 
@@ -1483,6 +1540,25 @@ Estos parámetros pueden configurarse manualmente, pero normalmente se derivan d
 - **Dominio:** booleano.
 - **Valor por defecto:** `false`.
 - **Descripción:** permite usar en las pistas la dirección de red y la de difusión de una red (por ejemplo, «la red de la dirección 192.168.0.127»). Los equipos y los routers nunca las tienen.
+
+## 21. Perfiles de categoría
+
+Cada categoría de niveles cambia algunos valores por defecto. Los perfiles están en `categoryProfiles` de la configuración global.
+
+| Parámetro | Inicial y Direccionamiento | Encaminamiento (v0.4) |
+|---|---|---|
+| `board.width` × `board.height` | 6 × 6 | 7 × 7 |
+| `packets.count` | 6 | 7 |
+| `topology.networks.min` / `max` | 4 / 4 | 5 / 6 |
+| `features.origins`, `destinations`, `routes`, `ttl` | `false` | `true` |
+| `endpoints.allowSameNetwork` | — | `false` (salvo los paquetes de difusión) |
+| `clues.naming.categoryFormRatio` (`auto`) | entre 0,3 y 0,7 | entre 0,2 y 0,5, sin exigir ninguna |
+| `packets.visibleProperties` | `[]` | `[origin, destination, ttlInitial]` |
+| `nodes.allowEmptyNetworks` | `false` | `true` (como mucho una red de tránsito) |
+| `ttl.initialValues` | — | `[2, 3, 4, 5, 6]`, con pesos `{2: 0.15, 3: 0.25, 4: 0.25, 5: 0.2, 6: 0.15}` |
+| `clues.categoryMinClues` | 0 | 3 |
+
+En Encaminamiento, los TTL iniciales son pequeños, como en el ejercicio «No time to die» de la asignatura, para que la resta sea sencilla y para que algunos paquetes no lleguen a su destino. Los valores reales (64, 128…) se dejan para más adelante.
 
 ## Configuración mínima recomendada
 

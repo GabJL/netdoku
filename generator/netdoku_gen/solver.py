@@ -26,8 +26,14 @@ class Rules:
         return self.packets == self.width
 
 
-def initial_domains(free_cells, packet_ids, clues):
-    domains = {p: set(free_cells) for p in packet_ids}
+def start_cells(base, p):
+    """Casillas de partida de un paquete: `base` es un conjunto común o un diccionario por paquete
+    (en Encaminamiento, las casillas de su ruta a las que le llega el TTL)."""
+    return base[p] if isinstance(base, dict) else base
+
+
+def initial_domains(base, packet_ids, clues):
+    domains = {p: set(start_cells(base, p)) for p in packet_ids}
     for clue in clues:
         domains[clue.packet] &= clue.domain
         if clue.excluded:
