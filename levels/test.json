@@ -134,6 +134,116 @@
    "features": []
   },
   {
+   "file": "direccionamiento/2/direccionamiento-2020096.json",
+   "seed": 2020096,
+   "category": "direccionamiento",
+   "difficulty": {
+    "global": 2,
+    "logic": 2,
+    "reading": 2
+   },
+   "plan": "octet_subnets",
+   "clues": 8,
+   "subtypes": [
+    "network.in_network",
+    "node.not_adjacent_to_node",
+    "node.unique_adjacent_to_node",
+    "relation.more_addresses_network",
+    "relation.same_network",
+    "router.adjacent_to_router",
+    "spatial.in_row"
+   ],
+   "forms": [
+    "aligned_node",
+    "ip",
+    "label",
+    "label_network",
+    "name",
+    "networks",
+    "size_compare"
+   ],
+   "features": []
+  },
+  {
+   "file": "direccionamiento/2/direccionamiento-2020099.json",
+   "seed": 2020099,
+   "category": "direccionamiento",
+   "difficulty": {
+    "global": 2,
+    "logic": 2,
+    "reading": 2
+   },
+   "plan": "octet_subnets",
+   "clues": 6,
+   "subtypes": [
+    "node.adjacent_to_node",
+    "node.unique_adjacent_to_node",
+    "relation.more_addresses_network",
+    "relation.same_network",
+    "router.adjacent_to_router"
+   ],
+   "forms": [
+    "interfaces",
+    "label",
+    "networks",
+    "size_compare"
+   ],
+   "features": []
+  },
+  {
+   "file": "direccionamiento/2/direccionamiento-2020101.json",
+   "seed": 2020101,
+   "category": "direccionamiento",
+   "difficulty": {
+    "global": 2,
+    "logic": 1,
+    "reading": 2
+   },
+   "plan": "octet_subnets",
+   "clues": 7,
+   "subtypes": [
+    "node.adjacent_to_node",
+    "relation.more_addresses_network",
+    "relation.same_network",
+    "router.adjacent_to_router",
+    "spatial.in_column"
+   ],
+   "forms": [
+    "aligned_node",
+    "label",
+    "networks",
+    "size_compare"
+   ],
+   "features": []
+  },
+  {
+   "file": "direccionamiento/2/direccionamiento-2020103.json",
+   "seed": 2020103,
+   "category": "direccionamiento",
+   "difficulty": {
+    "global": 2,
+    "logic": 1,
+    "reading": 2
+   },
+   "plan": "distinct",
+   "clues": 6,
+   "subtypes": [
+    "network.in_either_network",
+    "node.adjacent_to_node",
+    "node.unique_adjacent_to_node",
+    "relation.more_addresses_network",
+    "spatial.in_column"
+   ],
+   "forms": [
+    "label",
+    "name",
+    "number",
+    "privacy",
+    "size_compare"
+   ],
+   "features": []
+  },
+  {
    "file": "direccionamiento/3/direccionamiento-2030002.json",
    "seed": 2030002,
    "category": "direccionamiento",
@@ -412,6 +522,75 @@
    ]
   },
   {
+   "file": "encaminamiento/1/encaminamiento-3010084.json",
+   "seed": 3010084,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 1,
+    "logic": 1,
+    "reading": 1
+   },
+   "plan": "octet_subnets",
+   "clues": 9,
+   "subtypes": [
+    "endpoint.destination",
+    "endpoint.origin_class",
+    "node.adjacent_to_node",
+    "node.unique_adjacent_to_node",
+    "relation.routers_between",
+    "route.first_router",
+    "router.adjacent_to_router",
+    "spatial.in_row"
+   ],
+   "forms": [
+    "aligned_node",
+    "ip_view",
+    "label_network",
+    "networks",
+    "networks_prefix"
+   ],
+   "features": [
+    "cornerRouter",
+    "hiddenEndpoint",
+    "shortTtl"
+   ]
+  },
+  {
+   "file": "encaminamiento/1/encaminamiento-3010096.json",
+   "seed": 3010096,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 1,
+    "logic": 1,
+    "reading": 1
+   },
+   "plan": "octet_subnets",
+   "clues": 10,
+   "subtypes": [
+    "endpoint.origin",
+    "endpoint.origin_class",
+    "network.in_either_network",
+    "node.not_adjacent_to_node",
+    "relation.more_routers_crossed",
+    "route.next_router",
+    "router.adjacent_to_router",
+    "spatial.in_row"
+   ],
+   "forms": [
+    "ip_view",
+    "label",
+    "name",
+    "networks",
+    "networks_prefix",
+    "number"
+   ],
+   "features": [
+    "hiddenEndpoint",
+    "shortTtl",
+    "transit"
+   ]
+  },
+  {
    "file": "encaminamiento/2/encaminamiento-3020048.json",
    "seed": 3020048,
    "category": "encaminamiento",
@@ -441,6 +620,39 @@
     "prefix_length"
    ],
    "features": [
+    "shortTtl"
+   ]
+  },
+  {
+   "file": "encaminamiento/2/encaminamiento-3020067.json",
+   "seed": 3020067,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 2,
+    "logic": 2,
+    "reading": 2
+   },
+   "plan": "octet_subnets",
+   "clues": 10,
+   "subtypes": [
+    "endpoint.origin_class",
+    "network.in_network",
+    "node.adjacent_to_node",
+    "node.not_adjacent_to_node",
+    "route.final_router",
+    "route.last_router",
+    "router.adjacent_to_router",
+    "ttl.routers_crossed_range"
+   ],
+   "forms": [
+    "ip_view",
+    "label_network",
+    "name",
+    "networks",
+    "ttl_value"
+   ],
+   "features": [
+    "hiddenEndpoint",
     "shortTtl"
    ]
   },
@@ -481,6 +693,39 @@
    ]
   },
   {
+   "file": "encaminamiento/2/encaminamiento-3020071.json",
+   "seed": 3020071,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 2,
+    "logic": 2,
+    "reading": 2
+   },
+   "plan": "distinct",
+   "clues": 10,
+   "subtypes": [
+    "endpoint.destination",
+    "network.node_count",
+    "node.not_adjacent_to_node",
+    "relation.routers_between",
+    "route.first_router",
+    "route.last_router",
+    "router.adjacent_to_router",
+    "spatial.in_column"
+   ],
+   "forms": [
+    "interfaces",
+    "ip_view",
+    "label_network",
+    "mac_view",
+    "networks",
+    "number"
+   ],
+   "features": [
+    "hiddenEndpoint"
+   ]
+  },
+  {
    "file": "encaminamiento/2/encaminamiento-3020072.json",
    "seed": 3020072,
    "category": "encaminamiento",
@@ -511,6 +756,181 @@
    ],
    "features": [
     "broadcast",
+    "transit"
+   ]
+  },
+  {
+   "file": "encaminamiento/2/encaminamiento-3020074.json",
+   "seed": 3020074,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 2,
+    "logic": 2,
+    "reading": 2
+   },
+   "plan": "distinct",
+   "clues": 9,
+   "subtypes": [
+    "endpoint.origin",
+    "node.adjacent_to_node",
+    "relation.routers_between",
+    "route.first_router",
+    "route.next_router",
+    "router.adjacent_to_router",
+    "spatial.in_row",
+    "ttl.routers_crossed_range"
+   ],
+   "forms": [
+    "aligned_node",
+    "ip_view",
+    "label",
+    "networks",
+    "networks_prefix",
+    "ttl_value"
+   ],
+   "features": [
+    "broadcast",
+    "cornerRouter",
+    "hiddenEndpoint",
+    "shortTtl"
+   ]
+  },
+  {
+   "file": "encaminamiento/2/encaminamiento-3020078.json",
+   "seed": 3020078,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 2,
+    "logic": 1,
+    "reading": 2
+   },
+   "plan": "octet_subnets",
+   "clues": 8,
+   "subtypes": [
+    "node.adjacent_to_node",
+    "relation.closer_to_destination",
+    "relation.higher_ttl",
+    "route.next_router",
+    "router.adjacent_to_router",
+    "ttl.routers_crossed"
+   ],
+   "forms": [
+    "count",
+    "ip",
+    "ip_view",
+    "networks",
+    "networks_prefix",
+    "ttl_compare",
+    "ttl_value"
+   ],
+   "features": [
+    "cornerRouter",
+    "shortTtl"
+   ]
+  },
+  {
+   "file": "encaminamiento/2/encaminamiento-3020085.json",
+   "seed": 3020085,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 2,
+    "logic": 1,
+    "reading": 2
+   },
+   "plan": "octet_subnets",
+   "clues": 12,
+   "subtypes": [
+    "endpoint.in_origin_network",
+    "network.not_in_network",
+    "node.adjacent_to_node",
+    "node.not_adjacent_to_node",
+    "relation.same_origin",
+    "route.first_router",
+    "router.adjacent_to_router",
+    "spatial.in_row",
+    "ttl.routers_crossed",
+    "ttl.routers_left"
+   ],
+   "forms": [
+    "aligned_node",
+    "count",
+    "interfaces",
+    "ip_view",
+    "name",
+    "networks",
+    "ttl_value"
+   ],
+   "features": [
+    "cornerRouter",
+    "hiddenEndpoint",
+    "shortTtl"
+   ]
+  },
+  {
+   "file": "encaminamiento/2/encaminamiento-3020093.json",
+   "seed": 3020093,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 2,
+    "logic": 2,
+    "reading": 1
+   },
+   "plan": "vlsm",
+   "clues": 10,
+   "subtypes": [
+    "endpoint.destination",
+    "endpoint.origin",
+    "network.in_network",
+    "node.adjacent_to_node",
+    "node.not_adjacent_to_node",
+    "node.unique_adjacent_to_node",
+    "relation.more_routers_crossed",
+    "router.adjacent_to_router",
+    "spatial.in_column",
+    "ttl.routers_crossed"
+   ],
+   "forms": [
+    "aligned_node",
+    "count",
+    "label_network",
+    "networks_prefix",
+    "prefix"
+   ],
+   "features": [
+    "cornerRouter",
+    "hiddenEndpoint",
+    "shortTtl"
+   ]
+  },
+  {
+   "file": "encaminamiento/2/encaminamiento-3020097.json",
+   "seed": 3020097,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 2,
+    "logic": 2,
+    "reading": 2
+   },
+   "plan": "distinct",
+   "clues": 8,
+   "subtypes": [
+    "endpoint.destination_class",
+    "node.adjacent_to_node",
+    "route.first_router",
+    "router.adjacent_to_router",
+    "spatial.in_column",
+    "ttl.routers_left"
+   ],
+   "forms": [
+    "aligned_node",
+    "interfaces",
+    "ip_view",
+    "label_network",
+    "networks"
+   ],
+   "features": [
+    "hiddenEndpoint",
+    "shortTtl",
     "transit"
    ]
   },
@@ -547,6 +967,206 @@
    "features": []
   },
   {
+   "file": "encaminamiento/3/encaminamiento-3030075.json",
+   "seed": 3030075,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 3,
+    "logic": 2,
+    "reading": 3
+   },
+   "plan": "bit_subnets",
+   "clues": 9,
+   "subtypes": [
+    "network.not_in_network",
+    "node.not_adjacent_to_node",
+    "relation.same_origin",
+    "route.last_router",
+    "router.adjacent_to_router",
+    "ttl.routers_crossed"
+   ],
+   "forms": [
+    "count",
+    "interfaces",
+    "ip_view",
+    "label_network",
+    "name",
+    "networks",
+    "ttl_value"
+   ],
+   "features": [
+    "cornerRouter",
+    "hiddenEndpoint",
+    "shortTtl"
+   ]
+  },
+  {
+   "file": "encaminamiento/3/encaminamiento-3030078.json",
+   "seed": 3030078,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 3,
+    "logic": 3,
+    "reading": 2
+   },
+   "plan": "octet_subnets",
+   "clues": 8,
+   "subtypes": [
+    "endpoint.in_destination_network",
+    "network.in_either_network",
+    "node.adjacent_to_node",
+    "node.not_adjacent_to_node",
+    "relation.higher_ttl",
+    "route.next_router",
+    "spatial.in_row"
+   ],
+   "forms": [
+    "contents",
+    "ip_view",
+    "label_network",
+    "mac_view",
+    "name",
+    "networks",
+    "number",
+    "ttl_compare"
+   ],
+   "features": [
+    "shortTtl"
+   ]
+  },
+  {
+   "file": "encaminamiento/3/encaminamiento-3030092.json",
+   "seed": 3030092,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 3,
+    "logic": 1,
+    "reading": 3
+   },
+   "plan": "bit_subnets",
+   "clues": 8,
+   "subtypes": [
+    "node.adjacent_to_node",
+    "relation.same_origin",
+    "route.last_router",
+    "route.next_router",
+    "spatial.in_column"
+   ],
+   "forms": [
+    "interfaces",
+    "ip",
+    "ip_view",
+    "mac_view",
+    "networks",
+    "number"
+   ],
+   "features": [
+    "cornerRouter",
+    "hiddenEndpoint",
+    "shortTtl",
+    "transit"
+   ]
+  },
+  {
+   "file": "encaminamiento/3/encaminamiento-3030095.json",
+   "seed": 3030095,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 3,
+    "logic": 3,
+    "reading": 1
+   },
+   "plan": "distinct",
+   "clues": 10,
+   "subtypes": [
+    "node.adjacent_to_node",
+    "node.not_adjacent_to_node",
+    "relation.closer_to_destination",
+    "route.final_router",
+    "route.last_router",
+    "router.adjacent_to_router",
+    "spatial.in_row",
+    "ttl.routers_crossed"
+   ],
+   "forms": [
+    "count",
+    "ip_view",
+    "label",
+    "networks",
+    "networks_prefix",
+    "number"
+   ],
+   "features": [
+    "cornerRouter",
+    "hiddenEndpoint",
+    "shortTtl"
+   ]
+  },
+  {
+   "file": "encaminamiento/3/encaminamiento-3030096.json",
+   "seed": 3030096,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 3,
+    "logic": 2,
+    "reading": 3
+   },
+   "plan": "bit_subnets",
+   "clues": 10,
+   "subtypes": [
+    "endpoint.destination",
+    "endpoint.destination_class",
+    "node.adjacent_to_node",
+    "node.not_adjacent_to_node",
+    "node.unique_adjacent_to_node",
+    "relation.routers_between",
+    "ttl.routers_crossed",
+    "ttl.routers_left"
+   ],
+   "forms": [
+    "ip",
+    "label_network",
+    "label_prefix",
+    "ttl_value"
+   ],
+   "features": [
+    "cornerRouter",
+    "hiddenEndpoint"
+   ]
+  },
+  {
+   "file": "encaminamiento/3/encaminamiento-3030097.json",
+   "seed": 3030097,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 3,
+    "logic": 2,
+    "reading": 3
+   },
+   "plan": "bit_subnets",
+   "clues": 10,
+   "subtypes": [
+    "endpoint.in_destination_network",
+    "endpoint.origin",
+    "node.adjacent_to_node",
+    "node.unique_adjacent_to_node",
+    "relation.closer_to_destination",
+    "route.first_router",
+    "router.adjacent_to_router",
+    "spatial.in_row"
+   ],
+   "forms": [
+    "ip",
+    "ip_view",
+    "label_network",
+    "networks",
+    "number"
+   ],
+   "features": [
+    "hiddenEndpoint"
+   ]
+  },
+  {
    "file": "encaminamiento/4/encaminamiento-3040019.json",
    "seed": 3040019,
    "category": "encaminamiento",
@@ -580,6 +1200,141 @@
    "features": [
     "shortTtl",
     "transit"
+   ]
+  },
+  {
+   "file": "encaminamiento/4/encaminamiento-3040080.json",
+   "seed": 3040080,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 4,
+    "logic": 1,
+    "reading": 4
+   },
+   "plan": "vlsm",
+   "clues": 12,
+   "subtypes": [
+    "network.in_either_network",
+    "network.node_count",
+    "node.adjacent_to_node",
+    "node.not_adjacent_to_node",
+    "relation.more_routers_crossed",
+    "relation.same_destination",
+    "route.final_router",
+    "route.in_transit_network",
+    "router.adjacent_to_router",
+    "ttl.routers_crossed"
+   ],
+   "forms": [
+    "count",
+    "interfaces",
+    "ip_view",
+    "label_network",
+    "name",
+    "networks_prefix"
+   ],
+   "features": [
+    "hiddenEndpoint",
+    "shortTtl",
+    "transit"
+   ]
+  },
+  {
+   "file": "encaminamiento/4/encaminamiento-3040084.json",
+   "seed": 3040084,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 4,
+    "logic": 1,
+    "reading": 4
+   },
+   "plan": "bit_subnets",
+   "clues": 7,
+   "subtypes": [
+    "endpoint.in_origin_network",
+    "relation.same_destination",
+    "route.last_router",
+    "router.adjacent_to_router",
+    "ttl.routers_left"
+   ],
+   "forms": [
+    "interfaces",
+    "ip_view",
+    "networks"
+   ],
+   "features": [
+    "broadcast",
+    "hiddenEndpoint"
+   ]
+  },
+  {
+   "file": "encaminamiento/4/encaminamiento-3040090.json",
+   "seed": 3040090,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 4,
+    "logic": 2,
+    "reading": 4
+   },
+   "plan": "bit_subnets",
+   "clues": 9,
+   "subtypes": [
+    "endpoint.destination",
+    "endpoint.in_destination_network",
+    "relation.more_routers_crossed",
+    "relation.same_destination",
+    "route.last_router",
+    "route.next_router",
+    "router.adjacent_to_router",
+    "spatial.in_row"
+   ],
+   "forms": [
+    "aligned_node",
+    "interfaces",
+    "ip",
+    "ip_view",
+    "networks"
+   ],
+   "features": [
+    "broadcast",
+    "cornerRouter",
+    "hiddenEndpoint",
+    "shortTtl"
+   ]
+  },
+  {
+   "file": "encaminamiento/5/encaminamiento-3050075.json",
+   "seed": 3050075,
+   "category": "encaminamiento",
+   "difficulty": {
+    "global": 5,
+    "logic": 3,
+    "reading": 5
+   },
+   "plan": "vlsm",
+   "clues": 10,
+   "subtypes": [
+    "node.not_adjacent_to_node",
+    "node.unique_adjacent_to_node",
+    "relation.higher_ttl",
+    "relation.more_routers_crossed",
+    "route.final_router",
+    "router.adjacent_to_router",
+    "spatial.in_column",
+    "ttl.routers_crossed_range"
+   ],
+   "forms": [
+    "count",
+    "interfaces",
+    "ip",
+    "ip_view",
+    "label_prefix",
+    "networks",
+    "number",
+    "ttl_compare"
+   ],
+   "features": [
+    "hiddenEndpoint"
    ]
   }
  ]

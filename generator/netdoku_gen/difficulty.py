@@ -14,6 +14,11 @@ Técnicas, de más sencilla a más difícil (su nivel es el número):
    que debe tener uno.
 2. Anulación: una pista del tipo «… y ningún otro paquete lo estaba» descarta
    casillas para los demás paquetes.
+1. Relación con un valor fijo: a un paquete de una pista entre dos paquetes
+   le queda un solo valor (está colocado o todas sus casillas dan el mismo),
+   y la pista se usa como una unaria para el otro.
+3. Relación entre valores abiertos: la pista descarta casillas de un paquete
+   teniendo en cuenta todos los valores que le quedan al otro.
 3. Reserva de 2: dos paquetes solo caben en dos casillas, filas o columnas.
 4. Reserva de 3.
 5. Reserva de 4.
@@ -21,17 +26,22 @@ Técnicas, de más sencilla a más difícil (su nivel es el número):
 Además de la técnica más difícil se mide cuántas deducciones tenía disponibles
 el jugador en cada paso: si en algún momento solo hay un camino y no es una
 colocación directa, el nivel se atasca ahí (cuello de botella).
+
+Con un extremo oculto, un paquete se coloca cuando todos sus estados están en
+la misma casilla; la resolución acaba cuando a cada paquete le queda uno solo.
 """
 
 from dataclasses import dataclass
 from itertools import combinations
 
-from .solver import start_cells
+from .solver import cell_of, placed_cell, start_cells
 
 TECHNIQUES = {
     "single": ("Colocación directa", 1),
     "line": ("Fila o columna obligada", 2),
     "annul": ("Anulación", 2),
+    "relfixed": ("Relación con un valor fijo", 1),
+    "relopen": ("Relación entre valores abiertos", 3),
     "subset2": ("Reserva de 2", 3),
     "subset3": ("Reserva de 3", 4),
     "subset4": ("Reserva de 4", 5),
@@ -55,9 +65,9 @@ def _options(domains, placed, applied_annuls, clues, rules, victim):
 
     # 1. Colocaciones directas.
     for p, d in domains.items():
-        if p not in placed and len(d) == 1:
+        if p not in placed and placed_cell(d):
             def place(p=p):
-                (r, c), = domains[p]
+                r, c = placed_cell(domains[p])
                 placed.add(p)
                 for q, dq in domains.items():
                     if q != p:
@@ -79,22 +89,33 @@ def _options(domains, placed, applied_annuls, clues, rules, victim):
     for clue in clues:
         if not clue.excluded or clue.id in applied_annuls:
             continue
-        if any(q != clue.packet and d & clue.excluded for q, d in domains.items()):
+        if any(q != clue.packet and any(cell_of(x) in clue.excluded for x in d) for q, d in domains.items()):
             def annul(clue=clue):
                 applied_annuls.add(clue.id)
                 for q, d in domains.items():
                     if q != clue.packet:
-                        d -= clue.excluded
+                        d -= {x for x in d if cell_of(x) in clue.excluded}
             found.append(("annul", annul))
         else:
             applied_annuls.add(clue.id)
 
+    # 1 y 3. Pistas entre dos paquetes, en cada sentido.
+    for clue in clues:
+        if not clue.other:
+            continue
+        for target, source, first in ((clue.packet, clue.other, True), (clue.other, clue.packet, False)):
+            drop, values = clue.relation.drop(domains[target], domains[source], first)
+            if drop:
+                def relate(target=target, drop=drop):
+                    domains[target] -= drop
+                found.append(("relfixed" if values == 1 else "relopen", relate))
+
     # 3-5. Reservas de casillas, filas y columnas (sin la víctima, como en el solver).
-    pending = [p for p, d in domains.items() if len(d) > 1 and p != victim]
+    pending = [p for p, d in domains.items() if placed_cell(d) is None and p != victim]
     for k in range(2, rules.max_subset + 1):
         for combo in combinations(pending, k):
             cells = set().union(*(domains[p] for p in combo))
-            for key in (lambda x: x, lambda x: x[0], lambda x: x[1]):
+            for key in (cell_of, lambda x: x[0], lambda x: x[1]):
                 used = {key(x) for x in cells}
                 if len(used) != k:
                     continue
@@ -111,10 +132,11 @@ def evaluate(base, packet_ids, clues, rules, victim):
     """Recorre la resolución más sencilla y devuelve el informe de dificultad."""
     domains = {p: set(start_cells(base, p)) for p in packet_ids}
     for clue in clues:
-        domains[clue.packet] &= clue.domain
+        if not clue.other:
+            domains[clue.packet] &= clue.domain
     placed, applied_annuls = set(), set()
     steps = []
-    while len(placed) < len(packet_ids):
+    while len(placed) < len(packet_ids) or any(len(d) > 1 for d in domains.values()):
         options = _options(domains, placed, applied_annuls, clues, rules, victim)
         if not options:
             raise RuntimeError("La resolución se atasca: el nivel necesita una técnica no modelada")

@@ -3,6 +3,7 @@
 Lotes del juego (lo que usa el motor):
     python generator/generate.py --pool 50                       # todas las categorías y dificultades
     python generator/generate.py --pool 50 --category inicial --difficulties 4,5
+    python generator/generate.py --pool 100 --novelties               # solo niveles con novedades de la v0.4.5
 
 Cada lote se guarda en levels/<categoría>/<dificultad>/ y levels/index.json
 lista los ficheros de cada uno. Los lotes existentes se completan hasta el
@@ -67,7 +68,8 @@ def summary(level):
     d = g["difficulty"]
     return (f"{g['clueCount']} pistas, dificultad {d['global']} (lógica {d['logic']}: "
             f"{d['hardestTechnique']}, {d['bottlenecks']} cuellos de botella; interpretación {d['reading']}, "
-            f"plan {level['addressing']['plan']}), intento {g['attempt']}")
+            f"plan {level['addressing']['plan']}), intento {g['attempt']}"
+            + (f", novedades {'+'.join(g['novelties'])}" if g.get("novelties") else ""))
 
 
 # ---------- Lotes ----------
@@ -118,8 +120,8 @@ def retire(names):
 
 
 def _pool_job(args):
-    seed, category, target = args
-    config = {**POOL_CONFIG, "category": category, "target": target,
+    seed, category, target, novelties = args
+    config = {**POOL_CONFIG, "category": category, "target": target, "novelties": novelties,
               "selectionRuns": 40 if category == "inicial" and target == 5 else 12}
     try:
         return seed, build(seed, config, max_attempts=100)
@@ -127,7 +129,7 @@ def _pool_job(args):
         return seed, None
 
 
-def fill_pool(category, target, size, workers, replace):
+def fill_pool(category, target, size, workers, replace, novelties=False):
     folder = LEVELS_DIR / category / str(target)
     folder.mkdir(parents=True, exist_ok=True)
     if replace:
@@ -144,7 +146,7 @@ def fill_pool(category, target, size, workers, replace):
     base = SEED_BASE[category] + 10_000 * target
     seeds = (s for s in range(base, base + 10_000)
              if f"{category}-{s}" not in have and f"{category}-{s}" not in retired)
-    jobs = ((s, category, target) for s in seeds)
+    jobs = ((s, category, target, novelties) for s in seeds)
     made = 0
     with multiprocessing.Pool(workers) as pool:
         for seed, level in pool.imap_unordered(_pool_job, jobs):
@@ -192,6 +194,9 @@ def main():
     parser.add_argument("--reading", type=int, choices=DIFFICULTIES,
                         help="dificultad de interpretación buscada (Direccionamiento, sin --target); por defecto, al azar")
     parser.add_argument("--plan", choices=("auto",) + PLANS, default="auto", help="plan de direcciones")
+    parser.add_argument("--novelties", action="store_true",
+                        help="solo niveles con alguna novedad de la v0.4.5 (pistas entre dos paquetes, routers de "
+                             "esquina, extremos ocultos o redes privadas y públicas)")
     parser.add_argument("--print", action="store_true", help="muestra la solución en texto")
     parser.add_argument("--stats", action="store_true",
                         help="genera sin guardar y muestra el reparto de dificultad")
@@ -208,7 +213,7 @@ def main():
         targets = [int(x) for x in args.difficulties.split(",")] if args.difficulties else list(DIFFICULTIES)
         for category in categories:
             for target in targets:
-                fill_pool(category, target, args.pool, args.workers, args.replace)
+                fill_pool(category, target, args.pool, args.workers, args.replace, args.novelties)
         update_index()
         return
 
@@ -219,7 +224,7 @@ def main():
     for seed in seeds:
         level = build(seed, {"packets": args.packets, "networks": args.networks,
                              "category": args.category or "inicial", "target": args.target,
-                             "reading": args.reading, "plan": args.plan})
+                             "reading": args.reading, "plan": args.plan, "novelties": args.novelties})
         d = level["generation"]["difficulty"]
         reports.append(d)
         if args.stats:
@@ -232,14 +237,19 @@ def main():
             print(ascii_board(level))
             for p in level["packets"]["items"]:
                 if "route" in p:
-                    dest = p["destination"].get("node") or f"difusión {p['destination']['broadcast']}"
-                    print(f"  {p['id']}: {p['origin']['node']} -> {dest}, TTL {p['ttl']['initial']}, "
+                    # Un extremo oculto se muestra entre paréntesis (su equipo está en la solución).
+                    end = lambda k: (f"(oculto: {p['solution'][k]})" if p[k].get("hidden")  # noqa: E731
+                                     else p[k].get("node") or f"difusión {p[k]['broadcast']}")
+                    print(f"  {p['id']}: {end('origin')} -> {end('destination')}, TTL {p['ttl']['initial']}, "
                           f"ruta {'-'.join(p['route']['networks'])}, atravesados {p['solution']['routersCrossed']}")
             for c in level["clues"]:
                 print(f"  {c['id']} [{c['readingCost']}]: {c['text']}")
             print(f"  Víctima: {level['packets']['victimId']}  Atacante: {level['packets']['attackerId']}")
             print("  Resolución más sencilla: " + ", ".join(f"{t} ({n})" for t, n in d["trace"]))
             print("  Redes: " + ", ".join(f"{n['name']} {n['prefix']}" for n in level["networks"]))
+            corners = [r["name"] for r in level["routers"] if r["position"]["kind"] == "corner"]
+            if corners:
+                print("  Routers de esquina: " + "; ".join(corners))
     if args.stats:
         print_stats(reports)
 

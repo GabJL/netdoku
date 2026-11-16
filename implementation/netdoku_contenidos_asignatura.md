@@ -179,6 +179,8 @@ Salvo el TTL, el checksum y la fragmentación, **el encaminamiento no modifica l
 
 **Consecuencia (futuro):** NAT es el único caso en que un paquete **cambia de IP de origen** por el camino, lo que da lugar a pistas del tipo «su IP de origen ya no es privada», es decir, «ya ha pasado por el router NAT».
 
+**Consecuencia (v0.4.5):** las formas de nombrar `privacy` y `label_privacy` («la red pública», «el servidor web de la red pública») solo exigen distinguir los rangos privados, así que son `T3.nat` aunque no haya NAT en el nivel. Cuestan 1, o 2 si hay que comprobar el rango 172.16.0.0/12. Las usa la categoría Direccionamiento, que por eso llega hasta `T3.nat`: el resumen de la asignatura recoge los rangos privados con el direccionamiento.
+
 ## 7. Transporte y puertos
 
 **[Visto, T4]**

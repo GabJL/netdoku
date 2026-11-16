@@ -9,7 +9,7 @@ pista, solo el trabajo de pasar del texto a las casillas: su coste de interpreta
 import itertools
 from dataclasses import replace
 
-from .content import and_word, count_text, network_counts, node_classes
+from .content import count_text, join_names, network_counts, node_classes
 
 TOPICS = ["T3.dispositivos", "T3.vlan", "T3.ip", "T3.fragmentacion", "T3.subredes", "T3.vlsm",
           "T3.encaminamiento", "T3.nat", "T4.udp", "T4.tcp", "T5.dns", "T5.web",
@@ -22,7 +22,10 @@ SIZE_FORMS = {"size_rank", "prefix_length", "address_count", "usable_count", "ma
 # planes (longitudes distintas), así que se favorecen cuando se pueden usar.
 # `contents` pesa menos para que el nombre siga siendo lo habitual.
 FORM_WEIGHTS = {"size_rank": 4.0, "prefix_length": 2.0, "address_count": 2.0, "usable_count": 3.0, "mask": 2.0,
-                "broadcast": 1.5, "first_host": 2.5, "last_host": 1.5, "contents": 0.4}
+                "broadcast": 1.5, "first_host": 2.5, "last_host": 1.5, "contents": 0.4, "privacy": 5.0,
+                "label_privacy": 5.0}
+# Formas que se prefieren cuando caben: son raras porque exigen que la pista nombre una red concreta.
+PREFERRED_FORMS = {"privacy", "label_privacy"}
 # Las formas que cuentan direcciones solo se usan hasta 65 536 direcciones (/16).
 MIN_COUNT_LENGTH = 16
 SIZE_NOTE ="Las casillas no indican el tamaño de una red: su tamaño es su número de direcciones."
@@ -108,6 +111,11 @@ class Namer:
         if rank:
             words = "con más direcciones" if rank == "most" else "con menos direcciones"
             opts.append(Option("size_rank", words, 1, "T3.subredes", True, value=rank))
+        # La única red pública (o privada) del nivel.
+        privacy = self.addr.privacy_rank(net_id)
+        if privacy:
+            opts.append(Option("privacy", "pública" if privacy == "public" else "privada", self.addr.privacy_cost(),
+                               "T3.nat", True, value=privacy))
         # Por su longitud, si ninguna otra red la tiene.
         length = prefix.prefixlen
         if sum(1 for x in self.addr.prefixes.values() if x.prefixlen == length) == 1:
@@ -146,6 +154,11 @@ class Namer:
             return [Option("label", f"al {node.label}", 0, "T3.dispositivos", False)]
         opts = [Option("label_network", f"al {node.label} de la red {net.name}", 0, "T3.dispositivos", False),
                 Option("label_prefix", f"al {node.label} de la red {net.prefix}", 0, "T3.ip", True)]
+        privacy = self.addr.privacy_rank(node.network)
+        if privacy:
+            words = "pública" if privacy == "public" else "privada"
+            opts.append(Option("label_privacy", f"al {node.label} de la red {words}", self.addr.privacy_cost(),
+                               "T3.nat", True, value=privacy))
         key = ("node", node_id)
         for a, cost in self._ip_variants(node.network, key):
             opts.append(Option("ip", f"al {node.label} {a}", cost, self._ip_topic(), True, address=a, key=key,
@@ -154,14 +167,23 @@ class Namer:
 
     def router_options(self, router_id):
         r = next(x for x in self.board.routers if x.id == router_id)
-        a, b = (self.board.network(n) for n in r.networks)
-        opts = [Option("networks", f"que une {a.name} {and_word(b.name)} {b.name}", 0, "T3.dispositivos", False),
-                Option("networks_prefix", f"que une {a.prefix} y {b.prefix}", 0, "T3.ip", True)]
+        nets = [self.board.network(n) for n in r.networks]
+        opts = [Option("networks", "que une " + join_names(n.name for n in nets), 0, "T3.dispositivos", False),
+                Option("networks_prefix", "que une " + join_names(n.prefix for n in nets), 0,
+                       "T3.ip", True)]
+        # «El router de la red pública»: si la red es la única de su clase y solo tiene este router.
+        for n in r.networks:
+            privacy = self.addr.privacy_rank(n)
+            if privacy and sum(1 for x in self.board.routers if n in x.networks) == 1:
+                words = "pública" if privacy == "public" else "privada"
+                opts.append(Option("privacy", f"de la red {words}", self.addr.privacy_cost(), "T3.nat", True,
+                                   value=privacy))
         variants = [self._ip_variants(n, ("router", router_id, n)) for n in r.networks]
-        for va, vb in itertools.product(*variants):
-            cost = max(va[1], vb[1])
-            opts.append(Option("interfaces", f"con las interfaces {va[0]} y {vb[0]}", cost, self._ip_topic(), True,
-                               address=[va[0], vb[0]], value=[str(va[0]), str(vb[0])],
+        for combo in itertools.product(*variants):
+            cost = max(v[1] for v in combo)
+            addresses = [v[0] for v in combo]
+            opts.append(Option("interfaces", "con las interfaces " + join_names(str(a) for a in addresses),
+                               cost, self._ip_topic(), True, address=addresses, value=[str(a) for a in addresses],
                                key=[("router", router_id, n) for n in r.networks]))
         return opts
 
@@ -188,6 +210,8 @@ class Namer:
                     opts.append(Option("aligned_node", f"en la misma {word} que el {o.text[3:]}", 0, o.topic,
                                        o.category, value={"node": n.id, "form": o.form}))
         for r in self.board.routers:
+            if r.corner:
+                continue   # en una esquina no está en una sola fila ni en una sola columna
             (a, b) = r.between
             if a[k] == b[k] == line - 1:
                 for o in self.router_options(r.id):
@@ -211,12 +235,19 @@ class Namer:
         """Pistas de TTL: routers atravesados o TTL actual (hay que restarlo del inicial)."""
         return [Option("count", "", 0, "T3.ip", False), Option("ttl_value", "", 1, "T3.ip", True)]
 
+    @staticmethod
+    def compare_options(what):
+        """Pistas entre dos paquetes que comparan tamaños de red o TTL: su única forma cuesta 1."""
+        if what == "size":
+            return [Option("size_compare", "", 1, "T3.subredes", True)]
+        return [Option("ttl_compare", "", 1, "T3.ip", True)]
+
     def slot_options(self, kind, value):
         maker = {"network": self.network_options, "node": self.node_options,
                  "router": self.router_options, "length": self.length_options,
                  "row": lambda v: self.line_options("row", v),
                  "column": lambda v: self.line_options("column", v),
-                 "view": self.view_options, "ttl": self.ttl_options}[kind]
+                 "view": self.view_options, "ttl": self.ttl_options, "compare": self.compare_options}[kind]
         return [o for o in maker(value) if self._allowed(o)]
 
     def plain(self, clues):
@@ -271,6 +302,9 @@ class Namer:
             fits = [o for o in options[i] if predicate(o)]
             if not fits:
                 return None
+            preferred = [o for o in fits if any(x.form in PREFERRED_FORMS for x in o[1].values())]
+            if preferred and rng.random() < 0.85:
+                fits = preferred
             weights = [max(FORM_WEIGHTS.get(x.form, 1.0) for x in o[1].values()) if o[1] else 1.0 for o in fits]
             return rng.choices(fits, weights=weights)[0]
 
@@ -291,6 +325,9 @@ class Namer:
         else:
             needs = []
         for cost, count in needs:
+            # Primero las pistas que pueden usar una forma preferida con ese coste.
+            order.sort(key=lambda i, cost=cost: not any(
+                o[0] == cost and any(x.form in PREFERRED_FORMS for x in o[1].values()) for o in options[i]))
             for i in order:
                 if count == 0:
                     break
@@ -340,11 +377,17 @@ class Namer:
         result = []
         for clue, (cost, slots) in zip(clues, chosen):
             texts = {n: o.text for n, o in slots.items()}
+            # Variantes para las plantillas: el dato de la forma («…{node_value}») y el
+            # equipo con artículo «el» («lo había enviado {node_el}»).
+            for n, o in slots.items():
+                texts[f"{n}_value"] = o.value
+                texts[f"{n}_el"] = "el " + o.text[3:] if o.text.startswith("al ") else o.text
             template = clue.template
             if isinstance(template, dict):
-                # Pistas de ruta y TTL: la forma de toda la pista elige la frase.
-                whole = slots.get("view") or slots.get("ttl")
-                template = template[whole.form]
+                # La forma de toda la pista elige la frase (ruta, TTL, comparación) o, si no
+                # la hay, la del equipo que nombra (con su IP, otra frase).
+                whole = slots.get("view") or slots.get("ttl") or slots.get("compare") or slots.get("node")
+                template = template.get(whole.form, template.get("default"))
             topics = [clue.topic] + [o.topic for o in slots.values()]
             data = {}
             for n, o in slots.items():

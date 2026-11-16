@@ -42,6 +42,14 @@ def and_word(following):
     return "e" if re.match(r"h?[iíIÍ](?![aeiouáéó])", following) else "y"
 
 
+def join_names(names):
+    """«Aulas y Servicios», «Aulas, Servicios e Investigación»."""
+    names = list(names)
+    if len(names) == 1:
+        return names[0]
+    return ", ".join(names[:-1]) + f" {and_word(names[-1])} {names[-1]}"
+
+
 def node_classes(nodes):
     """Clases de equipo del nivel: equipos de usuario, servidores y servidores de cada servicio."""
     classes = []

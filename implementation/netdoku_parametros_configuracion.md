@@ -534,7 +534,14 @@ En esta sección, «tamaño» (`networkSize`) es el **número de casillas** que 
 - **Carácter:** opcional.
 - **Dominio:** mapa de pesos no negativos para grados `2`, `3` y `4`.
 - **Valor por defecto:** `{2: 0.75, 3: 0.20, 4: 0.05}`.
-- **Descripción:** distribución relativa usada al seleccionar cuántas redes conecta cada router.
+- **Descripción:** distribución relativa usada al seleccionar cuántas redes conecta cada router. Si sale 3 o 4 y no hay ninguna esquina libre donde se junten tantas redes, el router es de grado 2. Hasta la v0.4, todos los routers son de grado 2; desde la v0.4.5, Encaminamiento usa estos pesos y las demás categorías fijan `routers.degree.max: 2`.
+
+### `routers.cornerRouters.max`
+
+- **Carácter:** opcional.
+- **Dominio:** entero mayor o igual que `0`.
+- **Valor por defecto:** `2`.
+- **Descripción:** número máximo de routers de tres o cuatro redes (en una esquina) por nivel (v0.4.5). Dos routers nunca comparten dos redes, para que los caminos mínimos sigan siendo únicos.
 
 ### `routers.allowCornerRouters`
 
@@ -885,6 +892,20 @@ El nivel de conocimiento de un nivel de juego es el más alto de lo que usan sus
 - **Dominio:** entero mayor o igual que `0`.
 - **Valor por defecto:** `1`.
 
+### `endpoints.hidden.probability`
+
+- **Carácter:** opcional.
+- **Dominio:** número real entre `0` y `1`.
+- **Valor por defecto:** `0.0` (`0.5` en Encaminamiento).
+- **Descripción:** probabilidad de que un nivel con orígenes y destinos oculte en la ficha el origen o el destino de algún paquete, que el jugador tiene que deducir (v0.4.5; véase el [catálogo de reglas](netdoku_catalogo_reglas.md#orígenes-y-destinos-ocultos-v045)). Nunca se ocultan los dos extremos de un paquete, ni los de la víctima o un paquete de difusión.
+
+### `endpoints.hidden.max`
+
+- **Carácter:** opcional.
+- **Dominio:** entero mayor o igual que `0`.
+- **Valor por defecto:** `2`.
+- **Descripción:** número máximo de paquetes con un extremo oculto por nivel.
+
 ### `endpoints.originNodeTypes`
 
 - **Carácter:** opcional.
@@ -1133,6 +1154,13 @@ Las rutas no se sortean paquete a paquete. Como en la asignatura, cada router de
 - **Dominio:** entero mayor o igual que `0`.
 - **Valor por defecto:** `0`.
 - **Descripción:** número mínimo de pistas de los tipos propios de la categoría del nivel (en Encaminamiento, `endpoint`, `route` y `ttl`). Con `0` no se exige nada.
+
+### `clues.relations.max`
+
+- **Carácter:** opcional.
+- **Dominio:** entero mayor o igual que `0`.
+- **Valor por defecto:** `2`.
+- **Descripción:** número máximo de [pistas entre dos paquetes](netdoku_catalogo_reglas.md#pistas-entre-dos-paquetes-v045) por nivel (v0.4.5). Con `0` no se usan.
 
 ### `clues.avoidRedundant`
 
@@ -1520,7 +1548,7 @@ Estos parámetros pueden configurarse manualmente, pero normalmente se derivan d
 - **Dominio:** `distinct`, `octet_subnets`, `bit_subnets`, `vlsm` o `auto`.
 - **Valor por defecto:** `auto`.
 - **Descripción:** cómo se parecen entre sí los prefijos de las redes del nivel, que determina el coste de calcular la red de una dirección (véase [coste C](netdoku_catalogo_reglas.md#coste-c-de-calcular-la-red-de-una-dirección)):
-  - `distinct`: redes que se distinguen por el primer octeto (10.0.0.0/8, 20.0.0.0/8…).
+  - `distinct`: redes que se distinguen por el primer octeto (20.0.0.0/8, 45.3.0.0/16…). Son públicas: el primer octeto está entre 11 y 223, sin 127, 169, 172 ni 192.
   - `octet_subnets`: subredes de un mismo bloque con máscaras que acaban en un octeto (172.16.1.0/24, 172.16.2.0/24…).
   - `bit_subnets`: subredes de un mismo bloque con la misma máscara, que no acaba en un octeto (dos /25, cuatro /26…).
   - `vlsm`: subredes de un mismo bloque con máscaras distintas (un /24 repartido en /25, /26, /27 y /27). Exige `level.maxTopic` igual o posterior a `T3.vlsm`.
@@ -1541,12 +1569,28 @@ Estos parámetros pueden configurarse manualmente, pero normalmente se derivan d
 - **Valor por defecto:** `false`.
 - **Descripción:** permite usar en las pistas la dirección de red y la de difusión de una red (por ejemplo, «la red de la dirección 192.168.0.127»). Los equipos y los routers nunca las tienen.
 
+### `addressing.privacyMix.probability`
+
+- **Carácter:** opcional.
+- **Dominio:** número real entre `0` y `1`.
+- **Valor por defecto:** `0.0`.
+- **Descripción:** probabilidad de que un nivel con plan `distinct` u `octet_subnets` mezcle redes privadas y públicas, para poder usar las formas `privacy` y `label_privacy` («la red pública», «el servidor web de la red pública»; v0.4.5; véase el [catálogo de reglas](netdoku_catalogo_reglas.md#redes-privadas-y-públicas-v045)). Exige `level.maxTopic` igual o posterior a `T3.nat`. Solo la activa el perfil de Direccionamiento (0,7).
+
+### `addressing.privacyMix.public172Ratio`
+
+- **Carácter:** opcional.
+- **Dominio:** número real entre `0` y `1`.
+- **Valor por defecto:** `0.5`.
+- **Descripción:** proporción de las redes públicas añadidas que empiezan por 172 con el segundo octeto fuera de 16–31 (172.40.0.0/16), para que haya que mirar el rango 172.16.0.0/12.
+
 ## 21. Perfiles de categoría
 
 Cada categoría de niveles cambia algunos valores por defecto. Los perfiles están en `categoryProfiles` de la configuración global.
 
 | Parámetro | Inicial y Direccionamiento | Encaminamiento (v0.4) |
 |---|---|---|
+| `level.maxTopic` (v0.4.5) | Direccionamiento: `T3.nat` | — |
+| `addressing.privacyMix.probability` (v0.4.5) | Direccionamiento: 0,7 | — |
 | `board.width` × `board.height` | 6 × 6 | 7 × 7 |
 | `packets.count` | 6 | 7 |
 | `topology.networks.min` / `max` | 4 / 4 | 5 / 6 |
@@ -1557,6 +1601,8 @@ Cada categoría de niveles cambia algunos valores por defecto. Los perfiles est�
 | `nodes.allowEmptyNetworks` | `false` | `true` (como mucho una red de tránsito) |
 | `ttl.initialValues` | — | `[2, 3, 4, 5, 6]`, con pesos `{2: 0.15, 3: 0.25, 4: 0.25, 5: 0.2, 6: 0.15}` |
 | `clues.categoryMinClues` | 0 | 3 |
+| `routers.degree.max` (v0.4.5) | 2 | 4 |
+| `endpoints.hidden.probability` (v0.4.5) | — | 0,5 |
 
 En Encaminamiento, los TTL iniciales son pequeños, como en el ejercicio «No time to die» de la asignatura, para que la resta sea sencilla y para que algunos paquetes no lleguen a su destino. Los valores reales (64, 128…) se dejan para más adelante.
 

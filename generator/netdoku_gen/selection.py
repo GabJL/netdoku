@@ -9,12 +9,16 @@
    así la víctima se resuelve al final.
 3. Se quitan las pistas redundantes, manteniendo que los demás paquetes se
    resuelvan sin las pistas de la víctima.
+
+Las pistas entre dos paquetes no tienen un `D` fijo: lo que quitan se mide
+propagando desde el estado actual. Un nivel lleva como mucho `max_relations`.
+Con un extremo oculto, un paquete está resuelto cuando le queda un solo estado.
 """
 
 from dataclasses import replace
 
 from .rules import ROUTE_FAMILIES
-from .solver import initial_domains, propagate, uncertainty
+from .solver import initial_domains, propagate, relations_of, solved, uncertainty
 
 # Peso relativo de cada subtipo al elegir. Las pistas de fila y columna son
 # fáciles de usar, así que se prefieren las de red y nodos.
@@ -40,6 +44,22 @@ SUBTYPE_WEIGHTS = {
     "ttl.routers_crossed_range": 1.6,
     "spatial.in_row": 0.45,
     "spatial.in_column": 0.45,
+    # Extremos ocultos (v0.4.5).
+    "endpoint.origin": 1.6,
+    "endpoint.destination": 1.6,
+    "endpoint.origin_class": 1.4,
+    "endpoint.destination_class": 1.4,
+    "route.first_router": 1.8,
+    "route.final_router": 1.8,
+    # Entre dos paquetes (v0.4.5).
+    "relation.same_network": 1.4,
+    "relation.routers_between": 1.4,
+    "relation.more_addresses_network": 1.6,
+    "relation.more_routers_crossed": 1.4,
+    "relation.higher_ttl": 1.4,
+    "relation.closer_to_destination": 1.2,
+    "relation.same_origin": 1.6,
+    "relation.same_destination": 1.6,
 }
 
 
@@ -48,8 +68,10 @@ MAX_CANDIDATES = 40
 
 
 class Selector:
-    def __init__(self, rng, ctx, pool, victim_id, rules):
+    def __init__(self, rng, ctx, pool, victim_id, rules, max_relations=2, boost_networks=()):
         self.rng = rng
+        self.max_relations = max_relations
+        self.boost_networks = set(boost_networks)
         self.ctx = ctx
         self.pool = pool
         self.victim = victim_id
@@ -62,16 +84,36 @@ class Selector:
         if not victim_route:
             base = {**base, self.victim: self.ctx.free_cells}
         d = initial_domains(base, self.packet_ids, clues)
-        return propagate(d, self.rules, exclude_from_subsets={self.victim})
+        return propagate(d, self.rules, exclude_from_subsets={self.victim}, relations=relations_of(clues))
 
     def others_solved(self, clues):
         # Sin nada de la víctima (ni sus pistas ni su ruta): se deduce al final.
         d, _ = self.solve([c for c in clues if c.packet != self.victim], victim_route=False)
-        return d is not None and all(len(d[p]) == 1 for p in self.others)
+        return solved(d, self.others)
 
     def all_solved(self, clues):
         d, _ = self.solve(clues)
-        return d is not None and all(len(d[p]) == 1 for p in self.packet_ids)
+        return solved(d)
+
+    def _names_boosted(self, c):
+        """La pista nombra una red de `boost_networks` o un equipo de ella."""
+        for kind, ref in c.slots.values():
+            if kind == "network" and ref in self.boost_networks:
+                return True
+            if kind == "node" and next(n.network for n in self.ctx.nodes if n.id == ref) in self.boost_networks:
+                return True
+            if kind == "router" and set(self.ctx.router(ref).networks) & self.boost_networks:
+                return True
+        return False
+
+    def _useful(self, c, d):
+        """Si no quita nada a su paquete (o, entre dos paquetes, a ninguno), la propagación daría lo mismo."""
+        if d is None:
+            return True
+        if c.other:
+            return bool(c.relation.drop(d[c.packet], d[c.other], True)[0]
+                        or c.relation.drop(d[c.other], d[c.packet], False)[0])
+        return bool(c.excluded) or not d[c.packet] <= c.domain
 
     def _pick(self, clues, candidates, targets):
         # Fila + columna del mismo paquete equivale a dar sus coordenadas: solo
@@ -85,10 +127,11 @@ class Selector:
         d, _ = self.solve(clues, with_victim)
         base = uncertainty(d, targets)
         with_spatial = {c.packet for c in clues if c.type.startswith("spatial.")}
+        relations_left = self.max_relations - sum(1 for c in clues if c.other)
         useful = [c for c in candidates
                   if (allow_coordinates or not c.type.startswith("spatial.") or c.packet not in with_spatial)
-                  # Si no quita nada a su paquete, la propagación daría lo mismo.
-                  and (d is None or c.excluded or not d[c.packet] <= c.domain)]
+                  and (relations_left > 0 or not c.other)
+                  and self._useful(c, d)]
         # Se evalúa una muestra al azar (propagar cada candidata es lo que más
         # tarda); si en ella no hay ninguna que sirva, el resto.
         self.rng.shuffle(useful)
@@ -100,6 +143,8 @@ class Selector:
                 if gain > 1e-9:
                     # Ganancias moderadas: evita que cada pista coloque un paquete.
                     weight = SUBTYPE_WEIGHTS.get(c.type, 1.0) * min(gain, 2.5) ** 0.5
+                    if self.boost_networks and self._names_boosted(c):
+                        weight *= 4
                     options.append((c, weight))
             if options:
                 return self.rng.choices([o[0] for o in options], weights=[o[1] for o in options])[0]

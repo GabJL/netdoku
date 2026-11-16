@@ -7,6 +7,10 @@ Primero se colocan los paquetes y después se elige para cada uno un origen y
 un destino cuya ruta pase por su red. Solo valen pares con un único camino
 mínimo en el grafo Red↔Router, para que el jugador pueda trazar la ruta sin
 tablas de encaminamiento.
+
+v0.4.5: los routers pueden unir tres o cuatro redes, y un paquete puede tener
+oculto su origen o su destino (`choose_hidden`): su ruta depende entonces de
+la red de ese extremo, que el jugador tiene que deducir.
 """
 
 from collections import deque
@@ -52,12 +56,13 @@ class Route:
 
 
 def network_graph(board):
-    """Red -> lista de (red vecina, router que las une)."""
+    """Red -> lista de (red vecina, router que las une). Un router de tres o cuatro redes une cada par."""
     adj = {n.id: [] for n in board.networks}
     for r in board.routers:
-        a, b = r.networks
-        adj[a].append((b, r.id))
-        adj[b].append((a, r.id))
+        for a in r.networks:
+            for b in r.networks:
+                if a != b:
+                    adj[a].append((b, r.id))
     return adj
 
 
@@ -176,3 +181,42 @@ def assign_routes(rng, board, nodes, packets, victim_id, transit=None, broadcast
         origin, destination = rng.choice([x for x in pairs if x not in taken] or pairs)
         routes[p.id] = Route(origin, destination, None, list(nets), list(routers), k, ttl)
     return routes
+
+
+def choose_hidden(rng, board, nodes, routes, victim_id, transit=None, probability=0.0, max_count=2):
+    """Paquetes con el origen o el destino oculto: paquete -> (extremo, {red posible: ruta}).
+
+    Las redes posibles del extremo son todas las que tienen equipos, salvo la del
+    otro extremo. Solo se oculta si desde todas ellas el camino mínimo es único
+    (el jugador traza la ruta de cada hipótesis) y hay al menos dos. Nunca la
+    víctima ni un paquete de difusión.
+    """
+    if not probability or rng.random() >= probability:
+        return {}
+    paths = unique_shortest_paths(board)
+    with_nodes = [n.id for n in board.networks if n.id != transit and any(x.network == n.id for x in nodes)]
+    options = []
+    for pid, route in routes.items():
+        if pid == victim_id or route.broadcast or not route.routers:
+            continue
+        for kind in ("origin", "destination"):
+            fixed = route.networks[-1] if kind == "origin" else route.networks[0]
+            alternatives = {}
+            for net in with_nodes:
+                if net == fixed:
+                    continue
+                key = (net, fixed) if kind == "origin" else (fixed, net)
+                if key not in paths:
+                    alternatives = None
+                    break
+                nets, routers = paths[key]
+                alternatives[net] = Route(None, None, None, list(nets), list(routers), -1, route.ttl)
+            if alternatives and len(alternatives) >= 2:
+                options.append((pid, kind, alternatives))
+    chosen = {}
+    count = rng.randint(1, max_count)
+    rng.shuffle(options)
+    for pid, kind, alternatives in options:
+        if pid not in chosen and len(chosen) < count:
+            chosen[pid] = (kind, alternatives)
+    return chosen

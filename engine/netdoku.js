@@ -59,8 +59,17 @@
   }
 
   function routerTitle(rt) {
-    const [a, b] = rt.connectedNetworks.map((id) => networkName(networkById(id)));
-    return t("game.routerName", { a, b });
+    return t("game.routerName", { names: rt.connectedNetworks.map((id) => networkName(networkById(id))) });
+  }
+
+  // Casillas de apoyo de un router: dos (borde) o cuatro (esquina donde se juntan tres o cuatro redes).
+  function routerCells(rt) {
+    return rt.position.cells || rt.position.between;
+  }
+
+  // Pistas de un paquete: las suyas y las que lo relacionan con otro paquete.
+  function cluesOf(id) {
+    return level.clues.filter((c) => (c.packets || [c.packet]).includes(id));
   }
 
   function maskOf(length) {
@@ -195,6 +204,7 @@
 
     let objective = t("game.objective", { victim: level.objective.victimPacketId });
     if ((level.rules || {}).packetOnRoute) objective += " " + t("game.routeNote");
+    if (level.packets.items.some(hasHiddenEnd)) objective += " " + t("game.hiddenNote");
     if (level.clues.some((c) => Object.values(c.naming || {}).some((f) => SIZE_FORMS.has(f)))) {
       objective += " " + t("game.sizeNote");
     }
@@ -282,7 +292,9 @@
     if (nodeId) {
       const node = level.nodes.find((n) => n.id === nodeId);
       if (node) {
-        const hidden = naming.node === "ip";
+        // Nombrado por su IP o por ser de la red pública o privada: sin el color de su red.
+        const form = naming.node || (aligned && aligned.value && aligned.value.form);
+        const hidden = form === "ip" || form === "label_privacy";
         patterns.push({ re: new RegExp(word(escapeRe(nodeLabel(node))), "iu"),
           make: (s) => chip(s, hidden ? null : networkColor(node.network), nodeDotColor(node)) });
       }
@@ -471,11 +483,11 @@
       text(root, px(c) + CELL / 2, py(r) + CELL / 2 + 7, id, { "font-size": 20, "font-weight": 700, fill: "#fff" });
     }
 
-    // Routers, encima de los bordes.
+    // Routers, encima de los bordes (o del vértice, si unen tres o cuatro redes).
     for (const rt of level.routers) {
-      const [[r1, c1], [r2, c2]] = rt.position.between;
-      const cx = (px(c1) + px(c2)) / 2 + CELL / 2;
-      const cy = (py(r1) + py(r2)) / 2 + CELL / 2;
+      const cells = routerCells(rt);
+      const cx = cells.reduce((sum, [, c]) => sum + px(c), 0) / cells.length + CELL / 2;
+      const cy = cells.reduce((sum, [r]) => sum + py(r), 0) / cells.length + CELL / 2;
       const g = svg("g", {}, root);
       svg("circle", { cx, cy, r: 14, fill: tv("--router"), stroke: tv("--router-edge"), "stroke-width": 2 }, g);
       // Flechas cruzadas: símbolo habitual de router.
@@ -499,7 +511,14 @@
     // Casillas con un router en su borde inferior: el router taparía el texto.
     const routerBelow = new Set();
     for (const rt of level.routers) {
-      const [[r1, c1], [r2, c2]] = rt.position.between;
+      const cells = routerCells(rt);
+      if (cells.length === 4) {
+        // En una esquina, el router tapa el borde inferior de las dos casillas de arriba.
+        const top = Math.min(...cells.map(([r]) => r));
+        cells.filter(([r]) => r === top).forEach(([r, c]) => routerBelow.add(`${r},${c}`));
+        continue;
+      }
+      const [[r1, c1], [r2, c2]] = cells;
       if (c1 === c2) routerBelow.add(`${Math.min(r1, r2)},${c1}`);
     }
     const free = (r, c) => r >= 1 && r <= height && c >= 1 && c <= width
@@ -597,7 +616,7 @@
   function drawRouteEnds(root) {
     const p = packetById(routeFocus || state.selected);
     if (!p || !p.origin) return;
-    const ends = [[p.origin.node, "game.originTag"], [p.destination && p.destination.node, "game.destinationTag"]];
+    const ends = [[endNode(p, "origin"), "game.originTag"], [endNode(p, "destination"), "game.destinationTag"]];
     for (const [id, key] of ends) {
       const n = id && level.nodes.find((x) => x.id === id);
       if (!n) continue;
@@ -777,6 +796,19 @@
     }
   }
 
+  // Encaminamiento: el origen o el destino de un paquete puede estar oculto en su
+  // ficha ({hidden: true}) hasta que se resuelve el nivel.
+  function hasHiddenEnd(p) {
+    return !!((p.origin && p.origin.hidden) || (p.destination && p.destination.hidden));
+  }
+
+  // Equipo de origen o de destino que se puede mostrar (null si está oculto o es una difusión).
+  function endNode(p, end) {
+    const e = p[end] || {};
+    if (e.hidden) return state.solved ? (p.solution || {})[end] || null : null;
+    return e.node || null;
+  }
+
   function renderPackets() {
     const el = $("packets");
     el.innerHTML = "";
@@ -814,7 +846,7 @@
       }
       card.appendChild(title);
 
-      const clues = level.clues.filter((c) => c.packet === p.id);
+      const clues = cluesOf(p.id);
       if (placed) {
         const [r, c] = state.placed[p.id];
         const where = document.createElement("span");
@@ -880,9 +912,12 @@
       line.append(label, content);
       box.appendChild(line);
     };
-    row("game.origin", endpoint(p.origin.node));
-    row("game.destination", p.destination.node ? endpoint(p.destination.node)
-      : chip(t("game.broadcastTo", { address: p.destination.broadcast }), null, null, "addr"));
+    // Extremo oculto: «?» hasta resolver el nivel; entonces, el equipo.
+    const unknown = () => chip(t("game.unknownEndpoint"), null, null, "addr unknown");
+    const end = (e, key) => (e.hidden ? (endNode(p, key) ? endpoint(endNode(p, key)) : unknown()) : null);
+    row("game.origin", end(p.origin, "origin") || endpoint(p.origin.node));
+    row("game.destination", end(p.destination, "destination") || (p.destination.node ? endpoint(p.destination.node)
+      : chip(t("game.broadcastTo", { address: p.destination.broadcast }), null, null, "addr")));
     row("game.ttlInitial", document.createTextNode(String(p.ttl.initial)));
     return box;
   }
@@ -1054,6 +1089,10 @@
         return t(s.axis === "row" ? "hint.lineRow" : "hint.lineColumn", { packet: s.packet, n: s.line });
       case "annul":
         return t("hint.annul", { packet: s.packet });
+      case "relation":
+        // Sin casillas resaltadas: solo descarta redes posibles del extremo oculto.
+        return t(!s.cells.length ? "hint.relationEnds" : s.open ? "hint.relationOpen" : "hint.relationFixed",
+          { packet: s.packet, other: s.other });
       case "subset":
         if (s.packets.length === 1) {
           return t(s.key === "row" ? "hint.oneRow" : "hint.oneColumn", { packet: s.packets[0], n: s.values[0] });
@@ -1085,7 +1124,7 @@
       else for (let r = 1; r <= height; r++) add(r, n);
     };
     if (s.t === "line") line(s.axis, s.line);
-    else if (s.t === "annul") s.cells.forEach(([r, c]) => add(r, c));
+    else if (s.t === "annul" || s.t === "relation") s.cells.forEach(([r, c]) => add(r, c));
     else if (s.t === "subset" && s.key === "cell") s.values.forEach(([r, c]) => add(r, c));
     else if (s.t === "subset") s.values.forEach((n) => line(s.key, n));
     return [...cells.values()].filter(([r, c]) => !occupied(r, c));
@@ -1101,6 +1140,10 @@
       (s.clues || []).forEach((id) => focus.clues.add(id));
     } else if (s.t === "annul") {
       focus.clues.add(s.clue);
+    } else if (s.t === "relation") {
+      focus.clues.add(s.clue);
+      focus.packets.add(s.packet);
+      focus.packets.add(s.other);
     } else if (s.t === "line") {
       focus.packets.add(s.packet);
     } else if (s.t === "subset") {

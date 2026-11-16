@@ -3,16 +3,16 @@
 import random
 from dataclasses import replace
 
-from .addressing import PLANS, Addressing
+from .addressing import PLANS, PRIVACY_PLANS, Addressing
 from .board import generate_board
-from .content import and_word, place_nodes, place_packets
+from .content import join_names, place_nodes, place_packets
 from .difficulty import evaluate
 from .naming import (CATEGORIES, READING_TIERS, SIZE_FORMS, SIZE_NOTE, Namer, category_of, global_level,
                      max_topic, topic_index)
-from .routes import assign_routes, choose_transit
-from .rules import KNOWLEDGE, ROUTE_FAMILIES, Context, generate_instances, uncalculated
+from .routes import assign_routes, choose_hidden, choose_transit
+from .rules import HIDDEN_TYPES, KNOWLEDGE, ROUTE_FAMILIES, Context, generate_instances, uncalculated
 from .selection import Selector
-from .solver import Rules, count_solutions, initial_domains, propagate
+from .solver import Rules, count_solutions, initial_domains, propagate, relations_of, solved
 
 SCHEMA_VERSION = "0.2"
 DEFAULTS = {
@@ -37,13 +37,21 @@ DEFAULTS = {
     "broadcastProbability": 0.3,   # endpoints.broadcastPackets.probability
     "shortRatio": None,            # ttl.shortRatio; None = auto (0,15-0,3)
     "categoryMinClues": 0,         # clues.categoryMinClues
+    "maxRelations": 2,             # clues.relations.max
+    "cornerRouters": 0,            # routers.cornerRouters.max (0 = solo routers de dos redes)
+    "degreeWeights": {2: 0.75, 3: 0.20, 4: 0.05},   # routers.degree.weights
+    "hiddenProbability": 0.0,      # endpoints.hidden.probability
+    "hiddenMax": 2,                # endpoints.hidden.max
+    "privacyProbability": 0.0,     # addressing.privacyMix.probability
+    "novelties": False,            # --novelties: al menos una novedad de la v0.4.5 de su categoría
 }
 
 # Valores que cambia cada categoría (categoryProfiles en la configuración global).
 # `networks` puede ser una lista: se elige una en cada intento.
 CATEGORY_PROFILES = {
+    "direccionamiento": {"maxTopic": "T3.nat", "privacyProbability": 0.7},
     "encaminamiento": {"height": 7, "width": 7, "networks": [5, 6], "packets": 7, "routes": True,
-                       "categoryMinClues": 3},
+                       "categoryMinClues": 3, "cornerRouters": 2, "hiddenProbability": 0.5},
 }
 
 # Dificultad de interpretación con la que se busca cada dificultad global en
@@ -67,8 +75,9 @@ AUTO_PLANS = {
 }
 
 
-def one_based(cell):
-    return [cell[0] + 1, cell[1] + 1]
+def one_based(x):
+    """Casilla (o estado, con la red del extremo oculto) con índices desde 1."""
+    return [x[0] + 1, x[1] + 1, *x[2:]]
 
 
 def build(seed, config=None, max_attempts=200):
@@ -114,24 +123,32 @@ def _attempt(rng, seed, cfg, attempt):
     networks = cfg["networks"]
     if isinstance(networks, (list, tuple)):
         networks = rng.choice(networks)
-    board = generate_board(rng, cfg["height"], cfg["width"], networks, cfg["minNetworkSize"], plan)
+    privacy_mix = plan in PRIVACY_PLANS and bool(cfg["privacyProbability"]) and rng.random() < cfg["privacyProbability"]
+    board = generate_board(rng, cfg["height"], cfg["width"], networks, cfg["minNetworkSize"], plan,
+                           cfg["degreeWeights"], cfg["cornerRouters"], privacy_mix)
     addressing = Addressing(plan, board.prefixes, cfg["nearBoundaryDistance"])
     transit = choose_transit(rng, board, cfg["transitProbability"]) if cfg["routes"] else None
     nodes = place_nodes(rng, board, empty={transit} if transit else ())
     packets, victim_net = place_packets(rng, board, nodes, cfg["packets"])
-    routes = None
+    routes, hidden = None, {}
     if cfg["routes"]:
         victim_id = next(p.id for p in packets if p.role == "victim")
         routes = assign_routes(rng, board, nodes, packets, victim_id, transit, cfg["broadcastProbability"],
                                cfg["shortRatio"])
-    ctx = Context(board, nodes, packets, addressing, routes, transit)
-    # network.prefix_length cuesta como mínimo 1: no cabe en Inicial ni en interpretación 1.
-    disabled = {"network.prefix_length"} if category == "inicial" or reading == 1 else set()
+        hidden = choose_hidden(rng, board, nodes, routes, victim_id, transit, cfg["hiddenProbability"],
+                               cfg["hiddenMax"])
+    ctx = Context(board, nodes, packets, addressing, routes, transit, hidden)
+    # Las pistas cuya única forma cuesta 1 o más no caben en Inicial ni en interpretación 1.
+    disabled = set()
+    if category == "inicial" or reading == 1:
+        disabled = {"network.prefix_length", "relation.more_addresses_network", "relation.higher_ttl"}
     pool = generate_instances(ctx, cfg["enabledRuleSubtypes"], disabled)
     victim = next(p for p in packets if p.role == "victim")
     attacker = next(p for p in packets if p.role == "attacker")
     rules = Rules(board.height, board.width, len(packets), cfg["maxSubset"])
-    selector = Selector(rng, ctx, pool, victim.id, rules)
+    # Con redes públicas y privadas, se favorecen las pistas que nombran la única de su clase (forma privacy).
+    boost = {n.id for n in board.networks if privacy_mix and addressing.privacy_rank(n.id)}
+    selector = Selector(rng, ctx, pool, victim.id, rules, cfg["maxRelations"], boost)
     # Varias selecciones sobre el mismo tablero; se queda la que menos se apoya
     # en filas y columnas (y, sobre todo, en dar coordenadas).
     candidates = []
@@ -146,6 +163,15 @@ def _attempt(rng, seed, cfg, attempt):
     if cfg["categoryMinClues"]:
         candidates = [c for c in candidates
                       if sum(1 for x in c if x.type.split(".")[0] in ROUTE_FAMILIES) >= cfg["categoryMinClues"]]
+    if ctx.hidden:
+        # Cada paquete con un extremo oculto tiene alguna pista que hable de ese extremo.
+        candidates = [c for c in candidates
+                      if all(any(x.type in HIDDEN_TYPES and pid in (x.packet, x.other) for x in c) for pid in ctx.hidden)]
+    if cfg["novelties"] and not (ctx.hidden or any(r.corner for r in board.routers)):
+        with_relations = [c for c in candidates if any(x.other for x in c)]
+        # En Direccionamiento, la novedad puede ser también la forma privacy (se ve al nombrar).
+        if with_relations or not privacy_mix:
+            candidates = with_relations
     if not candidates:
         raise RuntimeError("Las pistas disponibles no bastan para resolver el nivel")
     ids = [p.id for p in packets]
@@ -158,12 +184,13 @@ def _attempt(rng, seed, cfg, attempt):
         candidates = fitting
     clues = min(candidates, key=_spatial_score)
 
-    # Validación independiente: una única solución y que sea la generada.
+    # Validación independiente: una única solución y que sea la generada (con el extremo oculto).
+    relations = relations_of(clues)
     domains = initial_domains(ctx.base, ids, clues)
-    if count_solutions(domains, limit=2) != 1:
+    if count_solutions(domains, limit=2, relations=relations) != 1:
         raise RuntimeError("El nivel no tiene solución única")
-    solved, max_subset = propagate(domains, rules, exclude_from_subsets={victim.id})
-    if any(solved[p.id] != {p.cell} for p in packets):
+    final, max_subset = propagate(domains, rules, exclude_from_subsets={victim.id}, relations=relations)
+    if any(final[p.id] != {ctx.true_state(p)} for p in packets):
         raise RuntimeError("La propagación no llega a la solución generada")
     in_victim_net = [p for p in packets if board.network_of(p.cell) == victim_net]
     if sorted(p.id for p in in_victim_net) != sorted([victim.id, attacker.id]):
@@ -188,6 +215,15 @@ def _attempt(rng, seed, cfg, attempt):
         if any(c.reading_cost and c.id not in needed for c in clues):
             raise RuntimeError("Una pista con coste de interpretación se resuelve sin hacer su cálculo")
     namer.assign_remaining(nodes, board.routers)
+    novelties = sorted({"relation"} if any(c.other for c in clues) else set())
+    if any(r.corner for r in board.routers):
+        novelties.append("cornerRouter")
+    if ctx.hidden:
+        novelties.append("hiddenEndpoint")
+    if any(form in ("privacy", "label_privacy") for c in clues for form in c.naming.values()):
+        novelties.append("privacy")
+    if cfg["novelties"] and not novelties:
+        raise RuntimeError("El nivel no tiene ninguna novedad de la v0.4.5")
     topics = [c.topic for c in clues]
     if routes:
         # Origen, destino y TTL en la ficha (T3.ip); un destino de difusión, T3.subredes.
@@ -201,7 +237,7 @@ def _attempt(rng, seed, cfg, attempt):
     report["readingCosts"] = [c.reading_cost for c in clues]
     report["global"] = global_level(report["logic"], reading)
     return to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victim_net, max_subset, report,
-                   addressing, category, topic, ctx)
+                   addressing, category, topic, ctx, novelties)
 
 
 def needed_calculations(ctx, clues, rules, ids, victim, logic):
@@ -215,12 +251,17 @@ def needed_calculations(ctx, clues, rules, ids, victim, logic):
     for i, clue in enumerate(clues):
         if not clue.slots:
             continue
-        domain, excluded = uncalculated(ctx, clue)
-        if (domain, excluded) == (clue.domain, clue.excluded):
-            continue   # sin formas con coste (filas y columnas)
-        trial = clues[:i] + [replace(clue, domain=domain, excluded=excluded)] + clues[i + 1:]
-        solved, _ = propagate(initial_domains(ctx.base, ids, trial), rules, exclude_from_subsets={victim})
-        if solved is None or any(len(solved[p]) != 1 for p in ids):
+        result = uncalculated(ctx, clue)
+        if result is None:
+            trial = clues[:i] + clues[i + 1:]   # sin su cálculo no dice nada
+        else:
+            domain, excluded = result
+            if (domain, excluded) == (clue.domain, clue.excluded):
+                continue   # sin formas con coste (filas y columnas)
+            trial = clues[:i] + [replace(clue, domain=domain, excluded=excluded)] + clues[i + 1:]
+        final, _ = propagate(initial_domains(ctx.base, ids, trial), rules, exclude_from_subsets={victim},
+                             relations=relations_of(trial))
+        if not solved(final, ids):
             needed.add(clue.id)
             continue
         try:
@@ -238,20 +279,67 @@ def _spatial_score(clues):
 
 
 def _route_fields(ctx, p):
-    """Origen, destino, TTL inicial, ruta y casillas de partida de un paquete (Encaminamiento)."""
+    """Origen, destino, TTL inicial, ruta y casillas de partida de un paquete (Encaminamiento).
+
+    Un extremo oculto se exporta como {"hidden": true}; su equipo va en `solution`.
+    Con un extremo oculto, `domain` son estados [f, c, red del extremo].
+    """
     route = ctx.routes.get(p.id)
     if route is None:
         return {}
     destination = ({"broadcast": route.broadcast, "network": route.networks[0]} if route.broadcast
                    else {"node": route.destination})
-    return {"origin": {"node": route.origin}, "destination": destination, "ttl": {"initial": route.ttl},
+    origin = {"node": route.origin}
+    hidden = ctx.hidden.get(p.id)
+    if hidden == "origin":
+        origin = {"hidden": True}
+    elif hidden == "destination":
+        destination = {"hidden": True}
+    return {"origin": origin, "destination": destination, "ttl": {"initial": route.ttl},
             "route": {"networks": route.networks, "routers": route.routers},
             # Casillas de su ruta a las que le llega el TTL (regla packetOnRoute): las usan las sugerencias.
             "domain": sorted(one_based(x) for x in ctx.base[p.id])}
 
 
+def _grouped(values):
+    """{valor: [posibilidades]} de una pista entre dos paquetes, con los valores como cadenas."""
+    groups = {}
+    for x, v in values.items():
+        groups.setdefault(str(v), []).append(one_based(x))
+    return {v: sorted(xs) for v, xs in sorted(groups.items())}
+
+
+def _clue_dict(c):
+    # `text` es el texto en español; el motor lo compone en cada idioma a partir
+    # de `type`, `parameters` y `slots` (cómo se nombra cada elemento).
+    # `domain` (D) y `excluded` (A, si la pista anula casillas) los usa el motor
+    # para las sugerencias; las pistas entre dos paquetes llevan en su lugar
+    # `packets` y `relation` (valores de cada posibilidad y pares permitidos).
+    d = {"id": c.id, "packet": c.packet, "type": c.type, "text": c.text, "parameters": c.params,
+         "slots": c.slot_data, "naming": c.naming, "readingCost": c.reading_cost, "topic": c.topic}
+    if c.other:
+        d["packets"] = [c.packet, c.other]
+        d["relation"] = {"values": {c.packet: _grouped(c.relation.first), c.other: _grouped(c.relation.second)},
+                         "allowed": sorted([str(a), str(b)] for a, b in c.relation.allowed)}
+        return d
+    d["domain"] = sorted(one_based(x) for x in c.domain)
+    if c.excluded:
+        d["excluded"] = sorted(one_based(x) for x in c.excluded)
+    return d
+
+
+def _router_dict(board, addressing, r):
+    position = ({"kind": "corner", "cells": [one_based(c) for c in r.between]} if r.corner
+                else {"kind": "edge", "between": [one_based(c) for c in r.between]})
+    return {"id": r.id, "name": "Router de " + join_names(board.network(n).name for n in r.networks),
+            "connectedNetworks": list(r.networks), "degree": len(r.networks),
+            "interfaces": {net: str(addressing.assigned[("router", r.id, net)]) for net in r.networks},
+            "position": position,
+            **({} if r.corner else {"orientation": "vertical" if r.between[0][0] == r.between[1][0] else "horizontal"})}
+
+
 def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victim_net, max_subset, report,
-            addressing, category, topic, ctx):
+            addressing, category, topic, ctx, novelties=()):
     level_id = f"{category}-{seed}"
     routes = ctx.routes
     by_type = {}
@@ -263,6 +351,9 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
     if routes:
         objective += (" La ficha de cada paquete dice su origen, su destino y su TTL inicial: estaba en una red"
                       " de su ruta a la que le llegaba el TTL.")
+    if ctx.hidden:
+        objective += (" Si la ficha no dice el origen o el destino de un paquete, hay que deducirlo con las pistas:"
+                      " cada red posible da una ruta distinta.")
     if any(form in SIZE_FORMS for c in clues for form in c.naming.values()):
         objective += " " + SIZE_NOTE
     g = report["global"]
@@ -296,17 +387,7 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
              "cellCount": len(n.cells), "cells": [one_based(c) for c in n.cells]}
             for n in board.networks
         ],
-        "routers": [
-            {"id": r.id,
-             "name": "Router de {} {} {}".format(board.network(r.networks[0]).name,
-                                                 and_word(board.network(r.networks[1]).name),
-                                                 board.network(r.networks[1]).name),
-             "connectedNetworks": list(r.networks), "degree": 2,
-             "interfaces": {net: str(addressing.assigned[("router", r.id, net)]) for net in r.networks},
-             "position": {"kind": "edge", "between": [one_based(c) for c in r.between]},
-             "orientation": "vertical" if r.between[0][0] == r.between[1][0] else "horizontal"}
-            for r in board.routers
-        ],
+        "routers": [_router_dict(board, addressing, r) for r in board.routers],
         "topology": {
             "bipartite": True,
             "connected": True,
@@ -329,7 +410,10 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
                  **_route_fields(ctx, p),
                  "solution": {"position": one_based(p.cell), "network": board.network_of(p.cell),
                               **({"routersCrossed": routes[p.id].crossed, "ttl": routes[p.id].current_ttl}
-                                 if routes else {})}}
+                                 if routes else {}),
+                              # El extremo oculto: se muestra en la ficha al resolver el nivel.
+                              **({ctx.hidden[p.id]: getattr(routes[p.id], ctx.hidden[p.id])}
+                                 if p.id in ctx.hidden else {})}}
                 for p in packets
             ],
         },
@@ -340,24 +424,16 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
             "packetsInVictimNetwork": 2,
             "observableAnswer": {"attackerPacketId": attacker.id},
         },
-        "clues": [
-            # `text` es el texto en español; el motor lo compone en cada idioma a partir
-            # de `type`, `parameters` y `slots` (cómo se nombra cada elemento).
-            # `domain` (D) y `excluded` (A, si la pista anula casillas) los usa el motor
-            # para las sugerencias.
-            {"id": c.id, "packet": c.packet, "type": c.type, "text": c.text, "parameters": c.params,
-             "slots": c.slot_data, "naming": c.naming, "readingCost": c.reading_cost, "topic": c.topic,
-             "domain": sorted(one_based(x) for x in c.domain),
-             **({"excluded": sorted(one_based(x) for x in c.excluded)} if c.excluded else {})}
-            for c in clues
-        ],
+        "clues": [_clue_dict(c) for c in clues],
         "solution": {
             "placements": {p.id: one_based(p.cell) for p in packets},
             "victimNetwork": victim_net,
             "attackerPacketId": attacker.id,
         },
         "generation": {
-            "generator": "netdoku_gen v0.4",
+            "generator": "netdoku_gen v0.4.5",
+            # Novedades de la v0.4.5 que usa el nivel (relation, cornerRouter, hiddenEndpoint, privacy).
+            "novelties": list(novelties),
             "attempt": attempt,
             "clueCount": len(clues),
             "cluesByType": by_type,

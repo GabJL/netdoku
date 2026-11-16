@@ -5,22 +5,31 @@ nombra (red, equipo, router, longitud de prefijo). Su texto inicial usa las
 formas de la categoría Inicial; naming.py puede cambiarlo después sin tocar
 `D` ni `A`.
 
-Todas las pistas son unarias: cada una fija un conjunto de casillas
+Casi todas las pistas son unarias: cada una fija un conjunto de casillas
 permitidas `D` para su paquete y, en el caso de `unique_adjacent_to_node`, un
-conjunto de casillas anuladas `A` para los demás paquetes. La interacción entre
-paquetes la pone solo la regla «una casilla, un paquete».
+conjunto de casillas anuladas `A` para los demás paquetes. Las pistas entre
+dos paquetes (`relation.*`, v0.4.5) no tienen `D`: dan un valor a cada
+posibilidad de cada paquete y los pares de valores permitidos (`Relation`).
 
 En la categoría Encaminamiento cada paquete parte además de las casillas de
 su ruta a las que le llega el TTL (`Context.base`, regla `packetOnRoute`), y
 hay pistas de ruta y TTL (`endpoint.*`, `route.*`, `ttl.*`). Sus formas
 (`ip_view`/`mac_view`, `count`/`ttl_value`) cambian toda la frase, así que su
 `template` es un diccionario forma -> plantilla.
+
+Con un extremo oculto (v0.4.5), las posibilidades de un paquete son estados
+`(f, c, red del extremo)` y la ruta depende de esa red (`Context.alternatives`).
+Las pistas de ruta y TTL se evalúan con la ruta de cada estado, y las demás se
+elevan a estados (`Context.lift`).
 """
 
-from dataclasses import dataclass, field
+from collections import deque
+from dataclasses import dataclass, field, replace
 
 from .board import side_neighbors
-from .content import and_word, class_label, class_members, count_text, network_counts, node_classes
+from .content import class_label, class_members, count_text, join_names, network_counts, node_classes
+from .routes import network_graph
+from .solver import Relation, cell_of
 
 TOPIC = "T3.dispositivos"
 KNOWLEDGE = "basic"
@@ -49,6 +58,8 @@ class Clue:
     naming: dict = field(default_factory=dict)  # nombre -> forma elegida
     slot_data: dict = field(default_factory=dict)  # nombre -> {kind, ref, form, value}: lo que usa el motor
     reading_cost: int = 0
+    other: str = ""                        # segundo paquete de una pista entre dos paquetes
+    relation: Relation = None              # sus valores y pares permitidos
 
     def key(self):
         """Dos pistas con la misma clave dicen lo mismo a efectos lógicos.
@@ -57,6 +68,8 @@ class Clue:
         («había atravesado un router», «el último router que había atravesado
         era…») y conviene que todas puedan salir.
         """
+        if self.other:
+            return (self.type, self.packet, self.other, tuple(sorted(self.params.items())))
         if self.type.split(".")[0] in ROUTE_FAMILIES:
             return (self.packet, self.domain, self.excluded, self.type)
         return (self.packet, self.domain, self.excluded)
@@ -65,7 +78,7 @@ class Clue:
 class Context:
     """Datos del nivel que necesitan las pistas."""
 
-    def __init__(self, board, nodes, packets, addressing=None, routes=None, transit=None):
+    def __init__(self, board, nodes, packets, addressing=None, routes=None, transit=None, hidden=None):
         self.board = board
         self.addressing = addressing
         self.nodes = nodes
@@ -80,9 +93,48 @@ class Context:
         # Encaminamiento: ruta de cada paquete y casillas de partida (las de su ruta a las que llega).
         self.routes = routes or {}
         self.transit = transit
-        self.base = {p.id: (frozenset().union(*(self.network_cells(n) for n in self.routes[p.id].reachable_networks()))
-                            if p.id in self.routes else self.free_cells)
-                     for p in packets}
+        # Extremos ocultos: paquete -> "origin" | "destination", y la ruta con cada red posible del extremo.
+        self.hidden = {pid: kind for pid, (kind, _) in (hidden or {}).items()}
+        self.alternatives = {pid: alts for pid, (_, alts) in (hidden or {}).items()}
+        self.base = {}
+        for p in packets:
+            if p.id in self.alternatives:
+                self.base[p.id] = frozenset((r, c, tag) for tag, rt in self.alternatives[p.id].items()
+                                            for r, c in self.network_cells(*rt.reachable_networks()))
+            elif p.id in self.routes:
+                self.base[p.id] = self.network_cells(*self.routes[p.id].reachable_networks())
+            else:
+                self.base[p.id] = self.free_cells
+        self.distance = _network_distances(board)
+
+    def node(self, node_id):
+        return next(n for n in self.nodes if n.id == node_id)
+
+    def router(self, router_id):
+        return next(r for r in self.board.routers if r.id == router_id)
+
+    def router_words(self, router):
+        """«que une Aulas y Servicios», «que une Aulas, Servicios y Troncal»."""
+        return "que une " + join_names(self.board.network(n).name for n in router.networks)
+
+    def true_state(self, p):
+        """La posibilidad verdadera de un paquete: su casilla o, con un extremo oculto, su estado."""
+        kind = self.hidden.get(p.id)
+        if not kind:
+            return p.cell
+        route = self.routes[p.id]
+        return (*p.cell, route.networks[0] if kind == "origin" else route.networks[-1])
+
+    def lift(self, pid, domain):
+        """`D` en las posibilidades del paquete: con un extremo oculto, los estados de sus casillas."""
+        if pid not in self.alternatives:
+            return domain
+        return frozenset(x for x in self.base[pid] if x in domain or x[:2] in domain)
+
+    def route_at(self, pid, x):
+        """Ruta del paquete en la posibilidad `x` y routers atravesados en ella."""
+        route = self.alternatives[pid][x[2]] if pid in self.alternatives else self.routes[pid]
+        return route, route.networks.index(self.board.network_of(cell_of(x)))
 
     def network_cells(self, *net_ids):
         return frozenset(c for i in net_ids for c in self.board.network(i).cells if c in self.free_cells)
@@ -209,13 +261,29 @@ def _unique_adjacent_to_node(ctx, p):
                        slots={"node": ("node", n.id)})
 
 
+def _network_distances(board):
+    """Routers que hay que atravesar, como mínimo, entre cada par de redes."""
+    adj = network_graph(board)
+    dist = {}
+    for s in adj:
+        seen, queue = {s: 0}, deque([s])
+        while queue:
+            x = queue.popleft()
+            for y, _ in adj[x]:
+                if y not in seen:
+                    seen[y] = seen[x] + 1
+                    queue.append(y)
+        for t, d in seen.items():
+            dist[(s, t)] = d
+    return dist
+
+
 def _adjacent_to_router(ctx, p):
     for r in ctx.board.routers:
         cells = frozenset(c for c in r.between if c in ctx.free_cells)
         if p.cell in cells:
-            a, b = (ctx.board.network(n).name for n in r.networks)
             yield Clue(p.id, "router.adjacent_to_router", {"routerId": r.id},
-                       f"El paquete {p.id} estaba junto al router que une {a} {and_word(b)} {b}.", cells,
+                       f"El paquete {p.id} estaba junto al router {ctx.router_words(r)}.", cells,
                        template=f"El paquete {p.id} estaba junto al router {{router}}.",
                        slots={"router": ("router", r.id)})
 
@@ -241,12 +309,31 @@ def _in_column(ctx, p):
 ROUTE_TOPIC = "T3.ip"
 
 
+def _route_cells(ctx, pid, fn):
+    """`D` de una pista de ruta: `fn(ruta)` da las casillas en las que es verdadera con esa ruta.
+    Con un extremo oculto se aplica a la ruta de cada estado."""
+    alts = ctx.alternatives.get(pid)
+    if not alts:
+        return fn(ctx.routes[pid])
+    result = set()
+    for tag, rt in alts.items():
+        cells = fn(rt)
+        result.update(x for x in ctx.base[pid] if x[2] == tag and x[:2] in cells)
+    return frozenset(result)
+
+
+def _nets(ctx, rt, indexes):
+    """Casillas libres de las redes de la ruta en esas posiciones (las que existan)."""
+    return ctx.network_cells(*(rt.networks[i] for i in indexes if 0 <= i < len(rt.networks)))
+
+
 def _in_origin_network(ctx, p):
     route = ctx.routes.get(p.id)
     if not route or route.crossed != 0 or route.last_reachable == 0:
         return
     ip = f"El paquete {p.id} aún no había salido de la red de su origen."
-    yield Clue(p.id, "endpoint.in_origin_network", {}, ip, ctx.network_cells(route.networks[0]), topic=ROUTE_TOPIC,
+    yield Clue(p.id, "endpoint.in_origin_network", {}, ip, _route_cells(ctx, p.id, lambda rt: _nets(ctx, rt, [0])),
+               topic=ROUTE_TOPIC,
                template={"ip_view": ip,
                          "mac_view": f"La trama que llevaba el paquete {p.id} la había enviado su propio equipo de origen."},
                slots={"view": ("view", None)})
@@ -257,8 +344,8 @@ def _in_destination_network(ctx, p):
     if not route or route.length == 0 or route.crossed != route.length:
         return
     ip = f"El paquete {p.id} ya había llegado a la red de su destino."
-    yield Clue(p.id, "endpoint.in_destination_network", {}, ip, ctx.network_cells(route.networks[-1]),
-               topic=ROUTE_TOPIC,
+    yield Clue(p.id, "endpoint.in_destination_network", {}, ip,
+               _route_cells(ctx, p.id, lambda rt: _nets(ctx, rt, [len(rt.networks) - 1])), topic=ROUTE_TOPIC,
                template={"ip_view": ip,
                          "mac_view": f"La trama que llevaba el paquete {p.id} iba dirigida directamente a su equipo de destino."},
                slots={"view": ("view", None)})
@@ -273,10 +360,10 @@ def _in_transit_network(ctx, p):
 
 
 def _router_clue(ctx, p, kind, router_id):
-    route = ctx.routes[p.id]
-    r = next(x for x in ctx.board.routers if x.id == router_id)
-    a, b = (ctx.board.network(n).name for n in r.networks)
-    words = f"que une {a} {and_word(b)} {b}"
+    words = ctx.router_words(ctx.router(router_id))
+
+    def cells(rt):
+        return _nets(ctx, rt, [i + 1 if kind == "last" else i for i, r in enumerate(rt.routers) if r == router_id])
     if kind == "last":
         ip = f"El último router que había atravesado el paquete {p.id} era el router {{router}}."
         mac = f"La trama que llevaba el paquete {p.id} la había enviado el router {{router}}."
@@ -284,7 +371,7 @@ def _router_clue(ctx, p, kind, router_id):
         ip = f"El siguiente router que iba a atravesar el paquete {p.id} era el router {{router}}."
         mac = f"La trama que llevaba el paquete {p.id} iba dirigida al router {{router}}."
     yield Clue(p.id, f"route.{kind}_router", {"routerId": router_id}, ip.format(router=words),
-               ctx.network_cells(route.networks[route.crossed]), topic=ROUTE_TOPIC,
+               _route_cells(ctx, p.id, cells), topic=ROUTE_TOPIC,
                template={"ip_view": ip, "mac_view": mac},
                slots={"view": ("view", None), "router": ("router", router_id)})
 
@@ -313,8 +400,8 @@ def _routers_crossed(ctx, p):
         return
     n = route.crossed
     count = _crossed_count(p, n)
-    yield Clue(p.id, "ttl.routers_crossed", {"count": n}, count, ctx.network_cells(route.networks[n]),
-               topic=ROUTE_TOPIC,
+    yield Clue(p.id, "ttl.routers_crossed", {"count": n}, count,
+               _route_cells(ctx, p.id, lambda rt: _nets(ctx, rt, [n])), topic=ROUTE_TOPIC,
                template={"count": count, "ttl_value": f"El paquete {p.id} llevaba TTL {route.ttl - n}."},
                slots={"ttl": ("ttl", None)})
 
@@ -327,7 +414,7 @@ def _routers_left(ctx, p):
     verb = "quedaba" if n == 1 else "quedaban"
     yield Clue(p.id, "ttl.routers_left", {"count": n},
                f"Al paquete {p.id} le {verb} {routers_text(n)} para llegar a la red de su destino.",
-               ctx.network_cells(route.networks[route.crossed]), topic=ROUTE_TOPIC)
+               _route_cells(ctx, p.id, lambda rt: _nets(ctx, rt, [rt.length - n])), topic=ROUTE_TOPIC)
 
 
 def _routers_crossed_range(ctx, p):
@@ -346,20 +433,245 @@ def _routers_crossed_range(ctx, p):
             count = f"El paquete {p.id} había atravesado al menos {routers_text(n)}."
             value = f"El TTL del paquete {p.id} era como mucho {ttl - n}."
         yield Clue(p.id, "ttl.routers_crossed_range", {"min": n}, count,
-                   ctx.network_cells(*route.networks[n:top + 1]), topic=ROUTE_TOPIC,
+                   _route_cells(ctx, p.id, lambda rt, n=n: _nets(ctx, rt, range(n, rt.last_reachable + 1))),
+                   topic=ROUTE_TOPIC,
                    template={"count": count, "ttl_value": value}, slots={"ttl": ("ttl", None)})
     for n in range(max(1, k), top):      # como mucho n
         count = f"El paquete {p.id} había atravesado como mucho {routers_text(n)}."
         value = f"El TTL del paquete {p.id} era al menos {ttl - n}."
         yield Clue(p.id, "ttl.routers_crossed_range", {"max": n}, count,
-                   ctx.network_cells(*route.networks[:n + 1]), topic=ROUTE_TOPIC,
+                   _route_cells(ctx, p.id, lambda rt, n=n: _nets(ctx, rt, range(n + 1))), topic=ROUTE_TOPIC,
                    template={"count": count, "ttl_value": value}, slots={"ttl": ("ttl", None)})
+
+
+# ---------- Extremos ocultos (categoría Encaminamiento, v0.4.5) ----------
+
+def _hidden_states(ctx, p, tags):
+    return frozenset(x for x in ctx.base[p.id] if x[2] in tags)
+
+
+def _hidden_node(ctx, p):
+    kind = ctx.hidden.get(p.id)
+    route = ctx.routes[p.id]
+    return kind, ctx.node(route.origin if kind == "origin" else route.destination)
+
+
+def _endpoint_node(ctx, p):
+    """«El paquete A lo había enviado el servidor web de Aulas» / «La IP de origen del paquete A era …»."""
+    if p.id not in ctx.hidden:
+        return
+    kind, node = _hidden_node(ctx, p)
+    ref = ctx.node_reference(node)
+    if not ref:
+        return
+    if kind == "origin":
+        template = {"default": f"El paquete {p.id} lo había enviado {{node_el}}.",
+                    "ip": f"La IP de origen del paquete {p.id} era {{node_value}}."}
+        text = f"El paquete {p.id} lo había enviado el {ref[3:]}."
+    else:
+        template = {"default": f"El paquete {p.id} iba dirigido {{node}}.",
+                    "ip": f"La IP de destino del paquete {p.id} era {{node_value}}."}
+        text = f"El paquete {p.id} iba dirigido {ref}."
+    yield Clue(p.id, f"endpoint.{kind}", {"nodeId": node.id}, text, _hidden_states(ctx, p, {node.network}),
+               topic=ROUTE_TOPIC, template=template, slots={"node": ("node", node.id)})
+
+
+def _endpoint_class(ctx, p):
+    """«El paquete A lo había enviado un servidor DNS» / «… iba dirigido a un equipo de usuario»."""
+    if p.id not in ctx.hidden:
+        return
+    kind, node = _hidden_node(ctx, p)
+    tags = set(ctx.alternatives[p.id])
+    classes = [{"nodeType": node.type}]
+    if node.type == "server":
+        classes.append({"nodeType": "server", "service": node.services[0]})
+    for params in classes:
+        nets = {m.network for m in class_members(ctx.nodes, params)} & tags
+        if len(nets) < 2 or nets == tags:
+            continue
+        words = class_label(params)
+        text = (f"El paquete {p.id} lo había enviado un {words}." if kind == "origin"
+                else f"El paquete {p.id} iba dirigido a un {words}.")
+        yield Clue(p.id, f"endpoint.{kind}_class", dict(params), text, _hidden_states(ctx, p, nets), topic=ROUTE_TOPIC)
+
+
+def _end_router(ctx, p):
+    """Primer router de la ruta (la puerta de enlace del origen) o último (el que lo entrega)."""
+    route = ctx.routes.get(p.id)
+    kind = ctx.hidden.get(p.id)
+    if not kind or not route.routers:
+        return
+    pick = (lambda rt: rt.routers[0]) if kind == "origin" else (lambda rt: rt.routers[-1])
+    router_id = pick(route)
+    tags = {t for t, rt in ctx.alternatives[p.id].items() if rt.routers and pick(rt) == router_id}
+    if kind == "origin":
+        name = "route.first_router"
+        ip = (f"El primer router de la ruta del paquete {p.id} era el router {{router}}, "
+              f"la puerta de enlace de su equipo de origen.")
+        mac = f"Al salir de su equipo de origen, la trama que llevaba el paquete {p.id} iba dirigida al router {{router}}."
+    else:
+        name = "route.final_router"
+        ip = f"El último router de la ruta del paquete {p.id} era el router {{router}}."
+        mac = f"En la red de su destino, el paquete {p.id} llegaba en una trama enviada por el router {{router}}."
+    yield Clue(p.id, name, {"routerId": router_id}, ip.format(router=ctx.router_words(ctx.router(router_id))),
+               _hidden_states(ctx, p, tags), topic=ROUTE_TOPIC, template={"ip_view": ip, "mac_view": mac},
+               slots={"view": ("view", None), "router": ("router", router_id)})
+
+
+# ---------- Pistas entre dos paquetes (v0.4.5) ----------
+
+def _partners(ctx, p, symmetric):
+    """Paquetes con los que `p` puede tener una pista: nunca la víctima; las simétricas, una vez por pareja."""
+    if p.role == "victim":
+        return
+    for q in ctx.packets:
+        if q.id != p.id and q.role != "victim" and not (symmetric and q.id < p.id):
+            yield q
+
+
+def _relation(ctx, name, m, n, value, test, text, params=None, **extra):
+    """Pista entre `m` y `n`: `value(paquete, posibilidad)` y `test(valor de m, valor de n)`.
+
+    No se genera si algún valor no existe (None) o si la pista no descarta ningún par.
+    """
+    first = {x: value(m.id, x) for x in ctx.base[m.id]}
+    second = {y: value(n.id, y) for y in ctx.base[n.id]}
+    if None in first.values() or None in second.values():
+        return None
+    a_values, b_values = set(first.values()), set(second.values())
+    allowed = frozenset((a, b) for a in a_values for b in b_values if test(a, b))
+    if len(allowed) == len(a_values) * len(b_values):
+        return None
+    rel = Relation(first, second, allowed)
+    assert (first[ctx.true_state(m)], second[ctx.true_state(n)]) in allowed, (name, m.id, n.id)
+    return Clue(m.id, name, params or {}, text, None, other=n.id, relation=rel, **extra)
+
+
+def _network_value(ctx):
+    return lambda pid, x: ctx.board.network_of(cell_of(x))
+
+
+def _same_network(ctx, p):
+    for q in _partners(ctx, p, True):
+        if ctx.board.network_of(p.cell) == ctx.board.network_of(q.cell):
+            clue = _relation(ctx, "relation.same_network", p, q, _network_value(ctx), lambda a, b: a == b,
+                             f"Los paquetes {p.id} y {q.id} estaban en la misma red.")
+            if clue:
+                yield clue
+
+
+def _routers_between(ctx, p):
+    for q in _partners(ctx, p, True):
+        k = ctx.distance[(ctx.board.network_of(p.cell), ctx.board.network_of(q.cell))]
+        if k == 0:
+            continue
+        if k == 1:
+            text = f"Las redes de los paquetes {p.id} y {q.id} eran vecinas: las unía un router."
+        else:
+            text = (f"Para ir de la red del paquete {p.id} a la del paquete {q.id} había que atravesar "
+                    f"como mínimo {routers_text(k)}.")
+        clue = _relation(ctx, "relation.routers_between", p, q, _network_value(ctx),
+                         lambda a, b, k=k: ctx.distance[(a, b)] == k, text, {"count": k})
+        if clue:
+            yield clue
+
+
+def _more_addresses(ctx, p):
+    if ctx.addressing is None:
+        return
+    size = lambda pid, x: ctx.addressing.size(ctx.board.network_of(cell_of(x)))  # noqa: E731
+    for q in _partners(ctx, p, False):
+        if size(p.id, p.cell) > size(q.id, q.cell):
+            text = f"El paquete {p.id} estaba en una red con más direcciones que la del paquete {q.id}."
+            clue = _relation(ctx, "relation.more_addresses_network", p, q, size, lambda a, b: a > b, text,
+                             topic="T3.subredes", template={"size_compare": text}, slots={"compare": ("compare", "size")})
+            if clue:
+                yield clue
+
+
+def _route_relation(ctx, p, name, value, test, text, **extra):
+    """Pista de ruta entre `p` y otro paquete con ruta, si es verdadera."""
+    if p.id not in ctx.routes:
+        return
+    for q in _partners(ctx, p, False):
+        if q.id not in ctx.routes:
+            continue
+        mine, theirs = value(p.id, ctx.true_state(p)), value(q.id, ctx.true_state(q))
+        if mine is None or theirs is None or not test(mine, theirs):
+            continue
+        clue = _relation(ctx, name, p, q, value, test, text(p, q), topic=ROUTE_TOPIC, **extra)
+        if clue:
+            yield clue
+
+
+def _crossed(ctx):
+    return lambda pid, x: ctx.route_at(pid, x)[1]
+
+
+def _more_routers_crossed(ctx, p):
+    yield from _route_relation(ctx, p, "relation.more_routers_crossed", _crossed(ctx), lambda a, b: a > b,
+                               lambda m, n: f"El paquete {m.id} había atravesado más routers que el paquete {n.id}.")
+
+
+def _higher_ttl(ctx, p):
+    def ttl(pid, x):
+        route, k = ctx.route_at(pid, x)
+        return route.ttl - k
+
+    def text(m, n):
+        return f"El paquete {m.id} llevaba más TTL que el paquete {n.id}."
+    if p.id not in ctx.routes:
+        return
+    for clue in _route_relation(ctx, p, "relation.higher_ttl", ttl, lambda a, b: a > b, text):
+        yield replace(clue, template={"ttl_compare": clue.text}, slots={"compare": ("compare", "ttl")})
+
+
+def _closer_to_destination(ctx, p):
+    def left(pid, x):
+        route, k = ctx.route_at(pid, x)
+        if route.broadcast or not route.reaches_destination:
+            return None
+        return route.length - k
+    yield from _route_relation(ctx, p, "relation.closer_to_destination", left, lambda a, b: a < b,
+                               lambda m, n: f"Al paquete {m.id} le quedaban menos routers que al paquete {n.id} "
+                                            f"para llegar a la red de su destino.")
+
+
+def _same_end(ctx, p, kind):
+    """Mismo origen o mismo destino: solo si alguno de los dos tiene oculto ese extremo."""
+    if p.id not in ctx.routes:
+        return
+
+    def end(pid, x):
+        route = ctx.routes[pid]
+        if route.broadcast and kind == "destination":
+            return None
+        if ctx.hidden.get(pid) == kind:
+            return x[2]
+        return route.networks[0] if kind == "origin" else route.networks[-1]
+
+    for q in _partners(ctx, p, True):
+        if q.id not in ctx.routes or kind not in (ctx.hidden.get(p.id), ctx.hidden.get(q.id)):
+            continue
+        if end(p.id, ctx.true_state(p)) != end(q.id, ctx.true_state(q)):
+            continue
+        text = (f"Los paquetes {p.id} y {q.id} habían salido de la misma red." if kind == "origin"
+                else f"Los paquetes {p.id} y {q.id} iban a la misma red.")
+        clue = _relation(ctx, f"relation.same_{kind}", p, q, end, lambda a, b: a == b, text, topic=ROUTE_TOPIC)
+        if clue:
+            yield clue
 
 
 # Orden: si dos pistas dicen lo mismo (mismas D y A), se queda la primera. El
 # recuento va antes que la disyuntiva y la negativa porque, con pocas redes,
 # suele coincidir con alguna de ellas.
 SUBTYPES = {
+    "endpoint.origin": _endpoint_node,
+    "endpoint.destination": _endpoint_node,
+    "endpoint.origin_class": _endpoint_class,
+    "endpoint.destination_class": _endpoint_class,
+    "route.first_router": _end_router,
+    "route.final_router": _end_router,
     "endpoint.in_origin_network": _in_origin_network,
     "endpoint.in_destination_network": _in_destination_network,
     "route.in_transit_network": _in_transit_network,
@@ -379,7 +691,21 @@ SUBTYPES = {
     "router.adjacent_to_router": _adjacent_to_router,
     "spatial.in_row": _in_row,
     "spatial.in_column": _in_column,
+    "relation.same_network": _same_network,
+    "relation.routers_between": _routers_between,
+    "relation.more_addresses_network": _more_addresses,
+    "relation.more_routers_crossed": _more_routers_crossed,
+    "relation.higher_ttl": _higher_ttl,
+    "relation.closer_to_destination": _closer_to_destination,
+    "relation.same_origin": lambda ctx, p: _same_end(ctx, p, "origin"),
+    "relation.same_destination": lambda ctx, p: _same_end(ctx, p, "destination"),
 }
+# Subtipos que solo genera un extremo oculto de cierto tipo (los demás generadores no los distinguen).
+HIDDEN_KIND = {"endpoint.origin": "origin", "endpoint.destination": "destination",
+               "endpoint.origin_class": "origin", "endpoint.destination_class": "destination",
+               "route.first_router": "origin", "route.final_router": "destination"}
+# Pistas que hablan del extremo oculto de su paquete (cada paquete con uno lleva al menos una).
+HIDDEN_TYPES = set(HIDDEN_KIND) | {"relation.same_origin", "relation.same_destination"}
 
 
 def uncalculated(ctx, clue):
@@ -395,16 +721,27 @@ def uncalculated(ctx, clue):
     En las pistas de ruta y TTL, sin entender la trama (`mac_view`) ni restar
     el TTL (`ttl_value`) no queda nada; de un router nombrado por sus
     interfaces queda que el paquete había atravesado alguno (`last_router`) o
-    que le quedaba alguno por atravesar (`next_router`).
+    que le quedaba alguno por atravesar (`next_router`). De una IP de origen o
+    de destino sin calcular su red, nada.
+
+    Las pistas entre dos paquetes con coste (`size_compare`, `ttl_compare`) no
+    dicen nada sin su cálculo: devuelve None.
     """
+    if clue.other:
+        return None
+    domain, excluded = _uncalculated(ctx, clue)
+    return ctx.lift(clue.packet, domain), excluded
+
+
+def _uncalculated(ctx, clue):
     family = clue.type.split(".")[0]
     if family in ROUTE_FAMILIES:
         if clue.type in ("route.last_router", "route.next_router"):
-            route = ctx.routes[clue.packet]
-            top = route.last_reachable
-            nets = (route.networks[1:top + 1] if clue.type == "route.last_router"
-                    else route.networks[:min(top, route.length - 1) + 1])
-            return ctx.network_cells(*nets), frozenset()
+            if clue.type == "route.last_router":
+                fn = lambda rt: _nets(ctx, rt, range(1, rt.last_reachable + 1))  # noqa: E731
+            else:
+                fn = lambda rt: _nets(ctx, rt, range(min(rt.last_reachable, rt.length - 1) + 1))  # noqa: E731
+            return _route_cells(ctx, clue.packet, fn), frozenset()
         if clue.slots:
             return ctx.free_cells, frozenset()
         return clue.domain, clue.excluded
@@ -431,8 +768,14 @@ def generate_instances(ctx, enabled=None, disabled=()):
         if (enabled is not None and name not in enabled) or name in disabled:
             continue
         for p in ctx.packets:
+            if name in HIDDEN_KIND and ctx.hidden.get(p.id) != HIDDEN_KIND[name]:
+                continue
             for clue in gen(ctx, p):
-                assert p.cell in clue.domain, clue
+                if clue.type != name:
+                    continue
+                if not clue.other:
+                    clue = replace(clue, domain=ctx.lift(p.id, clue.domain))
+                    assert ctx.true_state(p) in clue.domain, clue
                 if clue.key() not in seen:
                     seen.add(clue.key())
                     result.append(clue)

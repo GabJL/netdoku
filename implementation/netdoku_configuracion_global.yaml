@@ -110,6 +110,9 @@ routers:
       3: 0.20
       4: 0.05
   allowCornerRouters: true
+  # Routers de 3 o 4 redes en una esquina (v0.4.5).
+  cornerRouters:
+    max: 2
   allowAdjacentRouters: false
   minDistance: 1
   maxPerSharedBoundary: 1
@@ -219,6 +222,10 @@ endpoints:
   broadcastPackets:
     probability: 0.3
     max: 1
+  # Origen o destino oculto en la ficha (v0.4.5).
+  hidden:
+    probability: 0.0
+    max: 2
   originNodeTypes: null
   destinationNodeTypes: null
 
@@ -284,6 +291,9 @@ clues:
     categoryFormRatio: auto
   # Mínimo de pistas de los tipos propios de la categoría (Encaminamiento: endpoint, route, ttl).
   categoryMinClues: 0
+  # Pistas entre dos paquetes (v0.4.5).
+  relations:
+    max: 2
   avoidRedundant: true
   avoidSemanticallyEquivalent: true
   requireLogicalSolvability: true
@@ -325,6 +335,10 @@ addressing:
   plan: auto
   nearBoundaryDistance: 4
   allowSpecialAddresses: false
+  # Mezcla de redes privadas y públicas para la forma privacy (v0.4.5; solo en Direccionamiento).
+  privacyMix:
+    probability: 0.0
+    public172Ratio: 0.5
 
 validation:
   requireConnectedTopology: true
@@ -364,7 +378,12 @@ categoryProfiles:
     board: {width: 6, height: 6}
     packets: {count: 6}
     topology: {networks: {min: 4, max: 4}}
-  direccionamiento: *initial_profile
+    routers: {degree: {max: 2}}
+  direccionamiento:
+    <<: *initial_profile
+    # Hasta T3.nat para poder usar la forma privacy (redes privadas y públicas).
+    level: {maxTopic: T3.nat}
+    addressing: {privacyMix: {probability: 0.7}}
   encaminamiento:
     board: {width: 7, height: 7}
     packets:
@@ -372,7 +391,8 @@ categoryProfiles:
       visibleProperties: [origin, destination, ttlInitial]
     topology: {networks: {min: 5, max: 6}}
     features: {origins: true, destinations: true, routes: true, ttl: true}
-    endpoints: {allowSameNetwork: false}
+    endpoints: {allowSameNetwork: false, hidden: {probability: 0.5}}
+    routers: {degree: {max: 4}}
     nodes:
       allowEmptyNetworks: true
       emptyNetworks: {max: 1}

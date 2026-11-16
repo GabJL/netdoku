@@ -3,6 +3,11 @@
   "use strict";
 
   const plural = (n, one, many) => (n === 1 ? one : many);
+  // "Classrooms and Services", "Classrooms, Services and Research".
+  const join = (names) => (names.length === 1 ? names[0]
+    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`);
+  // The only public or private network in the level (privacy and label_privacy forms).
+  const privacy = (v) => (v === "public" ? "public" : "private");
 
   const NODES = {
     client: "user computer", server: "server", web: "web server", dns: "DNS server",
@@ -39,6 +44,7 @@
         case "last_host": return `the network whose last usable address is ${slot.value}`;
         case "broadcast": return `the network whose broadcast address is ${slot.value}`;
         case "ip_member": return `the network of address ${slot.value}`;
+        case "privacy": return `the ${privacy(slot.value)} network`;
         default: return `the ${n.name} network (${n.prefix})`;
       }
     };
@@ -49,15 +55,17 @@
         case "label": return `the ${label}`;
         case "label_prefix": return `the ${label} in network ${L.network(n.network).prefix}`;
         case "ip": return `the ${label} ${slot.value}`;
+        case "label_privacy": return `the ${label} in the ${privacy(slot.value)} network`;
         default: return `the ${label} in the ${L.network(n.network).name} network`;
       }
     };
+    // A router joins two to four networks.
     const router = (slot) => {
-      if (slot.form === "interfaces") return `with interfaces ${slot.value[0]} and ${slot.value[1]}`;
-      const [a, b] = L.router(slot.ref).connectedNetworks
+      if (slot.form === "interfaces") return `with interfaces ${join(slot.value)}`;
+      if (slot.form === "privacy") return `of the ${privacy(slot.value)} network`;
+      return `joining ${join(L.router(slot.ref).connectedNetworks
         .map((id) => L.network(id))
-        .map((n) => (slot.form === "networks_prefix" ? n.prefix : n.name));
-      return `joining ${a} and ${b}`;
+        .map((n) => (slot.form === "networks_prefix" ? n.prefix : n.name)))}`;
     };
     // A row or column: by its number or by a computer or router in it.
     const line = (slot, axis) => {
@@ -82,8 +90,48 @@
     const ttl0 = L.ttl(p);
     const WORDS = { 1: "one", 2: "two", 3: "three", 4: "four", 5: "five" };
     const routers = (n) => `${WORDS[n] || n} router${n === 1 ? "" : "s"}`;
+    // Clues about two packets: the second one.
+    const q = (c.packets || [])[1];
 
     switch (c.type) {
+      case "endpoint.origin":
+      case "endpoint.destination": {
+        const slot = s.node || { ref: params.nodeId };
+        const origin = c.type === "endpoint.origin";
+        if (slot.form === "ip") return `The ${origin ? "source" : "destination"} IP of packet ${p} was ${slot.value}.`;
+        return origin ? `Packet ${p} had been sent by ${node(slot)}.` : `Packet ${p} was addressed to ${node(slot)}.`;
+      }
+      case "endpoint.origin_class":
+        return `Packet ${p} had been sent by a ${NODES[kind(params)]}.`;
+      case "endpoint.destination_class":
+        return `Packet ${p} was addressed to a ${NODES[kind(params)]}.`;
+      case "route.first_router": {
+        const r = router(s.router || { ref: params.routerId });
+        return mac ? `When it left its source device, the frame carrying packet ${p} was addressed to the router ${r}.`
+          : `The first router on the route of packet ${p} was the router ${r}, the default gateway of its source device.`;
+      }
+      case "route.final_router": {
+        const r = router(s.router || { ref: params.routerId });
+        return mac ? `In its destination network, packet ${p} arrived in a frame sent by the router ${r}.`
+          : `The last router on the route of packet ${p} was the router ${r}.`;
+      }
+      case "relation.same_network":
+        return `Packets ${p} and ${q} were in the same network.`;
+      case "relation.routers_between":
+        return params.count === 1 ? `The networks of packets ${p} and ${q} were neighbours: a router joined them.`
+          : `Going from the network of packet ${p} to that of packet ${q} meant crossing at least ${routers(params.count)}.`;
+      case "relation.more_addresses_network":
+        return `Packet ${p} was in a network with more addresses than that of packet ${q}.`;
+      case "relation.more_routers_crossed":
+        return `Packet ${p} had crossed more routers than packet ${q}.`;
+      case "relation.higher_ttl":
+        return `Packet ${p} had a higher TTL than packet ${q}.`;
+      case "relation.closer_to_destination":
+        return `Packet ${p} had fewer routers left than packet ${q} to reach its destination network.`;
+      case "relation.same_origin":
+        return `Packets ${p} and ${q} had left from the same network.`;
+      case "relation.same_destination":
+        return `Packets ${p} and ${q} were going to the same network.`;
       case "endpoint.in_origin_network":
         return mac ? `The frame carrying packet ${p} had been sent by its own source device.`
           : `Packet ${p} had not left its source network yet.`;
@@ -205,8 +253,10 @@
       title: "{category} · {tier}",
       objective: ({ victim }) => `Alert! Someone has tampered with packet ${victim}. There was only one other packet in its network: the attacker. Use the clues to work out where each packet was (at most one per row and per column) and unmask the attacker before the attack spreads.`,
       sizeNote: "Cells do not show the size of a network: its size is its number of addresses.",
-      routerName: ({ a, b }) => `Router between ${a} and ${b}`,
+      routerName: ({ names }) => `Router between ${join(names)}`,
       routeNote: "Each packet's card shows its source, its destination and its initial TTL: it was in a network on its route that its TTL let it reach.",
+      hiddenNote: "If a card does not show a packet's source or destination, work it out from the clues: each possible network gives a different route.",
+      unknownEndpoint: "unknown",
       origin: "Source",
       destination: "Destination",
       ttlInitial: "Initial TTL",
@@ -263,6 +313,9 @@
       lineRow: ({ packet, n }) => `Row ${n} must have a packet and the only one that can go there is ${packet}: ${packet} is in row ${n}.`,
       lineColumn: ({ packet, n }) => `Column ${n} must have a packet and the only one that can go there is ${packet}: ${packet} is in column ${n}.`,
       annul: ({ packet }) => `A clue of packet ${packet} says no other packet was next to that element: the cells around it (highlighted) are ruled out for the rest.`,
+      relationFixed: ({ packet, other }) => `A clue links packets ${packet} and ${other}. With what you already know about ${other}, the highlighted cells do not fit the clue: they are ruled out for ${packet}.`,
+      relationOpen: ({ packet, other }) => `A clue links packets ${packet} and ${other}. Although ${other} still has several possibilities, none of them fits the clue with ${packet} in the highlighted cells: they are ruled out for ${packet}.`,
+      relationEnds: ({ packet, other }) => `A clue links packets ${packet} and ${other}. With what you already know about ${other}, rule out some of the possible networks of the hidden source or destination of ${packet}.`,
       oneRow: ({ packet, n }) => `Packet ${packet} can only be in row ${n}: that row is its own, so no other packet can go there.`,
       oneColumn: ({ packet, n }) => `Packet ${packet} can only be in column ${n}: that column is its own, so no other packet can go there.`,
       subsetCells: ({ packets, n }) => `Packets ${packets} can only be in these ${n} cells (highlighted), one each: no other packet can go there.`,
@@ -406,6 +459,16 @@
             "So «the network whose first usable address is 192.168.1.65» is the one with identifier 192.168.1.64: look it up in the legend.",
           ],
         },
+        privacy: {
+          chip: "Private and public",
+          title: "Private and public networks",
+          text: [
+            "There are three private address blocks: 10.0.0.0/8 (every address starting with 10), 172.16.0.0/12 (from 172.16.0.0 to 172.31.255.255) and 192.168.0.0/16 (every address starting with 192.168). Every other address in the levels is public.",
+            "«The public network» is the only network in the level with a public prefix, and «the private network», the only one with a private prefix: check the legend. «The web server in the public network» is the web server of that network, and «the router of the public network», its only router.",
+            "Watch out for 172: 172.20.0.0/16 is private, but 172.15.0.0/16 and 172.32.0.0/16 are public.",
+            "Private addresses are used in internal networks, like your home's or a company's. To reach the Internet, the router translates the private address into a public one (NAT).",
+          ],
+        },
         in_network: {
           chip: "In a network",
           title: "«It was in network X»",
@@ -488,9 +551,19 @@
           title: "«It was next to the router joining X and Y»",
           text: [
             "Routers sit on the border between networks: they are the way from one network to another and belong to every network they join.",
-            "Only two cells are next to a router: the one touching it in each of the two networks.",
+            "Only two cells are next to a router on a border: the one touching it in each of the two networks.",
           ],
           caption: "Only the two circled cells are next to the router, one in each network.",
+        },
+        corner_router: {
+          chip: "Router in a corner",
+          title: "Routers joining three or four networks",
+          text: [
+            "A router can join three or four networks: it has an interface, with its address, in each of them. On the board it sits on the corner where those networks meet.",
+            "The cells next to a router in a corner are the four cells touching that corner (except those with a device).",
+            "A router in a corner is not in a single row or column, so row and column clues never use it.",
+          ],
+          caption: "The router joins the three networks; the four circled cells are next to it.",
         },
         spatial: {
           chip: "Row or column",
@@ -501,6 +574,17 @@
             "Together with the one-packet-per-row-and-column rule, one of these clues rules out that row or column for all the others.",
           ],
           caption: "«In the same row as the DNS server»: any of the free cells in row 2.",
+        },
+        relation: {
+          chip: "Between two packets",
+          title: "Clues about two packets",
+          text: [
+            "Some clues talk about two packets at once and appear on both cards. «Packets A and B were in the same network»: once you know which network one of them is in, the other one is in that same network.",
+            "«The networks of packets A and B were neighbours: a router joined them»: they are in two different networks joined by a router. «Going from the network of A to that of B meant crossing at least two routers»: count the routers on the shortest path between the two networks.",
+            "«Packet A was in a network with more addresses than that of packet B» compares the size of the two networks: their number of addresses, not their cells.",
+            "These clues rule out cells even before either packet is placed: if B can only be in large networks, A cannot be in the smallest one.",
+          ],
+          caption: "«A and B were in the same network»: with A placed, B is in one of the circled cells, outside A's row and column.",
         },
         route_trace: {
           chip: "Routes",
@@ -530,6 +614,16 @@
             "Inside each network, the packet travels in a link-layer frame, which goes from one device or router to the next one in that same network. Each of them is identified by its MAC address.",
             "The packet's source and destination IP addresses do not change along the way. The frame's MAC addresses change in each network: it is sent by the previous device or router and addressed to the next hop.",
             "So «the frame had been sent by its own source device» means the packet had not left its source network yet; «the frame was addressed to the router X», that the next router on its route was X; «the frame had been sent by the router X», that the last router it had crossed was X; and «the frame was addressed directly to its destination device», that it was already in its destination network.",
+          ],
+        },
+        hidden_endpoint: {
+          chip: "Hidden source or destination",
+          title: "Unknown source or destination",
+          text: [
+            "In some levels, a packet's card does not show its source or its destination: it says «unknown». You have to work it out from the clues, and each possible network gives a different route and, therefore, different cells.",
+            "«Packet A had been sent by the web server in the Classrooms network» or «The source IP of packet A was 10.0.1.7» tell you which device it is; «it had been sent by a DNS server», only its kind: any of the DNS servers on the board.",
+            "«The first router on the route of packet A was the router X, the default gateway of its source device»: the source is in one of the networks X joins, and the route leaves it through X. «The last router on its route was X»: the destination is in a network X joins, and the route reaches it through X.",
+            "Once the level is solved, the card shows the missing device.",
           ],
         },
         route_position: {
@@ -562,6 +656,16 @@
           ],
           caption: "«It had already crossed some router»: any network on its route except the source one.",
         },
+        route_relation: {
+          chip: "Routes of two packets",
+          title: "Clues comparing two packets",
+          text: [
+            "«Packet A had crossed more routers than packet B»: count the routers each one has crossed since its source. «Packet A had a higher TTL than packet B»: compare their current TTLs (initial TTL − routers crossed).",
+            "«Packet A had fewer routers left than packet B to reach its destination network»: compare how many routers each one still has to cross.",
+            "«Packets A and B had left from the same network» or «were going to the same network»: they appear when the source or the destination of one of them is hidden.",
+            "Like the other clues about two packets, they appear on both cards and rule out cells even before either packet is placed.",
+          ],
+        },
         icons: {
           chip: "Icons",
           title: "Board icons",
@@ -586,7 +690,7 @@
           "**Devices** (or **nodes**) can be **end devices** or **intermediate devices**. End devices, also called **hosts** (computers, phones, servers), send and receive the data; intermediate ones (switches, WiFi access points, routers) only forward it. A **switch** joins devices within a network but does not split it: all the computers in a lab connected to its switches are still a single network.",
           "Most services follow the **client/server** model: the **client** asks for something and the **server** provides it. For example, your browser (client) asks a **web server** for a page. In the game there are user devices (clients) and web, **DNS** (they translate names such as www.uma.es into IP addresses), mail, file and multimedia servers.",
         ],
-        rules: ["in_network", "negative", "either", "node_count", "adjacent_to_node", "unique_adjacent", "router", "spatial"],
+        rules: ["in_network", "negative", "either", "node_count", "adjacent_to_node", "unique_adjacent", "router", "spatial", "relation"],
       },
       direccionamiento: {
         name: "Addressing",
@@ -600,8 +704,9 @@
           "An address belongs to a network if applying the mask to it (**IP AND mask**) gives that network's identifier. For example, for 192.168.1.130 with a /26 mask: 130 AND 192 = 128 (10000010 AND 11000000 = 10000000), so it belongs to **192.168.1.128/26**.",
           "An address block is split into **subnets**. Each subnet has a number of addresses that is a power of two (4, 8, 16, 32, 64, 128…) and starts at a multiple of that number. For example, a /24 can be split into four /26 subnets of 64 addresses, starting at .0, .64, .128 and .192 (multiples of 64). **Tip**: to find which /26 192.168.1.130 belongs to, look for the nearest multiple of 64 below 130, which is 128; the subnet is 192.168.1.128/26 (from .128 to .191). With prefixes shorter than /24, do the same in the octet where the prefix ends: for example, 10.0.37.5 in a /20 (blocks of 16 in the third octet) belongs to 10.0.32.0/20.",
           "With **VLSM** (variable-length subnet masks), the subnets of a block can have different sizes, depending on what each one needs: for example, a /25 (128 addresses) for a lab and a /27 (32) for an office. In a level, networks never overlap, so each address belongs to just one.",
+          "There are three **private address** blocks: **10.0.0.0/8**, **172.16.0.0/12** (from 172.16.0.0 to 172.31.255.255) and **192.168.0.0/16**. They can be used in any internal network, like your home's or a company's, but not on the Internet. All other addresses are **public** and unique across the whole Internet. For a device with a private address to reach the Internet, the router translates its address into a public one: that is **NAT**.",
         ],
-        rules: ["named_by_address", "network_size", "ip_network", "special_addresses", "prefix_length"],
+        rules: ["named_by_address", "network_size", "ip_network", "special_addresses", "prefix_length", "privacy"],
       },
       encaminamiento: {
         name: "Routing",
@@ -612,10 +717,12 @@
           "The packet's source and destination IP addresses do not change along the way. What changes in each network is the link-layer **frame** carrying it: it goes from the previous device or router to the **next hop**, identified by their **MAC** addresses. The next hop's MAC address is found with **ARP**.",
           "The **TTL** (time to live) is a field of the IP header. The source gives it an initial value and each router subtracts 1. If a router brings it to 0, it drops the packet and notifies the source with an **ICMP** message (that is how tracert works). It keeps a packet from looping forever if there is a routing error.",
           "Current TTL = initial TTL − routers crossed. A packet with initial TTL 3 can only have crossed two routers: if its route has more, it will not reach its destination. Switches and access points do not count, because they do not look at the IP header.",
+          "A router can join more than two networks, with an interface in each. On the board, a router joining three or four networks sits on the corner where they meet.",
+          "The router in its network to which a device sends the packets addressed to other networks is its **default gateway**: it is the first router on the route of those packets.",
           "A **transit network** has no devices: it only joins routers, like the links between the routers of a company or a provider. Packets cross it, but never start or end there.",
           "**Broadcast** (for example, the DHCP request of a device that has no address yet) goes to every device in a network, but routers do not forward it: a broadcast packet does not leave its source network.",
         ],
-        rules: ["route_trace", "ttl", "frames", "route_position", "route_router", "ttl_count"],
+        rules: ["route_trace", "ttl", "frames", "corner_router", "hidden_endpoint", "route_position", "route_router", "ttl_count", "route_relation"],
       },
     },
 

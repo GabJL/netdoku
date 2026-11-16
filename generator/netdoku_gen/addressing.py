@@ -3,12 +3,24 @@
 Véanse `addressing.plan` en implementation/netdoku_parametros_configuracion.md y
 el coste C en implementation/netdoku_catalogo_reglas.md. Las redes de un nivel
 nunca se solapan y todos los prefijos están alineados con su máscara.
+
+Con `privacy_mix` (addressing.privacyMix, v0.4.5), los planes `distinct` (de
+redes públicas) y `octet_subnets` (de subredes privadas) cambian una red por
+otra de la clase contraria y la misma máscara, para la forma `privacy`.
 """
 
 import ipaddress
 
 PLANS = ("distinct", "octet_subnets", "bit_subnets", "vlsm")
 PLAN_COST = {"distinct": 1, "octet_subnets": 1, "bit_subnets": 2, "vlsm": 3}
+PRIVATE_RANGES = [ipaddress.IPv4Network(x) for x in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
+PRIVACY_PLANS = ("distinct", "octet_subnets")
+# addressing.privacyMix.public172Ratio: redes públicas añadidas que empiezan por 172 (fuera de 172.16.0.0/12).
+PUBLIC_172_RATIO = 0.5
+
+
+def is_private(net):
+    return any(net.subnet_of(r) for r in PRIVATE_RANGES)
 
 
 def _net(text):
@@ -79,11 +91,42 @@ def _random_block(rng, length):
     return _net(f"10.{rng.randrange(256)}.{third}.0/{length}")
 
 
-def make_prefixes(rng, count, plan):
+def _private_like(rng, length):
+    """Una red privada con esa longitud (8, 16 o 24), para el plan `distinct`."""
+    if length == 8:
+        return _net("10.0.0.0/8")
+    if length == 16:
+        return _net(rng.choice([f"172.{rng.randrange(16, 32)}.0.0/16", "192.168.0.0/16", f"10.{rng.randrange(256)}.0.0/16"]))
+    return _net(rng.choice([f"192.168.{rng.randrange(256)}.0/24", f"172.{rng.randrange(16, 32)}.{rng.randrange(256)}.0/24",
+                            f"10.{rng.randrange(256)}.{rng.randrange(256)}.0/24"]))
+
+
+def _public_like(rng, length):
+    """Una red pública con esa longitud; a veces empieza por 172, fuera de 172.16.0.0/12."""
+    if rng.random() < PUBLIC_172_RATIO:
+        first, second = 172, rng.choice([x for x in range(256) if not 16 <= x <= 31])
+    else:
+        first, second = rng.choice([x for x in range(11, 224) if x not in (127, 169, 172, 192)]), rng.randrange(256)
+    value = (first << 24) | (second << 16) | (rng.randrange(256) << 8)
+    return ipaddress.IPv4Network((value, length), strict=False)
+
+
+def _mix_privacy(rng, prefixes, plan):
+    """Cambia una red por otra de la clase contraria (pública o privada) con la misma máscara."""
+    result = list(prefixes)
+    i = rng.randrange(len(result))
+    length = result[i].prefixlen
+    result[i] = _private_like(rng, length) if plan == "distinct" else _public_like(rng, length)
+    return result
+
+
+def make_prefixes(rng, count, plan, privacy_mix=False):
     maker = {"distinct": _distinct, "octet_subnets": _octet_subnets,
              "bit_subnets": _bit_subnets, "vlsm": _vlsm}[plan]
     for _ in range(100):
         result = maker(rng, count)
+        if result and privacy_mix and plan in PRIVACY_PLANS:
+            result = _mix_privacy(rng, result, plan)
         if result and all(not a.overlaps(b) for i, a in enumerate(result) for b in result[i + 1:]):
             return result
     raise RuntimeError(f"No se ha podido crear el plan de direcciones {plan}")
@@ -111,6 +154,18 @@ class Addressing:
         if mine == min(sizes.values()) and list(sizes.values()).count(mine) == 1:
             return "fewest"
         return None
+
+    def privacy_rank(self, net_id):
+        """'public' o 'private' si la red es la única de su clase en el nivel."""
+        private = {n: is_private(x) for n, x in self.prefixes.items()}
+        mine = private[net_id]
+        if list(private.values()).count(mine) == 1 and len(private) > 1:
+            return "private" if mine else "public"
+        return None
+
+    def privacy_cost(self):
+        """Coste de distinguir redes privadas y públicas: 2 si hay que mirar el rango 172.16.0.0/12."""
+        return 2 if any(str(x).startswith("172.") for x in self.prefixes.values()) else 1
 
     def near_boundary(self, address, net_id):
         """La dirección está cerca del límite con otra red del nivel, y ese límite no se

@@ -35,8 +35,12 @@ class Network:
 @dataclass
 class Router:
     id: str
-    networks: tuple  # identificadores de las redes que une
-    between: tuple   # dos casillas, una de cada red, que comparten lado
+    networks: tuple  # identificadores de las redes que une (2 a 4)
+    between: tuple   # dos casillas que comparten lado o, en una esquina, las cuatro que comparten un vértice
+
+    @property
+    def corner(self):
+        return len(self.between) == 4
 
 
 @dataclass
@@ -100,12 +104,29 @@ def grow_regions(rng, height, width, count, min_size, max_tries=500):
     raise RuntimeError("No se ha podido repartir el tablero en redes válidas")
 
 
-def place_routers(rng, board, extra_router_prob=0.3):
-    """Routers de grado 2 sobre la frontera entre dos redes vecinas.
+def _corners(board):
+    """Vértices interiores donde se juntan tres o cuatro redes: (las cuatro casillas, sus redes)."""
+    result = []
+    for r in range(1, board.height):
+        for c in range(1, board.width):
+            cells = ((r - 1, c - 1), (r - 1, c), (r, c - 1), (r, c))
+            nets = tuple(sorted({board.grid[x][y] for x, y in cells}))
+            if len(nets) >= 3:
+                result.append((cells, nets))
+    return result
 
-    Primero un árbol generador aleatorio (conexidad garantizada) y después, con
-    cierta probabilidad, un router más que cierra un ciclo. Dos routers no
-    comparten casilla de apoyo.
+
+def place_routers(rng, board, extra_router_prob=0.3, degree_weights=None, max_corner=0):
+    """Routers sobre la frontera entre redes vecinas.
+
+    Primero, si se piden (`max_corner`), routers de tres o cuatro redes en una
+    esquina donde se juntan tantas: el grado de cada router se sortea con
+    `degree_weights` (routers.degree.weights) y, si sale 3 o 4 y hay sitio, va
+    a una esquina. Dos de ellos no comparten más de una red. Después, un árbol
+    generador aleatorio de routers de dos redes (conexidad garantizada) y, con
+    cierta probabilidad, uno más que cierra un ciclo. Dos routers no comparten
+    casilla de apoyo ni dos redes, así que entre dos redes vecinas hay un solo
+    router.
     """
     h, w = board.height, board.width
     boundary = {}  # (redA, redB) -> lista de (casillaA, casillaB)
@@ -129,18 +150,36 @@ def place_routers(rng, board, extra_router_prob=0.3):
             x = parent[x]
         return x
 
+    used_cells = set()
+    routers = []
+    corner_nets = []
+    if max_corner and degree_weights:
+        degrees = list(degree_weights)
+        draws = rng.choices(degrees, weights=[degree_weights[d] for d in degrees], k=len(board.networks) - 1)
+        corners = _corners(board)
+        for degree in [d for d in draws if d >= 3][:max_corner]:
+            options = [(cells, nets) for cells, nets in corners if len(nets) == degree
+                       and not set(cells) & used_cells
+                       and all(len(set(nets) & set(other)) <= 1 for other in corner_nets)]
+            if not options:
+                continue
+            cells, nets = rng.choice(options)
+            for net in nets[1:]:
+                parent[find(net)] = find(nets[0])
+            used_cells.update(cells)
+            corner_nets.append(nets)
+            routers.append(Router(id=f"R{len(routers) + 1}", networks=nets, between=cells))
+
     chosen = []
     for a, b in pairs:
         ra, rb = find(a), find(b)
         if ra != rb:
             parent[ra] = rb
             chosen.append((a, b))
-    leftovers = [p for p in pairs if p not in chosen]
+    leftovers = [p for p in pairs if p not in chosen and not any(set(p) <= set(nets) for nets in corner_nets)]
     if leftovers and rng.random() < extra_router_prob:
         chosen.append(rng.choice(leftovers))
 
-    used_cells = set()
-    routers = []
     for a, b in chosen:
         options = [e for e in boundary[(a, b)] if not (set(e) & used_cells)]
         if not options:
@@ -151,11 +190,12 @@ def place_routers(rng, board, extra_router_prob=0.3):
     return routers
 
 
-def generate_board(rng, height=6, width=6, network_count=4, min_size=6, plan="octet_subnets"):
+def generate_board(rng, height=6, width=6, network_count=4, min_size=6, plan="octet_subnets",
+                   degree_weights=None, max_corner=0, privacy_mix=False):
     """Tablero con sus redes y routers. `board.prefixes` guarda los prefijos como IPv4Network."""
     grid_idx, regions = grow_regions(rng, height, width, network_count, min_size)
     keys = rng.sample(list(NETWORK_NAMES), network_count)
-    prefixes = make_prefixes(rng, network_count, plan)
+    prefixes = make_prefixes(rng, network_count, plan, privacy_mix)
     # Identificadores por orden de lectura para que sean predecibles en el tablero.
     order = sorted(range(network_count), key=lambda i: min(regions[i]))
     ids = {old: f"net{new + 1}" for new, old in enumerate(order)}
@@ -165,5 +205,5 @@ def generate_board(rng, height=6, width=6, network_count=4, min_size=6, plan="oc
     grid = [[ids[v] for v in row] for row in grid_idx]
     board = Board(height=height, width=width, grid=grid, networks=networks)
     board.prefixes = {ids[i]: prefixes[k] for k, i in enumerate(order)}
-    board.routers = place_routers(rng, board)
+    board.routers = place_routers(rng, board, degree_weights=degree_weights, max_corner=max_corner)
     return board

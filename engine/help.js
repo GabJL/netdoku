@@ -37,7 +37,7 @@
   const ROUTE_C = [[1, 5], [1, 6], [2, 5], [3, 5], [3, 6]];
 
   // Mini tableros: grid (una letra de red por casilla), nodes [f, c, tipo],
-  // routers [[f, c], [f, c]], packets [f, c, letra, color], notes [f, c, letra,
+  // routers [[f, c], [f, c]] (o cuatro casillas, en una esquina), packets [f, c, letra, color], notes [f, c, letra,
   // color, hueco], ok / no (casillas posibles / descartadas) y shade (casillas
   // resaltadas). Índices desde 1.
   const ENTRIES = [
@@ -93,6 +93,10 @@
     },
     {
       id: "special_addresses",
+      category: "rules",
+    },
+    {
+      id: "privacy",
       category: "rules",
     },
     {
@@ -167,6 +171,15 @@
       },
     },
     {
+      id: "corner_router",
+      category: "rules",
+      mini: {
+        grid: ["AAB", "ACB", "CCB"],
+        routers: [[[1, 2], [1, 3], [2, 2], [2, 3]]],
+        ok: [[1, 2], [1, 3], [2, 2], [2, 3]],
+      },
+    },
+    {
       id: "spatial",
       category: "clues",
       mini: {
@@ -174,6 +187,15 @@
         nodes: [[2, 2, "dns"]],
         ok: [[2, 1], [2, 3], [2, 4]],
         numbers: true,
+      },
+    },
+    {
+      id: "relation",
+      category: "clues",
+      mini: {
+        grid: ["AAAB", "AAAB", "CCBB"],
+        packets: [[1, 1, "A", ORANGE]],
+        ok: [[2, 2], [2, 3]],
       },
     },
     {
@@ -190,6 +212,10 @@
       category: "rules",
     },
     {
+      id: "hidden_endpoint",
+      category: "rules",
+    },
+    {
       id: "route_position",
       category: "clues",
       mini: { ...ROUTE_MINI, ok: ROUTE_A },
@@ -203,6 +229,10 @@
       id: "ttl_count",
       category: "clues",
       mini: { ...ROUTE_MINI, ok: [...ROUTE_B, ...ROUTE_C] },
+    },
+    {
+      id: "route_relation",
+      category: "clues",
     },
     {
       id: "icons",
@@ -245,6 +275,20 @@
     "ttl.routers_crossed": "ttl_count",
     "ttl.routers_left": "ttl_count",
     "ttl.routers_crossed_range": "ttl_count",
+    "endpoint.origin": "hidden_endpoint",
+    "endpoint.destination": "hidden_endpoint",
+    "endpoint.origin_class": "hidden_endpoint",
+    "endpoint.destination_class": "hidden_endpoint",
+    "route.first_router": "hidden_endpoint",
+    "route.final_router": "hidden_endpoint",
+    "relation.same_network": "relation",
+    "relation.routers_between": "relation",
+    "relation.more_addresses_network": "relation",
+    "relation.more_routers_crossed": "route_relation",
+    "relation.higher_ttl": "route_relation",
+    "relation.closer_to_destination": "route_relation",
+    "relation.same_origin": "route_relation",
+    "relation.same_destination": "route_relation",
   };
   const USES_ADJACENCY = new Set(["node.adjacent_to_node", "node.unique_adjacent_to_node", "node.not_adjacent_to_node"]);
   // Fichas de reglas que necesitan algunas formas de nombrar (clue.naming).
@@ -263,6 +307,10 @@
     contents: "node_count",
     mac_view: "frames",
     ttl_value: "ttl",
+    ttl_compare: "ttl",
+    size_compare: "network_size",
+    privacy: "privacy",
+    label_privacy: "privacy",
   };
   // Formas que nombran algo sin su nombre: explicadas en la ficha named_by_address.
   const ADDRESS_FORMS = new Set(["prefix", "size_rank", "ip_member", "label_prefix", "ip", "networks_prefix", "interfaces",
@@ -277,6 +325,10 @@
     const ids = new Set(["how_to_play", "objective", "row_column", "icons"]);
     // Encaminamiento: cada paquete está en una red de su ruta a la que le llega el TTL.
     if ((level.rules || {}).packetOnRoute) ["route_trace", "ttl"].forEach((id) => ids.add(id));
+    // Encaminamiento: orígenes o destinos ocultos y routers en una esquina.
+    const ends = (p) => (p.origin && p.origin.hidden) || (p.destination && p.destination.hidden);
+    if (((level.packets || {}).items || []).some(ends)) ids.add("hidden_endpoint");
+    if ((level.routers || []).some((rt) => rt.position && rt.position.kind === "corner")) ids.add("corner_router");
     for (const clue of level.clues || []) {
       if (TYPE_TO_ENTRY[clue.type]) ids.add(TYPE_TO_ENTRY[clue.type]);
       if (USES_ADJACENCY.has(clue.type)) ids.add("adjacent");
@@ -360,9 +412,9 @@
       el("circle", { cx: X(c) + S / 2, cy: Y(r) + S / 2, r: 12, fill: color, stroke: tv("--token-edge"), "stroke-width": 1.5 }, root);
       label(root, X(c) + S / 2, Y(r) + S / 2 + 5, id, { "font-size": 13, "font-weight": 700, fill: "#fff" });
     }
-    for (const [[r1, c1], [r2, c2]] of mini.routers || []) {
-      const cx = (X(c1) + X(c2)) / 2 + S / 2;
-      const cy = (Y(r1) + Y(r2)) / 2 + S / 2;
+    for (const cells of mini.routers || []) {
+      const cx = cells.reduce((sum, [, c]) => sum + X(c), 0) / cells.length + S / 2;
+      const cy = cells.reduce((sum, [r]) => sum + Y(r), 0) / cells.length + S / 2;
       el("circle", { cx, cy, r: 8, fill: tv("--router"), stroke: tv("--router-edge"), "stroke-width": 1.5 }, root);
     }
     return root;

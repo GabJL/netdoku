@@ -21,10 +21,10 @@ Cada tipo agrupa subtipos relacionados y depende de una familia de propiedades (
 | `node` | `nodes` | Relación con nodos: junto a, sobre, cerca de. | Definido parcialmente |
 | `router` | `spatial` + `networks` | Relación con routers: junto a un router, a N casillas de un router. | Definido parcialmente |
 | `protocol` | `protocols` | Protocolo, transporte y puerto del paquete. | Previsto |
-| `endpoint` | `origins` / `destinations` | Origen y destino del paquete. | Definido parcialmente (v0.4) |
+| `endpoint` | `origins` / `destinations` | Origen y destino del paquete. | Definido parcialmente (v0.4; orígenes y destinos ocultos, v0.4.5) |
 | `route` | `routes` / `hops` | Ruta seguida, routers atravesados, siguiente salto. | Definido parcialmente (v0.4) |
 | `ttl` | `ttl` | Valor del TTL y comparaciones de TTL. | Definido parcialmente (v0.4) |
-| `relation` | según las propiedades comparadas | Comparaciones entre varios paquetes. | Previsto |
+| `relation` | según las propiedades comparadas | Comparaciones entre dos paquetes. | Definido parcialmente (v0.4.5) |
 
 Para añadir un tipo nuevo se añade una fila a esta tabla y, si hace falta, una familia nueva en `features`.
 
@@ -110,6 +110,7 @@ Una forma con coste solo se usa si su **cálculo es imprescindible**. Para compr
 | `ip_member` | «la red de la dirección 192.168.0.130» | C | `T3.subredes` (`T3.vlsm` con el plan `vlsm`) | `basic` |
 | `broadcast` | «la red cuya dirección de difusión es 192.168.0.255» | C | como `ip_member` | `basic` |
 | `last_host` | «la red cuya última dirección asignable es 192.168.0.254» | C | como `ip_member` | `basic` |
+| `privacy` | «la red pública», «la red privada» (v0.4.5; solo si es la única de su clase en el nivel) | 1 (2 si hay que mirar el rango 172.16.0.0/12) | `T3.nat` | `basic` |
 | `router_side` | «la red que une el router de Aulas con …» (pendiente de definir) | 2 | `T3.dispositivos` | `basic` |
 
 **Longitud de prefijo** (solo en `network.prefix_length`):
@@ -140,6 +141,15 @@ Una forma con coste solo se usa si su **cálculo es imprescindible**. Para compr
 
 `mac_view` dice lo mismo desde la capa de enlace: la IP de destino de un paquete no cambia en todo el camino, pero la trama que lo lleva por cada red va dirigida a la MAC del siguiente salto (un router o, en la red del destino, el propio destino) y la envía el equipo o router anterior. Es la duda del ejercicio «Viaje con escalas» del resumen de la asignatura. `ttl_value` obliga a restar: routers atravesados = TTL inicial − TTL actual. Si la pista nombra además un router por sus interfaces, su coste es el mayor de los dos.
 
+**Pistas entre dos paquetes** (v0.4.5; formas de toda la pista, véase [Pistas entre dos paquetes](#pistas-entre-dos-paquetes-v045)):
+
+| Forma | Ejemplo | Coste | Bloque mínimo | Conocimiento |
+|---|---|---|---|---|
+| `size_compare` | «A estaba en una red con más direcciones que la de B» | 1 | `T3.subredes` | `basic` |
+| `ttl_compare` | «A llevaba más TTL que B» | 1 | `T3.ip` | `basic` |
+
+Son la única forma de su pista. `size_compare` cuesta lo mismo que `size_rank`: comparar dos prefijos de la leyenda sabiendo que el más corto tiene más direcciones. `ttl_compare` obliga a restar los routers atravesados del TTL inicial de cada paquete.
+
 `aligned_node` y `aligned_router` nombran la fila (o la columna) por un elemento que está en ella. Un router de borde está en una sola fila si separa dos casillas de esa fila (borde vertical) y en una sola columna si separa dos casillas de esa columna (borde horizontal); solo se usa en ese caso. El equipo o el router se nombran con formas de coste 0, así que no añaden cálculo.
 
 **Equipos:**
@@ -150,6 +160,7 @@ Una forma con coste solo se usa si su **cálculo es imprescindible**. Para compr
 | `label_network` | «el servidor web de Aulas» | 0 | `T3.dispositivos` | `basic` |
 | `label_prefix` | «el servidor web de la red 192.168.0.128/25» | 0 | `T3.ip` | `basic` |
 | `ip` | «el servidor web 192.168.0.130» | C | como `ip_member` | `basic` |
+| `label_privacy` | «el servidor web de la red pública» (v0.4.5; solo si su red es la única de su clase) | como `privacy` | `T3.nat` | `basic` |
 | `service` | «el servidor que atiende el puerto 53» | 2 | `T4.udp` y el bloque del protocolo | el `portKnowledge` del protocolo |
 
 **Routers:**
@@ -158,6 +169,9 @@ Una forma con coste solo se usa si su **cálculo es imprescindible**. Para compr
 |---|---|---|---|---|
 | `networks` | «el router que une Aulas y Laboratorio» o «…que une 10.0.1.0/24 y 10.0.2.0/24» | 0 | el de la forma de nombrar de cada red | `basic` |
 | `interfaces` | «el router con las interfaces 10.0.1.1 y 10.0.2.1» | C (el mayor de los dos cálculos) | como `ip_member` | `basic` |
+| `privacy` | «el router de la red pública» (v0.4.5; solo si la red es la única de su clase y este es su único router) | como `privacy` | `T3.nat` | `basic` |
+
+Un router de tres o cuatro redes (v0.4.5; véase [Routers de tres o cuatro redes](#routers-de-tres-o-cuatro-redes-v045)) se nombra igual, con todas sus redes («el router que une Aulas, Servicios y Troncal») o todas sus interfaces, y el coste de `interfaces` es el mayor de sus cálculos. Como está en una esquina, no está en una sola fila ni en una sola columna, así que nunca se usa en `aligned_router`.
 
 #### Coste C de calcular la red de una dirección
 
@@ -165,7 +179,7 @@ Las direcciones IP de los equipos no se muestran en el tablero. `ip_member`, `ip
 
 | Plan | Ejemplo de redes | Qué hace falta | C |
 |---|---|---|---|
-| `distinct` | 10.0.0.0/8, 20.0.0.0/8, 30.0.0.0/8 | Mirar el primer octeto. | 1 |
+| `distinct` | 20.0.0.0/8, 45.3.0.0/16, 130.7.2.0/24 | Mirar el primer octeto. | 1 |
 | `octet_subnets` | 172.16.1.0/24, 172.16.2.0/24… | Comparar un octeto. | 1 |
 | `bit_subnets` | 192.168.0.0/25 y 192.168.0.128/25, o cuatro /26 | Aplicar en binario una máscara que no acaba en un octeto. | 2 |
 | `vlsm` | Un /24 repartido en /25, /26, /27 y /27 | Lo mismo, con máscaras distintas en cada red. | 3 |
@@ -193,6 +207,16 @@ Como el jugador no ve las direcciones de los equipos, «junto al servidor web 19
 En la v0.3, `label_prefix` e `ip` solo se usan con equipos cuya etiqueta se repite en otras redes pero es única en la suya (los únicos que el generador nombra uno a uno). Así la dirección identifica un equipo concreto, y nombrarla tiene sentido: si el equipo fuera el único con su etiqueta en todo el tablero, el jugador podría ignorar la dirección, y el coste de interpretación sería falso.
 
 La dirección es la que el equipo nombrado tiene en la solución (el nivel guarda la dirección de cada equipo). Mientras el solver no razone sobre qué dirección tiene cada equipo (previsto para más adelante), el generador no pone en un mismo nivel dos pistas con direcciones distintas de equipos de la misma clase y la misma red: el jugador deduciría que están junto a equipos distintos, información que el solver no tiene en cuenta.
+
+#### Redes privadas y públicas (v0.4.5)
+
+Los rangos privados son 10.0.0.0/8, 172.16.0.0/12 y 192.168.0.0/16; las demás direcciones de equipos son públicas. La forma `privacy` nombra una red por ser la única pública o la única privada del nivel («estaba en la red pública»). También nombra un equipo de esa red (`label_privacy`, «junto al servidor web de la red pública») y su router, si solo tiene uno (`privacy` de router, «junto al router de la red pública»). Las tres cuestan lo mismo, y el motor no colorea lo que nombran con el color de su red.
+
+Para que se pueda usar, algunos niveles mezclan las dos clases (`addressing.privacyMix`). En el plan `distinct`, cuyas redes ya son públicas (primer octeto entre 11 y 223, sin 127, 169, 172 ni 192), una pasa a un rango privado. En `octet_subnets`, cuyas redes son subredes privadas, una se sustituye por una red pública con la misma máscara. En `bit_subnets` y `vlsm` no se usa: una red fuera del bloque rompería el plan y su coste C.
+
+Cuesta 1: basta el primer octeto, o los dos primeros en 192.168. Cuesta 2 si alguna red del nivel empieza por 172 y hay que comprobar si su segundo octeto está entre 16 y 31 (172.20.0.0/16 es privada; 172.40.0.0/16, pública). Para que ese caso salga, una parte de las redes públicas que se añaden son de la forma 172.x con x fuera de 16–31.
+
+Su bloque es `T3.nat` (clase 15), posterior a los de Direccionamiento y Encaminamiento, aunque el resumen de la asignatura recoge los rangos privados con el direccionamiento. **Decisión (v0.4.5):** va en Direccionamiento, que sube su bloque máximo a `T3.nat` y mezcla las dos clases con probabilidad 0,7 (véase la [implementación](game_round_generation.md#implementación-en-la-v045)). Solo sale en las pistas cuyo cálculo es imprescindible, como las demás formas con coste, así que el generador prefiere estas formas cuando caben (`naming.PREFERRED_FORMS`) y da más peso a las pistas que nombran esa red, un equipo suyo o su router (`selection.Selector(boost_networks=…)`); aun así es rara: sale en 4 de los 125 niveles nuevos de Direccionamiento de la v0.4.5 (en pruebas sueltas, en torno al 13 % de los de dificultad 2 y 3), porque solo la admiten los planes `distinct` y `octet_subnets` y solo en pistas cuyo cálculo es imprescindible.
 
 #### Proporción de formas nuevas
 
@@ -450,6 +474,121 @@ Para comprobar que un cálculo es imprescindible (véase [Coste C](#coste-c-de-c
 - **Dominio:** `D = Libres(m) ∩ ⋃ Casillas(ri)` para las `i` del intervalo.
 - **Bloque mínimo:** `T3.ip`.
 
+### Pistas entre dos paquetes (v0.4.5)
+
+Hasta la v0.4 todas las pistas son unarias: lo único que relaciona a dos paquetes es la regla de una casilla, una fila y una columna por paquete. Las pistas de esta sección relacionan dos paquetes, `m` (el primero que nombran) y `n`.
+
+**Modelo.** Cada subtipo da a cada paquete un **valor** en cada una de sus casillas posibles (la red de la casilla, el número de direcciones de esa red, los routers atravesados, el TTL actual…) y una **relación** entre los dos valores (igual, mayor, a `k` routers en el grafo de redes). La pista es verdadera si el valor de `m` en su casilla y el de `n` en la suya cumplen la relación. El nivel guarda los valores de cada casilla y los pares de valores permitidos (véase el formato en la [implementación prevista](game_round_generation.md#implementación-prevista-en-la-v045)).
+
+**Deducción** (propagación por valores): mirando los valores que aún le quedan a `n`, se descartan para `m` las casillas cuyo valor no casa con ninguno, y al revés. Por ejemplo, si `n` solo puede estar en Aulas o en Servicios y «`m` y `n` estaban en la misma red», `m` solo puede estar en Aulas o en Servicios. Si a `n` le queda un solo valor (porque está colocado o porque todas sus casillas posibles dan el mismo), la pista se usa como una unaria; si le quedan varios, hay que razonar con todos a la vez. Son dos técnicas distintas en la [dificultad lógica](game_round_generation.md#implementación-prevista-en-la-v045).
+
+Reglas comunes de los subtipos de esta sección:
+
+- Nunca nombran a la víctima, que se sigue localizando por descarte al final.
+- La pista aparece en las fichas de los dos paquetes, con el mismo texto.
+- Las simétricas (misma red, routers entre las redes) se generan una vez por pareja.
+- **Aridad:** relacional. **Restringe:** posición. **Anulación común:** `A = ∅`. **Conocimiento:** `basic`.
+- **Dominio:** no tienen un `D` fijo. Lo que dicen de `m` depende de lo que le quede a `n`, y lo calcula la propagación.
+
+#### `relation.same_network`
+
+- **Descripción:** los dos paquetes están en la misma red.
+- **Plantilla textual:** «Los paquetes {m} y {n} estaban en la misma red.»
+- **Valores:** la red de cada casilla. **Relación:** iguales.
+- **Generación de instancias:** una por pareja de paquetes en la misma red.
+- **Bloque mínimo:** `T3.dispositivos`.
+
+#### `relation.routers_between`
+
+- **Descripción:** el camino más corto entre la red de `m` y la de `n` atraviesa exactamente `k ≥ 1` routers.
+- **Plantilla textual:** con `k = 1`, «Las redes de los paquetes {m} y {n} eran vecinas: las unía un router.» Con `k ≥ 2`, «Para ir de la red del paquete {m} a la del paquete {n} había que atravesar como mínimo {k} routers.»
+- **Valores:** la red de cada casilla. **Relación:** a `k` routers en el grafo Red↔Router.
+- **Generación de instancias:** una por pareja de paquetes en redes distintas.
+- **Bloque mínimo:** `T3.dispositivos`.
+
+#### `relation.more_addresses_network`
+
+- **Descripción:** la red de `m` tiene más direcciones que la de `n`.
+- **Plantilla textual:** «El paquete {m} estaba en una red con más direcciones que la del paquete {n}.»
+- **Formas:** `size_compare` (coste 1).
+- **Valores:** el número de direcciones de la red de cada casilla. **Relación:** el de `m` es mayor.
+- **Generación de instancias:** una por pareja en redes de distinto tamaño (planes `distinct` y `vlsm`, y `octet_subnets` con /16 y /24).
+- **Compatibilidad:** como las demás pistas de tamaño, el nivel muestra la aclaración de que las casillas no indican el tamaño de una red.
+- **Bloque mínimo:** `T3.subredes`.
+
+#### `relation.more_routers_crossed`
+
+- **Descripción:** `m` ha atravesado más routers que `n` (categoría Encaminamiento).
+- **Plantilla textual:** «El paquete {m} había atravesado más routers que el paquete {n}.»
+- **Valores:** los routers atravesados `k` en cada casilla (la posición de su red en la ruta). **Relación:** el de `m` es mayor.
+- **Bloque mínimo:** `T3.ip`.
+
+#### `relation.higher_ttl`
+
+- **Descripción:** el TTL actual de `m` es mayor que el de `n` (categoría Encaminamiento).
+- **Plantilla textual:** «El paquete {m} llevaba más TTL que el paquete {n}.»
+- **Formas:** `ttl_compare` (coste 1).
+- **Valores:** TTL inicial − `k`. **Relación:** el de `m` es mayor. Con TTL iniciales distintos no equivale a `more_routers_crossed`: un paquete puede haber atravesado más routers y llevar más TTL.
+- **Bloque mínimo:** `T3.ip`.
+
+#### `relation.closer_to_destination`
+
+- **Descripción:** a `m` le quedan menos routers que a `n` para llegar a la red de su destino (categoría Encaminamiento).
+- **Plantilla textual:** «Al paquete {m} le quedaban menos routers que al paquete {n} para llegar a la red de su destino.»
+- **Valores:** `L − k`. **Relación:** el de `m` es menor.
+- **Generación de instancias:** solo entre paquetes que llegarán a su destino, como `ttl.routers_left`.
+- **Bloque mínimo:** `T3.ip`.
+
+#### `relation.same_origin` y `relation.same_destination`
+
+- **Descripción:** el equipo de origen (o de destino) de `m` está en la misma red que el de `n` (categoría Encaminamiento, con [orígenes o destinos ocultos](#orígenes-y-destinos-ocultos-v045)).
+- **Plantilla textual:** «El paquete {m} había salido de la misma red que el paquete {n}.» / «El paquete {m} iba a la misma red que el paquete {n}.»
+- **Valores:** la red del origen (o del destino) en cada estado del paquete. **Relación:** iguales.
+- **Generación de instancias:** solo si alguno de los dos tiene oculto ese extremo; si no, no dice nada.
+- **Bloque mínimo:** `T3.ip`.
+
+### Orígenes y destinos ocultos (v0.4.5)
+
+En algunos niveles nuevos de Encaminamiento, la ficha de uno o dos paquetes no dice su origen o su destino («Origen: ?»). El jugador los deduce con pistas y, con ellos, traza la ruta. Nunca se ocultan los dos extremos de un mismo paquete, ni los de la víctima o un paquete de difusión.
+
+**Estados.** Como la ruta depende del extremo oculto, el solver ya no razona solo con casillas: cada posibilidad de un paquete es un **estado** (casilla, red del extremo oculto). Basta la red, no el equipo, porque la ruta solo depende de las redes. Los estados de partida de un paquete con el origen oculto son, para cada red `o` que podría ser su origen, las casillas de la ruta desde `o` a las que le llega el TTL. Son candidatas las redes con algún equipo que se pueda nombrar, distintas de la del destino y con un único camino mínimo hasta ella (ídem para el destino). Un paquete está colocado cuando todos sus estados están en la misma casilla, aunque no se sepa su origen. El jugador no ve los estados: para él son las hipótesis «si salió de Aulas…, si salió de Servicios…».
+
+Las pistas de la v0.4 también valen con un extremo oculto, y entonces relacionan la casilla con ese extremo: «aún no había salido de la red de su origen» dice que la red del paquete es la de su origen, sin decir cuál es, y «había atravesado dos routers» cambia de red según el origen. Las de casilla (red, equipos, routers, filas) permiten los estados de sus casillas.
+
+Subtipos nuevos, unarios, que restringen el extremo oculto (con `A = ∅` y conocimiento `basic`):
+
+#### `endpoint.origin` y `endpoint.destination`
+
+- **Descripción:** el equipo de origen (o de destino) del paquete.
+- **Plantilla textual:** «El paquete {packet} lo había enviado {node}.» / «El paquete {packet} iba dirigido a {node}.» Con la forma `ip`, como en una captura de la cabecera: «La IP de origen del paquete {packet} era {ip}.» / «La IP de destino del paquete {packet} era {ip}.»
+- **Formas:** las de los equipos: `label`, `label_network`, `label_prefix` (coste 0) e `ip` (coste C, porque hay que calcular la red de la dirección).
+- **Estados:** los de la red de ese equipo.
+- **Generación de instancias:** una por paquete con el extremo oculto.
+- **Bloque mínimo:** `T3.ip`, o el de la forma.
+
+#### `endpoint.origin_class` y `endpoint.destination_class`
+
+- **Descripción:** la clase del equipo de origen (o de destino).
+- **Plantilla textual:** «El paquete {packet} lo había enviado un servidor DNS.» / «El paquete {packet} iba dirigido a un equipo de usuario.»
+- **Estados:** los de las redes candidatas con algún equipo de esa clase.
+- **Generación de instancias:** las que dejan al menos dos redes candidatas y quitan alguna.
+- **Bloque mínimo:** `T3.ip`.
+
+#### `route.first_router` y `route.final_router`
+
+- **Descripción:** el primer router de la ruta (la **puerta de enlace** que usó su equipo de origen) o el último (el que lo entrega en la red de su destino).
+- **Plantilla textual:** «El primer router de la ruta del paquete {packet} era el router {router}, la puerta de enlace de su equipo de origen.» / «El último router de la ruta del paquete {packet} era el router {router}.» Con `mac_view`: «Al salir de su equipo de origen, la trama que llevaba el paquete {packet} iba dirigida al router {router}.» / «En la red de su destino, la trama que llevaba el paquete {packet} la enviaría el router {router}.»
+- **Formas:** las del router y, para toda la pista, `ip_view` o `mac_view`.
+- **Estados:** los de las redes candidatas cuya ruta empieza (o acaba) en ese router.
+- **Generación de instancias:** solo con el extremo oculto y una ruta con algún router (`L ≥ 1`).
+- **Bloque mínimo:** `T3.ip`, o el de las formas.
+
+Se descarta «aún estaba en su equipo de origen»: los paquetes nunca ocupan la casilla de un equipo.
+
+### Routers de tres o cuatro redes (v0.4.5)
+
+En los niveles nuevos de Encaminamiento, algunos routers unen tres o cuatro redes. Están en una **esquina**: cuatro casillas que comparten un vértice y son de tres o cuatro redes distintas (`position.kind: corner`). Sus casillas de apoyo para `router.adjacent_to_router` son esas cuatro. Como mucho hay dos por nivel (`routers.cornerRouters.max`), y dos routers nunca comparten dos redes: así entre dos redes vecinas hay un solo router y los caminos mínimos siguen siendo únicos. Las pistas que nombran routers no cambian; sus formas, sí (véanse los routers en las [formas de nombrar](#formas-de-nombrar)).
+
 ### `spatial.in_row` y `spatial.in_column`
 
 - **Descripción:** el paquete está en una fila (o columna) concreta del tablero.
@@ -472,19 +611,14 @@ Subtipos y formas de nombrar que aún no están definidos, con la versión en qu
 
 Las pistas de la v0.4 (categoría Encaminamiento) están en la [sección 2](#encaminamiento-rutas-y-ttl-v04): las previstas `just_crossed_router` y `about_to_cross_router` pasan a ser `route.last_router` y `route.next_router`; `min_routers_crossed`, `ttl.routers_crossed_range`; la difusión que no atraviesa routers, los paquetes de difusión; y las pistas de MAC, la forma `mac_view`.
 
-**Después de la v0.4:**
+Las de la v0.4.5 también están en la sección 2: las relacionales, en [Pistas entre dos paquetes](#pistas-entre-dos-paquetes-v045) (`same_network`, `routers_between` en lugar de `neighbor_networks`, `more_addresses_network`, `higher_ttl`, `closer_to_destination` y `same_destination`); `origin_gateway`, en [Orígenes y destinos ocultos](#orígenes-y-destinos-ocultos-v045) como `route.first_router`; y la forma `privacy`, en [Redes privadas y públicas](#redes-privadas-y-públicas-v045). `at_origin` y `at_destination` se descartan (los paquetes no ocupan casillas de equipos).
+
+**Después de la v0.4.5:**
 
 | Tipo | Subtipo o forma propuesta | Ejemplo de texto | Bloque mínimo | Versión prevista |
 |---|---|---|---|---|
-| `endpoint` | `origin_gateway` | «Su equipo de origen usa como puerta de enlace el router que une Aulas y Servicios.» Solo tiene sentido si el origen no está a la vista. | `T3.ip` | Con los orígenes ocultos |
-| `endpoint` | `at_origin`, `at_destination` | «Aún estaba en su equipo de origen.» | `T3.ip` | Con los orígenes ocultos |
-| `relation` | `same_network` (entrega directa) | «A podría haberse entregado a B directamente, sin pasar por ningún router.» | `T3.ip` | Pistas relacionales |
-| `relation` | `neighbor_networks` | «A y B estaban en redes vecinas, separadas por un solo router.» | `T3.ip` | Pistas relacionales |
-| `relation` | `same_destination` | «A y B iban al mismo destino.» | `T3.ip` | Pistas relacionales |
-| `relation` | `closer_to_destination`, `higher_ttl` | «El paquete rojo tiene mayor TTL que el azul.» | `T3.ip` | Pistas relacionales |
-| `relation` | `more_addresses_network` | «El rojo está en una red con más direcciones que el azul.» | `T3.subredes` | Pistas relacionales |
+| `node` | dirección de cada equipo | Razonar sobre qué dirección tiene cada equipo: «el servidor web 10.0.3.7 no es el que está junto a A». Exige una incógnita por equipo, como los estados de los paquetes. | `T3.subredes` | Sin fecha |
 | `route` | `next_hop_is_destination_network`, `next_hop` | «El siguiente salto será la red del destino.» | `T3.encaminamiento` | v0.5, Encaminamiento |
-| forma de red | `privacy` | «la única red pública»: exige planes que mezclen redes privadas (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16) y públicas. Coste 1 (2 si hay que fijarse en el rango 172.16.0.0/12). | `T3.nat` | Con NAT |
 | `endpoint` | `source_translated` | «Su IP de origen ya no era privada.» (ya había pasado por el router NAT) | `T3.nat` | Con NAT |
 | `protocol` | `uses_protocol` | «Utiliza HTTPS.» | El del protocolo (`topic` del catálogo). | v0.6, Transporte |
 | `protocol` | `uses_transport`, `destination_port` | «Viaja sobre UDP.» | `T4.udp` o `T4.tcp`, y como mínimo el del protocolo que permite deducir. | v0.6, Transporte |
@@ -493,7 +627,7 @@ Las pistas de la v0.4 (categoría Encaminamiento) están en la [sección 2](#enc
 | `node` | `on_node`, `near_node` (a N casillas) | «Estaba en un cliente.» | `T3.dispositivos` | Sin fecha |
 | `router` | `distance_to_router` | «Está exactamente a dos casillas de un router.» | `T3.dispositivos` | Sin fecha |
 
-Las pistas relacionales exigen restricciones entre paquetes en el solver, técnicas nuevas en la dificultad y en las sugerencias, y textos que las expliquen; por eso van en una versión propia. Salvo que se indique otra cosa, el conocimiento previsto es `basic`; las pistas de puerto toman el `portKnowledge` del protocolo.
+`relation.same_protocol` usará el modelo de las [pistas entre dos paquetes](#pistas-entre-dos-paquetes-v045), con el protocolo de cada paquete como valor. Salvo que se indique otra cosa, el conocimiento previsto es `basic`; las pistas de puerto toman el `portKnowledge` del protocolo.
 
 ## Plantilla para un subtipo nuevo
 

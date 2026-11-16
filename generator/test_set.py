@@ -4,11 +4,13 @@ lotes del juego, para validar reglas y textos con pocos tableros.
 Selección voraz que cubre cada subtipo de pista en 3 tableros; cada forma de
 nombrar y cada plan de direcciones de Direccionamiento, en 1; cada
 particularidad de Encaminamiento (difusión, red de tránsito, TTL que no llega
-al destino), en 2, y en cada categoría, una dificultad de 1-2, una de 3 y una
+al destino, router de esquina, origen o destino oculto), en 2, y en cada categoría, una dificultad de 1-2, una de 3 y una
 de 4-5. Prefiere los niveles fáciles, que se juegan antes.
 
-Uso: python generator/test_set.py [--write] [subtype=N form=N ...]
+Uso: python generator/test_set.py [--write] [--fresh] [subtype=N form=N ...]
 Sin --write solo muestra la selección; con --write escribe levels/test.json.
+Conserva los niveles que ya hay en levels/test.json (el jugador puede haberlos
+validado) y solo añade los que faltan; con --fresh elige la lista desde cero.
 """
 import collections
 import json
@@ -33,6 +35,9 @@ def features(d):
         out.add("transit")
     if any(p.get("route") and len(p["route"]["routers"]) > p["ttl"]["initial"] - 1 for p in items):
         out.add("shortTtl")
+    # Novedades de la v0.4.5 que no son un subtipo ni una forma.
+    novelties = d.get("generation", {}).get("novelties", [])
+    out |= {x for x in novelties if x in ("cornerRouter", "hiddenEndpoint")}
     return out
 
 
@@ -81,6 +86,15 @@ def main():
         band = "1-2" if g <= 2 else "3" if g == 3 else "4-5"
         lv["_items"].add(("band", f"{lv['category']}:{band}"))
     chosen = []
+    # Los niveles de la lista actual se quedan: sus semillas pueden estar ya validadas.
+    current = ROOT / "test.json"
+    if current.exists() and "--fresh" not in sys.argv:
+        keep = {x["file"] for x in json.loads(current.read_text(encoding="utf-8"))["levels"]}
+        for lv in pool:
+            if lv["file"] in keep:
+                chosen.append(lv)
+                for it in lv["_items"]:
+                    need[it] -= 1
     while any(v > 0 for v in need.values()):
         def gain(lv):
             return sum(1 for it in lv["_items"] if need[it] > 0) / (1 + 0.2 * (lv["difficulty"]["global"] - 1))

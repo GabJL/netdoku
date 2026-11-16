@@ -185,6 +185,22 @@ La ficha de cada paquete dice su origen, su destino y su TTL inicial (entre 2 y 
 - Le quedaba un router para llegar a la red de su destino.
 - Ya había atravesado algún router. / Había atravesado como mucho un router. / Su TTL era como mucho 2.
 
+Desde la v0.4.5, un router puede unir tres o cuatro redes (está en la esquina donde se juntan), y la ficha de un paquete puede no decir su origen o su destino («desconocido»): hay que deducirlo, porque cada red posible da una ruta distinta.
+
+- El paquete A lo había enviado el servidor web de la red Aulas. / La IP de origen del paquete A era 10.0.1.7. / Lo había enviado un servidor DNS.
+- El primer router de su ruta era el que une Aulas y Servicios, la puerta de enlace de su equipo de origen.
+- El último router de su ruta era el que une Aulas y Servicios.
+
+### Pistas entre dos paquetes
+
+Desde la v0.4.5, algunas pistas relacionan dos paquetes y aparecen en la ficha de los dos:
+
+- Los paquetes A y B estaban en la misma red.
+- Las redes de A y B eran vecinas: las unía un router. / Para ir de la red de A a la de B había que atravesar como mínimo dos routers.
+- A estaba en una red con más direcciones que la de B.
+- A había atravesado más routers que B. / A llevaba más TTL que B. / Al paquete A le quedaban menos routers que al B para llegar a la red de su destino.
+- A y B habían salido de la misma red. / Iban a la misma red.
+
 ### TTL
 
 Suponiendo un TTL inicial de 64:

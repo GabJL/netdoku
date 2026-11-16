@@ -1,5 +1,18 @@
 # Versiones de Netdoku
 
+## 0.4.5 (16 de noviembre de 2026)
+
+Lo que se dejó fuera de la v0.4: pistas entre dos paquetes, routers de tres o cuatro redes, orígenes y destinos ocultos, y redes privadas y públicas. Los lotes pasan de 75 a 100 niveles por dificultad (375 niveles nuevos); los 25 nuevos de cada una tienen al menos una novedad, y el juego los saca antes a quien ya haya jugado los anteriores.
+
+- Pistas entre dos paquetes, que aparecen en la ficha de los dos: «Los paquetes A y B estaban en la misma red», «Las redes de los paquetes A y B eran vecinas: las unía un router», «Para ir de la red del paquete A a la del paquete B había que atravesar como mínimo dos routers» y, en Direccionamiento, «El paquete A estaba en una red con más direcciones que la del paquete B». En Encaminamiento, además: «había atravesado más routers que…», «llevaba más TTL que…», «le quedaban menos routers que… para llegar a la red de su destino», «habían salido de la misma red» e «iban a la misma red». Un nivel lleva como mucho dos, y nunca hablan de la víctima. Están en todos los niveles nuevos de Inicial y Direccionamiento y en 49 de los 125 de Encaminamiento.
+- Encaminamiento: routers que unen tres o cuatro redes, dibujados en la esquina donde se juntan (como mucho dos por nivel; en 84 de los niveles nuevos).
+- Encaminamiento: la ficha de un paquete puede no decir su origen o su destino («desconocido»); hay que deducirlo con pistas como «El paquete A lo había enviado el servidor web de la red Aulas», «La IP de origen del paquete A era…», «lo había enviado un servidor DNS», «El primer router de la ruta del paquete A era…, la puerta de enlace de su equipo de origen» o «El último router de su ruta era…». Cada red posible da una ruta distinta. Al resolver el nivel, la ficha muestra el equipo. Están en 81 de los niveles nuevos.
+- Direccionamiento: algunos niveles mezclan redes privadas (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16) y públicas, y una red, un equipo o un router se pueden nombrar por ser la única pública o privada («la red pública», «el servidor web de la red pública», «el router de la red pública»). Coste de interpretación 1, o 2 si hay que mirar el rango 172.16.0.0/12. La categoría llega así hasta el bloque de NAT del temario. Por ahora sale poco (4 de los 125 niveles nuevos).
+- Dificultad lógica: dos técnicas nuevas, «relación con un valor fijo» (nivel 1: el otro paquete ya tiene un solo valor) y «relación entre valores abiertos» (nivel 3). Las sugerencias las usan y explican qué casillas descarta la pista.
+- Fichas de ayuda nuevas: «Entre dos paquetes», «Rutas de dos paquetes», «Origen o destino oculto», «Router en una esquina» y «Privadas y públicas», y teoría ampliada (redes privadas y NAT en Direccionamiento; routers de varias redes y puerta de enlace en Encaminamiento).
+- Generador: posibilidades por estado (casilla y red del extremo oculto) en el solver, la dificultad y las sugerencias; `generate.py --novelties` exige alguna novedad, y `--print` muestra los extremos ocultos y los routers de esquina. Un nivel de Encaminamiento tarda unos 26 s (antes, 20).
+- Vista de pruebas: conserva los 19 niveles anteriores y añade 23 para cubrir las pistas y novedades nuevas (42 en total).
+
 ## 0.4 (16 de noviembre de 2026)
 
 Categoría nueva, Encaminamiento: rutas y TTL. 375 niveles nuevos (75 por dificultad), en tableros de 7×7 con 7 paquetes y 5 o 6 redes.

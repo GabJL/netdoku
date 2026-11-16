@@ -5,6 +5,11 @@
   // «y» pasa a «e» ante palabras que empiezan por el sonido «i» (Aulas e Investigación).
   const and = (next) => (/^h?[iíIÍ](?![aeiouáéó])/.test(next) ? "e" : "y");
   const plural = (n, one, many) => (n === 1 ? one : many);
+  // «Aulas y Servicios», «Aulas, Servicios e Investigación».
+  const join = (names) => (names.length === 1 ? names[0]
+    : `${names.slice(0, -1).join(", ")} ${and(names[names.length - 1])} ${names[names.length - 1]}`);
+  // La única red pública o privada del nivel (formas privacy y label_privacy).
+  const privacy = (v) => (v === "public" ? "pública" : "privada");
 
   const NODES = {
     client: "equipo de usuario", server: "servidor", web: "servidor web", dns: "servidor DNS",
@@ -50,6 +55,7 @@
         case "last_host": return `la red cuya última dirección asignable es ${slot.value}`;
         case "broadcast": return `la red cuya dirección de difusión es ${slot.value}`;
         case "ip_member": return `la red de la dirección ${slot.value}`;
+        case "privacy": return `la red ${privacy(slot.value)}`;
         default: return `la red ${n.name} (${n.prefix})`;
       }
     };
@@ -61,15 +67,17 @@
         case "label": return label;
         case "label_prefix": return `${label} de la red ${L.network(n.network).prefix}`;
         case "ip": return `${label} ${slot.value}`;
+        case "label_privacy": return `${label} de la red ${privacy(slot.value)}`;
         default: return `${label} de la red ${L.network(n.network).name}`;
       }
     };
     const node = (slot) => `al ${nodeName(slot)}`;
+    // Un router une de dos a cuatro redes.
     const router = (slot) => {
       const nets = L.router(slot.ref).connectedNetworks.map((id) => L.network(id));
-      if (slot.form === "interfaces") return `con las interfaces ${slot.value[0]} y ${slot.value[1]}`;
-      const [a, b] = nets.map((n) => (slot.form === "networks_prefix" ? n.prefix : n.name));
-      return `que une ${a} ${and(b)} ${b}`;
+      if (slot.form === "interfaces") return `con las interfaces ${join(slot.value)}`;
+      if (slot.form === "privacy") return `de la red ${privacy(slot.value)}`;
+      return `que une ${join(nets.map((n) => (slot.form === "networks_prefix" ? n.prefix : n.name)))}`;
     };
     // Una fila o columna: por su número o por un equipo o un router que está en ella.
     const line = (slot, axis) => {
@@ -93,8 +101,48 @@
     const mac = s.view && s.view.form === "mac_view";
     const ttlValue = s.ttl && s.ttl.form === "ttl_value";
     const ttl0 = L.ttl(p);
+    // Pistas entre dos paquetes: el segundo.
+    const q = (c.packets || [])[1];
 
     switch (c.type) {
+      case "endpoint.origin":
+      case "endpoint.destination": {
+        const slot = s.node || { ref: params.nodeId };
+        const origin = c.type === "endpoint.origin";
+        if (slot.form === "ip") return `La IP de ${origin ? "origen" : "destino"} del paquete ${p} era ${slot.value}.`;
+        return origin ? `El paquete ${p} lo había enviado el ${nodeName(slot)}.` : `El paquete ${p} iba dirigido ${node(slot)}.`;
+      }
+      case "endpoint.origin_class":
+        return `El paquete ${p} lo había enviado un ${NODES[kind(params)]}.`;
+      case "endpoint.destination_class":
+        return `El paquete ${p} iba dirigido a un ${NODES[kind(params)]}.`;
+      case "route.first_router": {
+        const r = router(s.router || { ref: params.routerId });
+        return mac ? `Al salir de su equipo de origen, la trama que llevaba el paquete ${p} iba dirigida al router ${r}.`
+          : `El primer router de la ruta del paquete ${p} era el router ${r}, la puerta de enlace de su equipo de origen.`;
+      }
+      case "route.final_router": {
+        const r = router(s.router || { ref: params.routerId });
+        return mac ? `En la red de su destino, el paquete ${p} llegaba en una trama enviada por el router ${r}.`
+          : `El último router de la ruta del paquete ${p} era el router ${r}.`;
+      }
+      case "relation.same_network":
+        return `Los paquetes ${p} y ${q} estaban en la misma red.`;
+      case "relation.routers_between":
+        return params.count === 1 ? `Las redes de los paquetes ${p} y ${q} eran vecinas: las unía un router.`
+          : `Para ir de la red del paquete ${p} a la del paquete ${q} había que atravesar como mínimo ${routers(params.count)}.`;
+      case "relation.more_addresses_network":
+        return `El paquete ${p} estaba en una red con más direcciones que la del paquete ${q}.`;
+      case "relation.more_routers_crossed":
+        return `El paquete ${p} había atravesado más routers que el paquete ${q}.`;
+      case "relation.higher_ttl":
+        return `El paquete ${p} llevaba más TTL que el paquete ${q}.`;
+      case "relation.closer_to_destination":
+        return `Al paquete ${p} le quedaban menos routers que al paquete ${q} para llegar a la red de su destino.`;
+      case "relation.same_origin":
+        return `Los paquetes ${p} y ${q} habían salido de la misma red.`;
+      case "relation.same_destination":
+        return `Los paquetes ${p} y ${q} iban a la misma red.`;
       case "endpoint.in_origin_network":
         return mac ? `La trama que llevaba el paquete ${p} la había enviado su propio equipo de origen.`
           : `El paquete ${p} aún no había salido de la red de su origen.`;
@@ -220,6 +268,8 @@
       objective: ({ victim }) => `¡Alerta! Alguien ha manipulado el paquete ${victim}. En su red solo había otro paquete: el atacante. Usa las pistas para averiguar dónde estaba cada paquete (como mucho uno por fila y por columna) y desenmascáralo antes de que el ataque se extienda.`,
       sizeNote: "Las casillas no indican el tamaño de una red: su tamaño es su número de direcciones.",
       routeNote: "La ficha de cada paquete dice su origen, su destino y su TTL inicial: estaba en una red de su ruta a la que le llegaba el TTL.",
+      hiddenNote: "Si la ficha no dice el origen o el destino de un paquete, hay que deducirlo con las pistas: cada red posible da una ruta distinta.",
+      unknownEndpoint: "desconocido",
       origin: "Origen",
       destination: "Destino",
       ttlInitial: "TTL inicial",
@@ -227,7 +277,7 @@
       broadcastTo: ({ address }) => `difusión (${address})`,
       originTag: "origen",
       destinationTag: "destino",
-      routerName: ({ a, b }) => `Router de ${a} ${and(b)} ${b}`,
+      routerName: ({ names }) => `Router de ${join(names)}`,
       resumed: "Se ha recuperado tu progreso en este nivel.",
       selectFirst: "Selecciona primero un paquete en el panel para anotarlo.",
       occupiedNode: "Esa casilla ya está ocupada por un equipo.",
@@ -277,6 +327,9 @@
       lineRow: ({ packet, n }) => `En la fila ${n} tiene que haber un paquete y el único que puede ir en ella es ${packet}: ${packet} está en la fila ${n}.`,
       lineColumn: ({ packet, n }) => `En la columna ${n} tiene que haber un paquete y el único que puede ir en ella es ${packet}: ${packet} está en la columna ${n}.`,
       annul: ({ packet }) => `Una pista del paquete ${packet} dice que ningún otro paquete estaba junto a ese elemento: las casillas de alrededor (resaltadas) quedan descartadas para los demás.`,
+      relationFixed: ({ packet, other }) => `Una pista relaciona los paquetes ${packet} y ${other}. Con lo que ya sabes de ${other}, las casillas resaltadas no cumplen la pista: quedan descartadas para ${packet}.`,
+      relationOpen: ({ packet, other }) => `Una pista relaciona los paquetes ${packet} y ${other}. Aunque ${other} aún tiene varias posibilidades, ninguna cumple la pista con ${packet} en las casillas resaltadas: quedan descartadas para ${packet}.`,
+      relationEnds: ({ packet, other }) => `Una pista relaciona los paquetes ${packet} y ${other}. Con lo que ya sabes de ${other}, descarta alguna de las redes posibles del origen o del destino oculto de ${packet}.`,
       oneRow: ({ packet, n }) => `El paquete ${packet} solo puede estar en la fila ${n}: esa fila es suya, así que ningún otro paquete puede ir en ella.`,
       oneColumn: ({ packet, n }) => `El paquete ${packet} solo puede estar en la columna ${n}: esa columna es suya, así que ningún otro paquete puede ir en ella.`,
       subsetCells: ({ packets, n }) => `Los paquetes ${packets} solo pueden estar en estas ${n} casillas (resaltadas), una cada uno: ningún otro paquete puede ir en ellas.`,
@@ -420,6 +473,16 @@
             "Así, «la red cuya primera dirección asignable es 192.168.1.65» es la del identificador 192.168.1.64: búscala en la leyenda.",
           ],
         },
+        privacy: {
+          chip: "Privadas y públicas",
+          title: "Redes privadas y públicas",
+          text: [
+            "Hay tres bloques de direcciones privadas: 10.0.0.0/8 (todas las que empiezan por 10), 172.16.0.0/12 (de 172.16.0.0 a 172.31.255.255) y 192.168.0.0/16 (todas las que empiezan por 192.168). Las demás direcciones de los niveles son públicas.",
+            "«La red pública» es la única red del nivel con un prefijo público, y «la red privada», la única con un prefijo privado: míralo en la leyenda. «El servidor web de la red pública» es el servidor web de esa red, y «el router de la red pública», su único router.",
+            "Cuidado con 172: 172.20.0.0/16 es privada, pero 172.15.0.0/16 y 172.32.0.0/16 son públicas.",
+            "Las direcciones privadas se usan en redes internas, como la de tu casa o la de una empresa. Para salir a Internet, el router traduce la dirección privada a una pública (NAT).",
+          ],
+        },
         in_network: {
           chip: "En una red",
           title: "«Estaba en la red X»",
@@ -502,9 +565,19 @@
           title: "«Estaba junto al router que une X e Y»",
           text: [
             "Los routers están en el borde entre redes: son el punto de paso de una red a otra y pertenecen a todas las redes que unen.",
-            "Junto a un router solo hay dos casillas: la que lo toca en cada una de las dos redes.",
+            "Junto a un router en un borde solo hay dos casillas: la que lo toca en cada una de las dos redes.",
           ],
           caption: "Junto al router solo están las dos casillas con círculo, una en cada red.",
+        },
+        corner_router: {
+          chip: "Router en una esquina",
+          title: "Routers que unen tres o cuatro redes",
+          text: [
+            "Un router puede unir tres o cuatro redes: tiene una interfaz, con su dirección, en cada una. En el tablero está en la esquina donde se juntan esas redes.",
+            "Junto a un router en una esquina están las cuatro casillas que tocan esa esquina (salvo las que tienen un equipo).",
+            "Un router en una esquina no está en una sola fila ni en una sola columna, así que las pistas de fila y columna nunca lo usan.",
+          ],
+          caption: "El router une las tres redes; junto a él están las cuatro casillas con círculo.",
         },
         spatial: {
           chip: "Fila o columna",
@@ -515,6 +588,17 @@
             "Junto con la regla de un paquete por fila y columna, una de estas pistas descarta esa fila o columna para todos los demás.",
           ],
           caption: "«En la misma fila que el servidor DNS»: cualquiera de las casillas libres de la fila 2.",
+        },
+        relation: {
+          chip: "Entre dos paquetes",
+          title: "Pistas entre dos paquetes",
+          text: [
+            "Algunas pistas hablan de dos paquetes a la vez y aparecen en la ficha de los dos. «Los paquetes A y B estaban en la misma red»: cuando sepas en qué red está uno, el otro está en esa misma red.",
+            "«Las redes de los paquetes A y B eran vecinas: las unía un router»: están en dos redes distintas unidas por un router. «Para ir de la red de A a la de B había que atravesar como mínimo dos routers»: cuenta los routers del camino más corto entre las dos redes.",
+            "«El paquete A estaba en una red con más direcciones que la del paquete B» compara el tamaño de las dos redes: su número de direcciones, no sus casillas.",
+            "Estas pistas descartan casillas aunque ninguno de los dos esté colocado: si B solo puede estar en redes grandes, A no puede estar en la más pequeña.",
+          ],
+          caption: "«A y B estaban en la misma red»: con A colocado, B está en una de las casillas con círculo, fuera de la fila y la columna de A.",
         },
         route_trace: {
           chip: "Rutas",
@@ -544,6 +628,16 @@
             "Dentro de cada red, el paquete viaja en una trama de la capa de enlace, que va de un equipo o router al siguiente de esa misma red. Cada uno se identifica por su dirección MAC.",
             "Las direcciones IP de origen y destino del paquete no cambian en todo el camino. Las MAC de la trama cambian en cada red: la envía el equipo o router anterior y va dirigida al siguiente salto.",
             "Así, «la trama la había enviado su propio equipo de origen» quiere decir que el paquete aún no había salido de la red de su origen; «la trama iba dirigida al router X», que el siguiente router de su ruta era X; «la trama la había enviado el router X», que el último router que había atravesado era X; y «la trama iba dirigida directamente a su equipo de destino», que ya estaba en la red de su destino.",
+          ],
+        },
+        hidden_endpoint: {
+          chip: "Origen o destino oculto",
+          title: "Origen o destino desconocido",
+          text: [
+            "En algunos niveles, la ficha de un paquete no dice su origen o su destino: pone «desconocido». Hay que deducirlo con las pistas, y cada red posible da una ruta distinta y, por tanto, casillas distintas.",
+            "«El paquete A lo había enviado el servidor web de la red Aulas» o «La IP de origen del paquete A era 10.0.1.7» dicen cuál es el equipo; «lo había enviado un servidor DNS», solo su clase: cualquiera de los servidores DNS del tablero.",
+            "«El primer router de la ruta del paquete A era el router X, la puerta de enlace de su equipo de origen»: el origen está en una de las redes que une X, y la ruta sale de ella por X. «El último router de su ruta era X»: el destino está en una red que une X, y la ruta llega a ella por X.",
+            "Al resolver el nivel, la ficha muestra el equipo que faltaba.",
           ],
         },
         route_position: {
@@ -576,6 +670,16 @@
           ],
           caption: "«Ya había atravesado algún router»: cualquier red de su ruta salvo la de origen.",
         },
+        route_relation: {
+          chip: "Rutas de dos paquetes",
+          title: "Pistas que comparan dos paquetes",
+          text: [
+            "«El paquete A había atravesado más routers que el paquete B»: cuenta los routers que lleva cada uno desde su origen. «El paquete A llevaba más TTL que el paquete B»: compara el TTL actual de los dos (TTL inicial − routers atravesados).",
+            "«Al paquete A le quedaban menos routers que al paquete B para llegar a la red de su destino»: compara cuántos routers le faltan a cada uno.",
+            "«Los paquetes A y B habían salido de la misma red» o «iban a la misma red»: aparecen cuando el origen o el destino de alguno de los dos está oculto.",
+            "Como las demás pistas entre dos paquetes, aparecen en la ficha de los dos y descartan casillas aunque ninguno esté colocado.",
+          ],
+        },
         icons: {
           chip: "Iconos",
           title: "Iconos del tablero",
@@ -600,7 +704,7 @@
           "Los **equipos** (o **nodos**) pueden ser **terminales** o **intermedios**. Los terminales, también llamados **hosts** (ordenadores, móviles, servidores), originan y reciben los datos; los intermedios (switches, puntos de acceso WiFi, routers) solo los reenvían. Un **switch** une equipos dentro de una red, pero no la divide: todos los ordenadores de un laboratorio conectados a sus switches siguen siendo una sola red.",
           "Casi todos los servicios siguen el modelo **cliente/servidor**: el **cliente** pide algo y el **servidor** lo ofrece. Por ejemplo, tu navegador (cliente) pide una página a un **servidor web**. En el juego hay equipos de usuario (clientes) y servidores web, **DNS** (traducen nombres como www.uma.es a direcciones IP), de correo, de ficheros y multimedia.",
         ],
-        rules: ["in_network", "negative", "either", "node_count", "adjacent_to_node", "unique_adjacent", "router", "spatial"],
+        rules: ["in_network", "negative", "either", "node_count", "adjacent_to_node", "unique_adjacent", "router", "spatial", "relation"],
       },
       direccionamiento: {
         name: "Direccionamiento",
@@ -614,8 +718,9 @@
           "Una dirección pertenece a una red si, al aplicarle la máscara (**IP AND máscara**), se obtiene el identificador de esa red. Por ejemplo, para 192.168.1.130 con máscara /26: 130 AND 192 = 128 (10000010 AND 11000000 = 10000000), así que es de la red **192.168.1.128/26**.",
           "Un bloque de direcciones se reparte en **subredes**. Cada subred tiene un número de direcciones que es potencia de dos (4, 8, 16, 32, 64, 128…) y empieza en un múltiplo de ese número. Por ejemplo, una /24 se puede repartir en cuatro /26 de 64 direcciones, que empiezan en .0, .64, .128 y .192 (múltiplos de 64). **Truco**: para saber de qué /26 es 192.168.1.130, busca el múltiplo de 64 más cercano por debajo de 130, que es 128; la subred es 192.168.1.128/26 (de .128 a .191). Con prefijos más cortos que /24 se hace lo mismo en el octeto donde acaba el prefijo: por ejemplo, 10.0.37.5 en una /20 (bloques de 16 en el tercer octeto) es de la red 10.0.32.0/20.",
           "Con **VLSM** (máscara de longitud variable), las subredes de un mismo bloque pueden tener tamaños distintos, según lo que necesite cada una: por ejemplo, una /25 (128 direcciones) para un laboratorio y una /27 (32) para una secretaría. En un nivel las redes nunca se solapan, así que cada dirección pertenece a una sola.",
+          "Hay tres bloques de **direcciones privadas**: **10.0.0.0/8**, **172.16.0.0/12** (de 172.16.0.0 a 172.31.255.255) y **192.168.0.0/16**. Se pueden usar en cualquier red interna, como la de tu casa o la de una empresa, pero no en Internet. Las demás son **públicas** y no se repiten en todo Internet. Para que un equipo con dirección privada salga a Internet, el router traduce su dirección a una pública: es **NAT**.",
         ],
-        rules: ["named_by_address", "network_size", "ip_network", "special_addresses", "prefix_length"],
+        rules: ["named_by_address", "network_size", "ip_network", "special_addresses", "prefix_length", "privacy"],
       },
       encaminamiento: {
         name: "Encaminamiento",
@@ -626,10 +731,12 @@
           "Las direcciones IP de origen y destino del paquete no cambian en todo el camino. Lo que cambia en cada red es la **trama** de la capa de enlace que lo lleva: va del equipo o router anterior al **siguiente salto**, identificados por sus direcciones **MAC**. La MAC del siguiente salto se averigua con **ARP**.",
           "El **TTL** (tiempo de vida) es un campo de la cabecera IP. El origen le da un valor inicial y cada router le resta 1. Si un router lo deja a 0, descarta el paquete y avisa al origen con un mensaje **ICMP** (así funciona tracert). Sirve para que un paquete no dé vueltas para siempre si hay un error en las rutas.",
           "TTL actual = TTL inicial − routers atravesados. Un paquete con TTL inicial 3 solo puede haber atravesado dos routers: si su ruta tiene más, no llegará a su destino. Los switches y los puntos de acceso no cuentan, porque no miran la cabecera IP.",
+          "Un router puede unir más de dos redes, con una interfaz en cada una. En el tablero, un router que une tres o cuatro redes está en la esquina donde se juntan.",
+          "El router de su red al que un equipo envía los paquetes dirigidos a otras redes es su **puerta de enlace** (gateway): es el primer router de la ruta de esos paquetes.",
           "Una **red de tránsito** no tiene equipos: solo une routers, como los enlaces entre los routers de una empresa o de un proveedor. Los paquetes la atraviesan, pero nunca empiezan ni acaban en ella.",
           "La **difusión** (por ejemplo, la petición DHCP de un equipo que aún no tiene dirección) va a todos los equipos de una red, pero los routers no la reenvían: un paquete de difusión no sale de la red de su origen.",
         ],
-        rules: ["route_trace", "ttl", "frames", "route_position", "route_router", "ttl_count"],
+        rules: ["route_trace", "ttl", "frames", "corner_router", "hidden_endpoint", "route_position", "route_router", "ttl_count", "route_relation"],
       },
     },
 

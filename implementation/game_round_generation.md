@@ -231,7 +231,7 @@ Cada router:
 - debe ser accesible desde todas las redes que conecta;
 - determina las conexiones correspondientes en la topología lógica.
 
-Un router situado entre dos regiones conectará dos redes. Si se encuentra en una intersección o esquina común, podrá conectar tres o cuatro redes.
+Un router situado entre dos regiones conectará dos redes. Si se encuentra en una intersección o esquina común, podrá conectar tres o cuatro redes. Hasta la v0.4 todos los routers son de dos redes; desde la v0.4.5, la categoría Encaminamiento tiene también routers de tres o cuatro redes (véase la [implementación](#implementación-en-la-v045)).
 
 El conjunto de redes y routers define un grafo de conectividad que puede utilizarse posteriormente para calcular rutas, saltos y distancias entre redes.
 
@@ -364,7 +364,7 @@ Primera versión de las rutas, pensada para que el jugador las trace sin tablas 
 
 Las tablas de encaminamiento todavía no se calculan: llegan con la v0.5.
 
-**Lo que no entra en la v0.4:** pistas relacionales entre dos paquetes, orígenes o destinos ocultos (y deducir la IP de cada equipo), routers de grado 3 o 4, rutas con empates (exigen tablas) y `hostGateway: default_gateway`.
+**Lo que no entra en la v0.4:** pistas relacionales entre dos paquetes, orígenes o destinos ocultos (y deducir la IP de cada equipo), routers de grado 3 o 4, rutas con empates (exigen tablas) y `hostGateway: default_gateway`. Las pistas relacionales, los extremos ocultos y los routers de grado 3 o 4 llegan en la [v0.4.5](#implementación-en-la-v045).
 
 **Formato del nivel.** Cada paquete añade:
 
@@ -380,6 +380,61 @@ Las tablas de encaminamiento todavía no se calculan: llegan con la v0.5.
 y `rules.packetOnRoute: true`; la red de tránsito lleva `"transit": true`. La ficha del paquete muestra origen, destino y TTL inicial; `route`, `domain` y `solution` no se muestran. Al pasar el ratón por la ficha (o con el paquete seleccionado), el tablero marca su equipo de origen y el de destino.
 
 **Medidas:** un nivel tarda unos 20 s (con un proceso por núcleo); en un móvil de 380 px de ancho el tablero 7×7 cabe, con casillas de unos 45 px.
+
+#### Implementación en la v0.4.5
+
+Las pistas están en el catálogo de reglas: [entre dos paquetes](netdoku_catalogo_reglas.md#pistas-entre-dos-paquetes-v045), [orígenes y destinos ocultos](netdoku_catalogo_reglas.md#orígenes-y-destinos-ocultos-v045), [routers de tres o cuatro redes](netdoku_catalogo_reglas.md#routers-de-tres-o-cuatro-redes-v045) y [redes privadas y públicas](netdoku_catalogo_reglas.md#redes-privadas-y-públicas-v045).
+
+La v0.4.5 añade lo que se dejó fuera de la v0.4, salvo las rutas con empates y `hostGateway: default_gateway`, que necesitan las tablas de la v0.5. Los niveles actuales no cambian: los lotes pasan de 75 a 100 niveles por dificultad, y los 25 nuevos de cada una se generan con la opción `--novelties`, que exige al menos una novedad de su categoría.
+
+| Novedad | Inicial | Direccionamiento | Encaminamiento |
+|---|---|---|---|
+| Pistas entre dos paquetes | `same_network`, `routers_between` | además, `more_addresses_network` | además, `more_routers_crossed`, `higher_ttl`, `closer_to_destination`, `same_origin` y `same_destination` |
+| Orígenes y destinos ocultos | — | — | sí |
+| Routers de tres o cuatro redes | — | — | sí |
+| Redes privadas y públicas | — | `privacy` (redes, routers) y `label_privacy` (equipos) | — |
+
+Los routers de esquina solo van en Encaminamiento: en un 6×6 con cuatro redes, un router que une tres deja la topología casi en estrella y quita juego a las pistas de routers, y donde se nota es en las rutas.
+
+**Pistas entre dos paquetes.** En el nivel se guardan así:
+
+```json
+{"id": "C7", "type": "relation.same_network", "packets": ["A", "C"],
+ "relation": {
+   "values": {"A": {"net1": [[1, 2], [1, 3]], "net3": [[4, 4]]},
+              "C": {"net1": [[2, 1]], "net3": [[5, 6], [6, 6]]}},
+   "allowed": [["net1", "net1"], ["net3", "net3"]]}}
+```
+
+`values` reparte entre valores las casillas posibles de cada paquete (las libres o, en Encaminamiento, su `domain`), y `allowed` da los pares (valor del primero, valor del segundo) que hacen verdadera la pista. Los valores son cadenas, para que el motor no tenga que saber qué significan. Con un extremo oculto, cada casilla lleva la red del extremo (`[4, 4, "net2"]`). No llevan `domain` ni `excluded`.
+
+- **Solver:** cada posibilidad de un paquete es una casilla `(f, c)` o, con un extremo oculto, un estado `(f, c, red)`; `cell_of` y `placed_cell` dan su casilla. Cada pista relacional es una `Relation(first, second, allowed)`. La propagación revisa cada pista relacional (consistencia de arco): quita de cada paquete las casillas cuyo valor no tiene pareja entre los valores que le quedan al otro, y repite hasta que nada cambia. `count_solutions` comprueba la relación al colocar el segundo paquete de cada pareja.
+- **Dificultad lógica:** dos técnicas nuevas, que habrá que calibrar jugando:
+
+  | Nivel | Técnica | Qué hace el jugador |
+  |---|---|---|
+  | 1 | Relación con un valor fijo | Al otro paquete le queda un solo valor (está colocado o todas sus casillas dan el mismo): la pista se usa como una unaria. |
+  | 3 | Relación entre valores abiertos | Hay que tener en cuenta todos los valores que le quedan al otro paquete («C está en Aulas o en Servicios, así que A también»). |
+
+- **Selección:** compiten con las demás pistas. Como no tienen un `D` fijo, en cada elección se mide lo que quitan propagando desde el estado actual, a cualquiera de los dos paquetes. Un nivel lleva como mucho `clues.relations.max` (2), y nunca nombran a la víctima. `relation.more_addresses_network` y `relation.higher_ttl` no se usan en Inicial ni con dificultad de interpretación 1. Sin su cálculo, `size_compare` y `ttl_compare` no dicen nada, así que `rules.uncalculated` las quita al comprobar si su cálculo es imprescindible.
+- **Motor:** la pista sale en las fichas de los dos paquetes, con el texto que compone `clue(c, L)`. Hay dos fichas de ayuda: `relation` (misma red, routers entre las dos redes, más direcciones) y `route_relation` (las de ruta y TTL). Las sugerencias (`hints.js`) añaden las dos técnicas, con el mismo orden de preferencia: el paso dice qué paquetes relaciona la pista y resalta las casillas que deja de tener el paquete (o, si solo descarta redes del extremo oculto, lo dice así).
+
+**Orígenes y destinos ocultos** (Encaminamiento). Con probabilidad `endpoints.hidden.probability`, un nivel oculta el origen o el destino de uno o dos paquetes (`endpoints.hidden.max`), que no sean la víctima ni de difusión. En el nivel, `"origin": {"hidden": true}`; el equipo real va en `solution.origin`. El `domain` del paquete pasa a ser de estados (`[f, c, red]`).
+
+- **Solver, dificultad y sugerencias** trabajan con estados en lugar de casillas. Un paquete está colocado cuando todos sus estados están en la misma casilla, aunque no se sepa aún su extremo, y la colocación descarta su fila y su columna para los demás, como ahora.
+- **Validación:** la solución tiene que ser única también en la red del extremo oculto, porque la gracia es deducirlo. Al acabar el nivel, la ficha muestra el equipo.
+- **Selección:** cada paquete con un extremo oculto tiene al menos una pista de `endpoint.origin`, `endpoint.origin_class`, `route.first_router` o sus equivalentes del destino; las pistas de ruta y TTL de la v0.4 le sirven sin cambios, porque ya se calculan con la ruta de cada estado.
+- **Motor:** la ficha dice «Origen: desconocido» y el tablero marca solo el extremo conocido (`drawRouteEnds`); al resolver el nivel muestra el equipo. El objetivo del nivel lo avisa (`game.hiddenNote`) y la ayuda añade la ficha `hidden_endpoint`. En `hints.js`, cada posibilidad es un número: la casilla `k` (de 0 a W·H − 1) o el estado `k + W·H·(1 + i)`, con `i` el índice de la red en `level.networks`.
+
+**Routers de tres o cuatro redes** (Encaminamiento). `board.place_routers` sortea el grado de cada router con `routers.degree.weights`; si sale 3 o 4 y hay una esquina libre donde se juntan tantas redes, el router va ahí y sustituye a las aristas del árbol generador entre ellas (dos para tres redes, tres para cuatro). Como mucho hay `routers.cornerRouters.max` (2), y dos routers nunca comparten dos redes, para que entre dos redes vecinas haya un solo router y los caminos mínimos sigan siendo únicos. En el nivel: `"position": {"kind": "corner", "cells": [[2, 3], [2, 4], [3, 3], [3, 4]]}`, sin `orientation`, con `degree` 3 o 4 y una interfaz por red. El motor lo dibuja en el vértice común (`routerCells`), los textos de los routers admiten listas de redes y de interfaces, y la ayuda añade la ficha `corner_router`. Inicial y Direccionamiento fijan `routers.degree.max: 2`.
+
+**Redes privadas y públicas.** Con probabilidad `addressing.privacyMix.probability`, los planes `distinct` y `octet_subnets` mezclan las dos clases (véase el [catálogo](netdoku_catalogo_reglas.md#redes-privadas-y-públicas-v045)). Su bloque, `T3.nat`, es posterior a los de Direccionamiento (hasta `T3.vlsm`), y se valoraron tres opciones: ampliar Direccionamiento hasta `T3.nat`, usarla solo en Encaminamiento o dejarla para la categoría de NAT. **Se eligió la primera:** el resumen de la asignatura recoge los rangos privados con el direccionamiento, y `requirements.topic` dice siempre lo que exige cada nivel. El perfil de Direccionamiento fija `level.maxTopic: T3.nat` y `addressing.privacyMix.probability: 0.7`.
+
+Como las demás formas con coste, `privacy` y `label_privacy` solo van en pistas cuyo cálculo es imprescindible, y esas pistas suelen nombrar routers. Por eso la forma existe también para routers («el router de la red pública», si es el único de esa red), `naming.Namer` prefiere estas formas cuando caben (`PREFERRED_FORMS`) y `selection.Selector` multiplica por 4 el peso de las pistas que nombran esa red, un equipo suyo o su router (`boost_networks`). Aun así es rara: sale en 4 de los 125 niveles nuevos de Direccionamiento de la v0.4.5 (en pruebas sueltas, en torno al 13 % de los de dificultad 2 y 3), porque solo la admiten los planes `distinct` y `octet_subnets`. Si hace falta más, se puede exigir en una parte de los niveles nuevos.
+
+**Medidas.** Inicial y Direccionamiento tardan lo mismo que en la v0.4. Un nivel de Encaminamiento tarda unos 26 s (antes, 20): los routers de esquina acortan las rutas y duplican los intentos en los que las pistas no bastan.
+
+**Generación de los lotes.** Unos 25 × 5 × 3 = 375 niveles nuevos (`generate.py --pool 100 --novelties`). Inicial 5 tarda unos 100 s por nivel y, en este equipo, Claude Code corta las tareas largas en segundo plano por falta de memoria, así que conviene lanzarla en primer plano con `--workers 1` o desde la terminal con `!`. `levels/test.json` se rehace después con `test_set.py --write`, que debe cubrir también los subtipos y novedades nuevos.
 
 ### 6. Validación de la solución
 
