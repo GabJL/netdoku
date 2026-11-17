@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TRAIN_DIR = ROOT / "levels" / "train"
 DISABLED = ROOT / "levels" / "disabled.txt"
 SEED_BASE = 5_000_000
-CATEGORY_ORDER = ("rules", "inicial", "direccionamiento", "encaminamiento")
+CATEGORY_ORDER = ("rules", "inicial", "direccionamiento", "encaminamiento", "enrutamiento")
 
 
 def seed_base(v):

@@ -33,6 +33,15 @@
   // "Classrooms or Services", "Classrooms, Services or Library".
   const orJoin = (names) => (names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`);
   // What the frame says in each route clue seen from the link layer (mac_view form).
+  // Routing tables: a lookup in a router's table (hints and Practice).
+  const lookupText = ({ router, at, ip, matches, winner, hop, isDefault }) => {
+    const who = router || at;
+    if (isDefault) return `${who} looks up ${ip} in its table: no entry matches, so it uses the default route, which sends it to ${hop}.`;
+    if (matches.length > 1) return `${who} looks up ${ip} in its table: ${join(matches)} match, and the longest one, ${winner}, wins and sends it to ${hop}.`;
+    return `${who} looks up ${ip} in its table: ${winner} matches and sends it to ${hop}.`;
+  };
+  const ENTRY = { own: "that network's own entry", default: "the default route", summary: "an entry that groups several networks", direct: "direct delivery" };
+
   const MAC_FACTS = {
     "endpoint.in_origin_network": "Every device that forwards the packet puts it in a new frame with its own source MAC. If the frame was sent by the origin device itself, the packet has not crossed any router yet: it is still in its origin network.",
     "endpoint.in_destination_network": "A frame can only be addressed directly to a device in its own network. If it goes to the destination device, the packet is already in its destination network.",
@@ -61,6 +70,8 @@
         case "broadcast": return `the network whose broadcast address is ${slot.value}`;
         case "ip_member": return `the network of address ${slot.value}`;
         case "privacy": return `the ${privacy(slot.value)} network`;
+        case "router_side": return `the network shared by ${slot.value[0]} and ${slot.value[1]}`;
+        case "next_hop_network": return `the network on which ${slot.value.router} sends what goes to ${slot.value.address}`;
         default: return `the ${n.name} network (${n.prefix})`;
       }
     };
@@ -79,6 +90,9 @@
     const router = (slot) => {
       if (slot.form === "interfaces") return `with interfaces ${join(slot.value)}`;
       if (slot.form === "privacy") return `of the ${privacy(slot.value)} network`;
+      if (slot.form === "router_name") return slot.ref;
+      if (slot.form === "gateway") return `that is the default gateway of ${L.network(slot.value).name}`;
+      if (slot.form === "next_hop") return `to which ${slot.value.router} sends what goes to ${slot.value.address}`;
       return `joining ${join(L.router(slot.ref).connectedNetworks
         .map((id) => L.network(id))
         .map((n) => (slot.form === "networks_prefix" ? n.prefix : n.name)))}`;
@@ -148,6 +162,20 @@
         return `Packets ${p} and ${q} had left from the same network.`;
       case "relation.same_destination":
         return `Packets ${p} and ${q} were going to the same network.`;
+      case "relation.same_next_hop":
+        return `The next hop of packets ${p} and ${q} was the same router.`;
+      case "route.crossed_router": {
+        const r = router(s.router || { ref: params.routerId, form: "router_name" });
+        return params.crossed ? `Packet ${p} had already gone through the router ${r}.`
+          : `Packet ${p} had not reached the router ${r} yet.`;
+      }
+      case "route.last_entry":
+      case "route.next_entry": {
+        const how = params.entry === "summary" ? "using an entry that groups several networks" : "using its default route";
+        if (c.type === "route.last_entry") return `The last router packet ${p} had crossed had forwarded it ${how}.`;
+        if (params.entry === "direct") return `The next router packet ${p} was going to cross would deliver it directly to its destination.`;
+        return `The next router packet ${p} was going to cross would forward it ${how}.`;
+      }
       case "endpoint.in_origin_network":
         return mac ? `The frame carrying packet ${p} had been sent by its own source device.`
           : `Packet ${p} had not left its source network yet.`;
@@ -277,6 +305,8 @@
       origin: "Source",
       destination: "Destination",
       ttlInitial: "Initial TTL",
+      destinationIp: "Destination IP",
+      tablesNote: "Routing tables decide the route: the device sends the packet to its network's default gateway, and each router sends it to the next hop given by its table. Tap a router to see its table.",
       endpoint: ({ label, net }) => `${label} in ${net}`,
       broadcastTo: ({ address }) => `broadcast (${address})`,
       originTag: "source",
@@ -345,6 +375,16 @@
         const where = networks.length === 1 ? networks[0] : `${networks.slice(0, -1).join(", ")} or ${networks[networks.length - 1]}`;
         return `The initial TTL of packet ${packet} is ${ttl}. Each router takes 1 off it, and the one that brings it to 0 drops it: ${crossed}, so it does not reach ${where}. The highlighted cells are ruled out for ${packet}.`;
       },
+      // Routing tables: the tables give the route, and the lookups that decide it are explained.
+      routeTables: ({ packet, route, networks, lookups }) => {
+        const where = networks.length === 1 ? networks[0] : `${networks.slice(0, -1).join(", ")} or ${networks[networks.length - 1]}`;
+        const path = route.length === 1 ? `Packet ${packet} does not leave ${route[0]}.`
+          : `According to the routing tables, packet ${packet} goes ${route.join(" → ")}.`;
+        const why = lookups.length ? ` ${lookups.join(" ")}` : "";
+        return `${path}${why} It can only be in a network on its route, and it does not go through ${where}: the highlighted cells are ruled out for ${packet}.`;
+      },
+      lookupGateway: ({ net, gw }) => `Its source device sends it to the default gateway of ${net}, ${gw}.`,
+      lookup: lookupText,
       relationFixed: ({ packet, other }) => `A clue links packets ${packet} and ${other}. With what you already know about ${other}, the highlighted cells do not fit the clue: they are ruled out for ${packet}.`,
       relationOpen: ({ packet, other }) => `A clue links packets ${packet} and ${other}. Although ${other} still has several possibilities, none of them fits the clue with ${packet} in the highlighted cells: they are ruled out for ${packet}.`,
       relationEnds: ({ packet, other }) => `A clue links packets ${packet} and ${other}. With what you already know about ${other}, rule out some of the possible networks of the hidden source or destination of ${packet}.`,
@@ -412,15 +452,26 @@
     // Training: exercises for each clue and each rule (see generator/netdoku_gen/training.py).
     // Reasons explain why a cell is not valid; facts explain how the step is solved. They get
     // networks, devices and routers already by name.
+    // Routing tables: a router's table (opens when you tap it).
+    tables: {
+      title: ({ router }) => `Router ${router}`,
+      destination: "Destination",
+      nextHop: "Next hop",
+      direct: "direct",
+      default: "default",
+      gatewayOf: ({ gw }) => `gateway ${gw}`,
+    },
+
     train: {
       title: "Train",
       intro: "Short exercises to learn each clue and each rule: a small board with one packet to decide and, when needed, others already placed. Tap the cells the exercise asks for; if you pick one that is not valid, you will see why. Mistakes do not count.",
-      categories: { rules: "Game rules", inicial: "Getting started", direccionamiento: "Addressing", encaminamiento: "Routing" },
+      categories: { rules: "Game rules", inicial: "Getting started", direccionamiento: "Addressing", encaminamiento: "Routing", enrutamiento: "Routing tables" },
       categoryIntro: {
         rules: "What holds in every level: at most one packet per row and per column, and which cells are next to a device.",
         inicial: "The clues of the Getting started category: networks, devices, routers, rows and columns.",
         direccionamiento: "Networks and devices named by their addresses: prefixes, masks, sizes, special addresses and private networks.",
         encaminamiento: "Routes and TTL: where each packet goes, how far it gets, the frames of each hop and hidden endpoints.",
+        enrutamiento: "Routing tables: the default gateway, the next hop, the default route, longest prefix match and the clues about them.",
       },
       progress: ({ done, total }) => `✓ ${done}/${total}`,
       openHelp: "Open the help card",
@@ -524,6 +575,19 @@
         "enc.more_routers": "More routers than another packet",
         "enc.higher_ttl": "A higher TTL than another packet",
         "enc.closer": "Closer to its destination than another packet",
+        "tab.route": "Following the route through the tables",
+        "tab.gateway": "A tie at the default gateway",
+        "tab.next_hop_ip": "Next hop written as an IP",
+        "tab.default": "Default route",
+        "tab.longest": "Longest prefix match",
+        "tab.crossed_router": "«It had already gone through the router…»",
+        "tab.last_entry": "Entry used by the last router",
+        "tab.next_entry": "«It would deliver it directly»",
+        "tab.same_next_hop": "The same next hop",
+        "tab.gateway_form": "Router named as a default gateway",
+        "tab.next_hop_form": "Router named by a lookup",
+        "tab.next_hop_network": "Network named by a lookup",
+        "tab.router_side": "Network shared by two routers",
       },
       reasons: {
         rowTaken: ({ r, packet }) => `Packet ${packet} is already in row ${r}, and there is room for only one packet per row.`,
@@ -563,9 +627,30 @@
         relCrossed: ({ packet, other, k, otherK }) => `Here packet ${packet} would have crossed ${routers0(k)}, and ${other} has crossed ${routers0(otherK)}.`,
         relTtl: ({ packet, other, ttl, otherTtl }) => `Here packet ${packet} would carry TTL ${ttl}, and ${other} carries TTL ${otherTtl}.`,
         relLeft: ({ packet, other, l, otherL }) => `Here packet ${packet} would have ${routers0(l)} left, and ${other} has ${routers0(otherL)} left.`,
+        // Routing tables.
+        routeRouterSide: ({ packet, net, at, passed }) => (passed ? `In ${net}, packet ${packet} would already have gone through ${at}.`
+          : `In ${net}, packet ${packet} would not have reached ${at} yet.`),
+        entryNone: ({ packet, net, which }) => (which === "last" ? `In ${net}, packet ${packet} would not have crossed any router yet.`
+          : `In ${net}, packet ${packet} would already be in its destination network: it would have no routers left.`),
+        entryAt: ({ net, at, entry, which }) => (which === "last" ? `In ${net}, the last router would have been ${at}, which uses ${ENTRY[entry]} for this destination.`
+          : `From ${net}, the next router would be ${at}, which uses ${ENTRY[entry]} for this destination.`),
+        relHop: ({ packet, other, net, hop, otherHop }) => (hop ? `In ${net}, the next hop of packet ${packet} would be ${hop}, and that of ${other} is ${otherHop}.`
+          : `In ${net}, packet ${packet} would already be in its destination network: it would have no next hop.`),
       },
       facts: {
         route: ({ packet, route, ttl, reach, full }) => `Route of packet ${packet}: ${route.join(" → ")}. With initial TTL ${ttl} it can cross ${routers0(ttl - 1)}: ${full ? "it reaches its destination network" : `it only gets as far as ${reach}`}.`,
+        // Routing tables: the tables give the route.
+        tableRoute: ({ packet, route, ttl, reach, full }) => `According to the routing tables, the route of packet ${packet} is ${route.join(" → ")}. With initial TTL ${ttl} it can cross ${routers0(ttl - 1)}: ${full ? "it reaches its destination network" : `it only gets as far as ${reach}`}.`,
+        tableGateway: ({ net, gw }) => `Its source device sends it to the default gateway of ${net}, ${gw}: that is where the route starts, even if another router of the network were as close to the destination or closer.`,
+        tableLookup: lookupText,
+        crossedRouter: ({ packet, at, crossed, nets }) => (crossed ? `If it had already gone through ${at}, packet ${packet} is in a network of its route after ${at} that its TTL reaches: ${join(nets)}.`
+          : `If it had not reached ${at} yet, packet ${packet} is in a network of its route before ${at}: ${join(nets)}.`),
+        entryClasses: ({ which, nets, ats, entries }) => `${which === "last" ? "Router through which the packet enters each network of its route" : "Next router from each network of its route"} and the entry it uses for its destination: ${nets.map((n, i) => `${n}, ${ats[i]} (${ENTRY[entries[i]]})`).join("; ")}.`,
+        pHop: ({ other, net, hop }) => `Packet ${other} is in ${net}: its next hop is ${hop}.`,
+        fGateway: ({ net, via, gw }) => `The legend says the default gateway of ${net} is ${gw}${gw !== via ? `, the router ${via}` : ""}.`,
+        fNextHop: (v) => `${lookupText(v)}${v.hop !== v.via ? ` That address belongs to the router ${v.via}.` : ""}`,
+        fNextHopNet: (v) => `${lookupText(v)} The network ${v.at} shares with ${v.via} is ${v.net}.`,
+        fRouterSide: ({ a, b, net }) => `${a} and ${b} share only one network: ${net}.`,
         broadcastRoute: ({ packet, net, address }) => `Packet ${packet} goes to the broadcast address ${address}: it does not leave ${net}, because routers do not forward broadcasts.`,
         hiddenAlt: ({ end, net, route, reach, full }) => `If its ${endWord(end)} was in ${net}: route ${route.join(" → ")}; ${full ? "it reaches its destination network" : `with its TTL it only gets as far as ${reach}`}.`,
         nets: ({ packet, nets }) => `So packet ${packet} can be in any free cell of ${join(nets)}.`,
@@ -901,6 +986,69 @@
           ],
           caption: "«It had already crossed some router»: any network on its route except the source one.",
         },
+        routing_table: {
+          chip: "Routing table",
+          title: "A router's routing table",
+          text: [
+            "Tap a router (or hover over it) to see its table. At the top are its interfaces: the network and the IP it has on each one. Below are its entries: a destination (a network with its prefix, such as 10.2.4.0/24) and the next hop.",
+            "To find where a packet goes next, the router looks up the packet's destination IP, shown on its card, in its table. If it belongs to one of its own networks («direct»), it delivers the packet to its destination device. Otherwise, it sends it to the next-hop router, over the network they share.",
+            "A packet's route is the one given by the tables: the default gateway of its source network and, from there, each router's next hop. The tables are computed by counting routers, as RIP does, but when there are two equally short paths the map is not enough: only the table says which one is used, and the way there and the way back may differ.",
+            "In class, tables also have an outgoing interface column. It is left out here because it changes nothing: it is the router's interface on the network it shares with the next hop or, for direct delivery, the one on the destination network.",
+          ],
+        },
+        gateway: {
+          chip: "Default gateway",
+          title: "The default gateway",
+          text: [
+            "A device sends traffic for its own network directly. Everything else goes to its default gateway, a router in its network. The legend shows the default gateway of each network.",
+            "If the network has several routers, the first router on the route is always the default gateway, even if the path through another router of the network were just as short, or even shorter.",
+            "A clue can name a router like this: «the router that is the default gateway of Classrooms».",
+          ],
+        },
+        next_hop: {
+          chip: "Next hop",
+          title: "The next hop",
+          text: [
+            "The next hop of an entry is the neighbouring router the packet is sent to. It is written with its name (R5) or, as in class, with the IP of its interface on the network they share (for example, 10.1.3.2). To find which router it is, look for the router of that network that has that address: each router's interfaces are shown above its table.",
+            "Some clues name a router or a network by a lookup: «the router to which R2 sends what goes to 10.2.4.9» is the next hop R2's table gives for that address, and «the network on which R2 sends what goes to 10.2.4.9» is the network R2 shares with that router. The address can be any address of a network, or the network itself: the lookup gives the same result.",
+            "Also: «the router R3», by its name, and «the network shared by R2 and R5».",
+          ],
+        },
+        default_route: {
+          chip: "Default route",
+          title: "The default route",
+          text: [
+            "The default entry (0.0.0.0/0) matches any address. The router uses it when the destination IP matches no other entry in its table.",
+            "This keeps the table short: it only needs one entry for each network that goes somewhere other than the default route.",
+          ],
+        },
+        longest_prefix: {
+          chip: "Longest prefix match",
+          title: "Entries that group networks and longest prefix match",
+          text: [
+            "An entry can group several networks whose addresses start the same way: 10.2.0.0/16 includes every address starting with 10.2, such as those of 10.2.4.0/24 and 10.2.9.0/24. In this category, neighbouring networks usually share a block like that, as in hierarchical routing.",
+            "To check whether an IP is in an entry, compare the bits its prefix covers: with /16, the first two octets; with /20, the first two and the first four bits of the third (10.2.37.5 is in 10.2.32.0/20, which goes from 10.2.32.0 to 10.2.47.255).",
+            "If several entries contain the destination IP, the longest one (the largest prefix) wins, because it is the most specific: with 10.2.0.0/16 → R5 and 10.2.4.0/24 → R6, a packet for 10.2.4.9 goes to R6 and one for 10.2.9.1 goes to R5. The default route is the shortest of all (/0): it only wins if nothing else matches.",
+          ],
+        },
+        crossed_router: {
+          chip: "A router on the route",
+          title: "Clues about a router on the route",
+          text: [
+            "«Packet A had already gone through the router R3»: R3 is on its route and the packet has crossed it, so it is in a network of its route after R3. «Packet A had not reached the router R3 yet»: it is in a network of its route before R3.",
+            "First trace its route with the tables to see where R3 is on it.",
+          ],
+          caption: "It had already gone through the first router",
+        },
+        table_entry: {
+          chip: "Entry used",
+          title: "Clues about the entry a router uses",
+          text: [
+            "«The last router packet A had crossed had forwarded it using its default route»: for each network on its route, check which entry the router it came in through used for the packet's destination. The packet is in the networks where that was the default route.",
+            "«… using an entry that groups several networks»: the same, with an entry that is neither a single network nor the default route.",
+            "«The next router packet A was going to cross would deliver it directly to its destination»: the packet is in the network of its route just before the destination network.",
+          ],
+        },
         route_relation: {
           chip: "Routes of two packets",
           title: "Clues comparing two packets",
@@ -908,6 +1056,7 @@
             "«Packet A had crossed more routers than packet B»: count the routers each one has crossed since its source. «At that moment, packet A had a higher TTL than packet B»: compare their current TTLs (initial TTL − routers crossed).",
             "«Packet A had fewer routers left than packet B to reach its destination network»: compare how many routers each one still has to cross.",
             "«Packets A and B had left from the same network» or «were going to the same network»: they appear when the source or the destination of one of them is hidden.",
+            "«The next hop of packets A and B was the same router» (Routing tables): the next router on both routes is the same; a packet already in its destination network has no next hop.",
             "Like the other clues about two packets, they appear on both cards and rule out cells even before either packet is placed.",
           ],
         },
@@ -968,6 +1117,20 @@
           "**Broadcast** (for example, the DHCP request of a device that has no address yet) goes to every device in a network, but routers do not forward it: a broadcast packet does not leave its source network.",
         ],
         rules: ["route_trace", "ttl", "frames", "corner_router", "hidden_endpoint", "route_position", "route_router", "ttl_count", "route_relation"],
+      },
+      enrutamiento: {
+        name: "Routing tables",
+        short: "Routing tables: follow the route the routers choose with their tables, from the default gateway to the destination.",
+        theory: [
+          "In Routing, a packet's route was the path with the fewest routers. In a real network, each router decides on its own with its **routing table**: a list of destinations (networks, with their prefix) and, for each one, the **next hop**, the neighbouring router the packet must be sent to. If the destination is in one of its own networks, delivery is **direct**.",
+          "A device only knows its own network: everything for another network goes to its **default gateway**, a router in its network. From there, each router looks up the packet's **destination IP** in its table and sends it to the next hop, until it reaches the router that delivers it directly.",
+          "The tables are computed by counting routers, as RIP does, so the route is usually one of the shortest paths. But when there are **several equally short paths**, only the table says which one is used, and the way there and the way back may differ. That is why you have to read the tables here: the route cannot always be seen on the map.",
+          "The **default route** (default, 0.0.0.0/0) matches any address: it is used when no other entry matches. This way the table does not need an entry for every network.",
+          "An entry can **group several networks** whose addresses start the same way: for example, 10.2.0.0/16 includes 10.2.4.0/24 and 10.2.9.0/24. If several entries contain the destination IP, the **longest** one (the largest prefix) wins, because it is the most specific: this is the **longest prefix match**.",
+          "The next hop is written with the router's name or, as in class, with the **IP of its interface** on the network they share. In class, tables also show the **outgoing interface**; it is not needed here, because it is the router's interface on the next hop's network.",
+          "Everything else works as in Routing: TTL, the frames of each hop, broadcasts, transit networks and hidden endpoints.",
+        ],
+        rules: ["routing_table", "gateway", "next_hop", "default_route", "longest_prefix", "route_trace", "ttl", "crossed_router", "table_entry", "route_relation"],
       },
     },
 

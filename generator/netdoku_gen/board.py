@@ -5,7 +5,7 @@ Coordenadas internas (fila, columna) con origen 0; se pasan a base 1 al exportar
 
 from dataclasses import dataclass, field
 
-from .addressing import make_prefixes
+from .addressing import ZONE_PLANS, make_prefixes, make_zone_prefixes
 
 # Clave de cada nombre de red (la usa el motor para traducirlo) y nombre en español.
 NETWORK_NAMES = {
@@ -50,6 +50,7 @@ class Board:
     grid: list                       # grid[r][c] -> id de red
     networks: list
     routers: list = field(default_factory=list)
+    zones: list = None               # planes por zonas (v0.5): [(bloque, [redes])]
 
     def network_of(self, cell):
         return self.grid[cell[0]][cell[1]]
@@ -116,7 +117,7 @@ def _corners(board):
     return result
 
 
-def place_routers(rng, board, extra_router_prob=0.3, degree_weights=None, max_corner=0):
+def place_routers(rng, board, extra_router_prob=0.3, degree_weights=None, max_corner=0, cycles=None):
     """Routers sobre la frontera entre redes vecinas.
 
     Primero, si se piden (`max_corner`), routers de tres o cuatro redes en una
@@ -177,7 +178,13 @@ def place_routers(rng, board, extra_router_prob=0.3, degree_weights=None, max_co
             parent[ra] = rb
             chosen.append((a, b))
     leftovers = [p for p in pairs if p not in chosen and not any(set(p) <= set(nets) for nets in corner_nets)]
-    if leftovers and rng.random() < extra_router_prob:
+    if cycles:
+        # Tabla de enrutamiento (topology.cycles): entre `cycles[0]` y `cycles[1]` routers de más.
+        count = rng.randint(*cycles)
+        if len(leftovers) < count:
+            raise RuntimeError("No hay pares de redes vecinas para cerrar ciclos")
+        chosen += rng.sample(leftovers, count)
+    elif leftovers and rng.random() < extra_router_prob:
         chosen.append(rng.choice(leftovers))
 
     for a, b in chosen:
@@ -191,11 +198,14 @@ def place_routers(rng, board, extra_router_prob=0.3, degree_weights=None, max_co
 
 
 def generate_board(rng, height=6, width=6, network_count=4, min_size=6, plan="octet_subnets",
-                   degree_weights=None, max_corner=0, privacy_mix=False):
+                   degree_weights=None, max_corner=0, privacy_mix=False, cycles=None, zone_counts=(2, 3)):
     """Tablero con sus redes y routers. `board.prefixes` guarda los prefijos como IPv4Network."""
+    # Con un plan por zonas (octet_zones, bit_zones; v0.5), los prefijos se reparten después de
+    # colocar los routers, porque cada zona es un grupo conexo de redes.
     grid_idx, regions = grow_regions(rng, height, width, network_count, min_size)
     keys = rng.sample(list(NETWORK_NAMES), network_count)
-    prefixes = make_prefixes(rng, network_count, plan, privacy_mix)
+    zoned = plan in ZONE_PLANS
+    prefixes = [None] * network_count if zoned else make_prefixes(rng, network_count, plan, privacy_mix)
     # Identificadores por orden de lectura para que sean predecibles en el tablero.
     order = sorted(range(network_count), key=lambda i: min(regions[i]))
     ids = {old: f"net{new + 1}" for new, old in enumerate(order)}
@@ -205,5 +215,13 @@ def generate_board(rng, height=6, width=6, network_count=4, min_size=6, plan="oc
     grid = [[ids[v] for v in row] for row in grid_idx]
     board = Board(height=height, width=width, grid=grid, networks=networks)
     board.prefixes = {ids[i]: prefixes[k] for k, i in enumerate(order)}
-    board.routers = place_routers(rng, board, degree_weights=degree_weights, max_corner=max_corner)
+    board.routers = place_routers(rng, board, degree_weights=degree_weights, max_corner=max_corner, cycles=cycles)
+    if zoned:
+        adjacency = {n.id: set() for n in networks}
+        for r in board.routers:
+            for a in r.networks:
+                adjacency[a].update(x for x in r.networks if x != a)
+        board.prefixes, board.zones = make_zone_prefixes(rng, adjacency, plan, zone_counts)
+        for n in networks:
+            n.prefix = str(board.prefixes[n.id])
     return board

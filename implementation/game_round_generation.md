@@ -362,7 +362,7 @@ Primera versión de las rutas, pensada para que el jugador las trace sin tablas 
 6. Pistas, selección, validación y dificultad, como ahora. Las pistas de ruta y TTL pesan más que las demás, y cada nivel debe tener al menos tres (`clues.categoryMinClues`), para que la categoría se note. Mientras se eligen las pistas de los demás paquetes no cuenta la ruta de la víctima, que se sigue deduciendo al final.
 7. Formas de nombrar: como en Direccionamiento, con la misma dificultad de interpretación por dificultad global, pero sin exigir formas de la categoría (la categoría la dan las pistas de ruta y TTL) y con `clues.naming.categoryFormRatio` entre 0,2 y 0,5.
 
-Las tablas de encaminamiento todavía no se calculan: llegan con la v0.5.
+Las tablas de encaminamiento todavía no se calculan: llegan con la v0.5, en otra categoría (véase su [implementación](#implementación-en-la-v05-categoría-tabla-de-enrutamiento)).
 
 **Lo que no entra en la v0.4:** pistas relacionales entre dos paquetes, orígenes o destinos ocultos (y deducir la IP de cada equipo), routers de grado 3 o 4, rutas con empates (exigen tablas) y `hostGateway: default_gateway`. Las pistas relacionales, los extremos ocultos y los routers de grado 3 o 4 llegan en la [v0.4.5](#implementación-en-la-v045).
 
@@ -435,6 +435,79 @@ Como las demás formas con coste, `privacy` y `label_privacy` solo van en pistas
 **Medidas.** Inicial y Direccionamiento tardan lo mismo que en la v0.4. Un nivel de Encaminamiento tarda unos 26 s (antes, 20): los routers de esquina acortan las rutas y duplican los intentos en los que las pistas no bastan.
 
 **Generación de los lotes.** Unos 25 × 5 × 3 = 375 niveles nuevos (`generate.py --pool 100 --novelties`). Inicial 5 tarda unos 100 s por nivel y, en este equipo, Claude Code corta las tareas largas en segundo plano por falta de memoria, así que conviene lanzarla en primer plano con `--workers 1` o desde la terminal con `!`. `levels/test.json` se rehace después con `test_set.py --write`, que debe cubrir también los subtipos y novedades nuevos.
+
+#### Implementación en la v0.5 (categoría Tabla de enrutamiento)
+
+El modelo de las tablas, los costes de interpretación y las pistas nuevas están en el [catálogo de reglas](netdoku_catalogo_reglas.md#tabla-de-enrutamiento-v05). Es una categoría nueva (id `enrutamiento`, bloque `T3.encaminamiento`), después de Encaminamiento en el menú. Encaminamiento no cambia: sigue con caminos mínimos únicos y sin tablas.
+
+**Tablero.** El de Encaminamiento (7×7, 7 paquetes, red de tránsito con probabilidad 0,5, routers de esquina), pero siempre con 6 redes y con dos o tres routers de dos redes que cierran ciclos sobre el árbol generador (`topology.cycles`), porque los empates son los que hacen falta para que las tablas importen. Medido con 60 tableros: con 6 redes y dos routers de más, el 98 % tiene algún par de redes con dos caminos mínimos (5,2 de los 30 pares ordenados, de media); con uno de más, el 73 % (3,6). Con 5 redes y uno de más, el 79 % (3,1 de 20).
+
+**Orden de la generación:**
+
+1. Tablero, routers y equipos, como en Encaminamiento, con los routers de más.
+2. **Puertas de enlace:** en cada red con varios routers se sortea uno (`routes.tables.hostGateway: default_gateway`). Las redes de tránsito no tienen, porque no tienen equipos.
+3. **Plan de direcciones**, según la interpretación buscada (tabla de abajo). Para las tablas con resúmenes hay dos planes nuevos por zonas (`octet_zones` y `bit_zones`), que reparten los prefijos después de colocar los routers, porque las zonas siguen la vecindad entre redes.
+4. **Siguientes saltos:** para cada red de destino `X`, un recorrido en anchura desde `X` da la distancia en routers de cada router, y el siguiente salto de cada router hacia `X` es un vecino a una unidad menos. Los empates se deciden al azar una sola vez por router y red de destino (`routes.tables.tieBreak: random`), sin mirar las zonas: con dos o tres zonas, la mayoría de las tablas `summary` ya pueden resumir alguna.
+5. **Posiciones de los paquetes**, como en Encaminamiento.
+6. **Origen y destino de cada paquete**, como en Encaminamiento, pero la ruta es la de las tablas: la puerta de enlace de la red de origen y, desde ella, los siguientes saltos hasta el router que entrega directamente. Se descartan los pares cuya ruta pasa dos veces por la misma red. Ya no se exige un camino mínimo único (`routes.requireUniqueShortestPath: false`); al contrario, mientras falten rutas que exigen las tablas hasta `routes.tables.minRequiredRoutes` (2), los pares cuya ruta las exige pesan `routes.tables.requiredRouteWeight` (4) veces más. Una ruta exige las tablas si en su parte alcanzable (`r0 … rK`) no es el único camino mínimo: el TTL puede acabar con el paquete antes del empate, y entonces no importa.
+7. TTL inicial y `Alcanzables(m)`, como en Encaminamiento.
+8. **Escritura de las tablas** según su estilo (`routes.tables.style`; véase más abajo). Si alguna tiene más de `routes.tables.maxEntries` (6) entradas, se sortean otras. En la implementación, los pasos 4 y 8 van antes del 5: con las tablas ya escritas se sabe qué cuesta cada ruta, y en las interpretaciones 4 y 5 se exigen pares cuya consulta decisiva cueste al menos 2 o 3 (coincidencia más larga o máscaras que no acaban en un octeto); si no hay, se sortean otras tablas (hasta 20 veces) antes de repetir el intento. Esos pares son los que se prefieren al elegir origen y destino en el paso 6.
+9. Pistas, selección, validación y dificultad lógica, como en Encaminamiento, con los subtipos nuevos.
+10. **Tablas imprescindibles** (`level.tables_needed`): a cada paquete cuya ruta exige las tablas se le añaden a `Alcanzables(m)` las casillas de todas las redes alcanzables de cualquier camino mínimo entre su red de origen y la de destino. Cada camino es una hipótesis, un estado `(f, c, "pN")` como los de un extremo oculto; las pistas del paquete se recalculan con todas y, al final, se pasan a casillas: una casilla vale si la pista es verdadera en ella con algún camino. Las pistas entre dos paquetes cuyo valor en una casilla depende del camino se quitan, porque sin las tablas no dicen nada seguro. Si con eso el nivel se sigue resolviendo con la misma dificultad lógica o con una menor, las tablas no hacían falta y se repite el intento; si ya no se resuelve, o la evaluación falla, sí hacían falta. Es la misma idea que la del cálculo imprescindible de las formas de nombrar (`rules.uncalculated`), aplicada a las rutas.
+11. **Interpretación:** el coste de cada ruta que exige las tablas (el de su consulta más cara entre las que deciden un empate) entra en la escala como una pista más, junto a las formas de nombrar (`naming.assign(fixed_costs=…)`). La selección de pistas favorece las de los paquetes con esas rutas (`Selector(boost_packets=…)`), para que la ruta llegue a importar.
+
+**Interpretación buscada.** Como en Direccionamiento, la dificultad global buscada fija una interpretación (`READING_FOR_TARGET`), y con ella se eligen el estilo de las tablas, cómo se escribe el siguiente salto y el plan de direcciones:
+
+| Interpretación | Tablas (`routes.tables.style`) | Siguiente salto (`routes.tables.nextHop`) | Plan de direcciones |
+|---|---|---|---|
+| 1 | `full` | nombre | `distinct` u `octet_subnets` |
+| 2 | `full` o `default` | nombre o IP | `distinct` u `octet_subnets` |
+| 3 | `default` o `summary` | IP | `octet_zones` |
+| 4 | `summary` | IP | `octet_zones` o `bit_zones` |
+| 5 | `summary` | IP | `bit_zones` |
+
+Para que la dificultad de la categoría venga de las tablas, las rutas tienen que dar por sí solas al menos la interpretación buscada menos uno; las formas de nombrar pueden subirla un punto más. Si no se llega, se repite el intento.
+
+**Planes por zonas.** Se reparte el grafo de redes en dos o tres zonas conexas (`addressing.zones.count`) y cada zona recibe un bloque, del que salen las redes de esa zona, como en el encaminamiento jerárquico de la clase 12:
+
+- `octet_zones`: bloques /16 dentro de 10.0.0.0/8 (10.1.0.0/16, 10.2.0.0/16…) y redes /24 dentro de ellos. Todas las máscaras acaban en un octeto: la coincidencia más larga se ve comparando octetos. Coste C de las formas de direcciones: 1, como `octet_subnets`.
+- `bit_zones`: bloques cuya máscara no acaba en un octeto (172.16.0.0/20 y 172.16.16.0/20 con redes /24, o 192.168.1.0/25 y 192.168.1.128/25 con redes /27). Hay que comparar en binario. Coste C: 2, como `bit_subnets`, con el punto de más cerca del límite.
+
+**Escritura de las tablas.** Para cada router, con el siguiente salto de cada red del nivel ya calculado:
+
+- `full`: entrega directa en sus redes y una entrada por cada una de las demás.
+- `default`: la ruta por defecto va hacia el siguiente salto más usado (los empates, al azar), y solo llevan entrada propia las redes que van por otro sitio.
+- `summary`: en cada zona con al menos dos redes (sin contar las del propio router) que van por el mismo siguiente salto, una entrada con el bloque de la zona hacia el siguiente salto más usado entre ellas; las redes de la zona que van por otro sitio mantienen su entrada, más específica, y las del propio router, su entrega directa. La ruta por defecto va al siguiente salto más usado entre las redes que no cubre ningún resumen, y las demás llevan su entrada. Se resume aunque la tabla no quede más corta: lo que se busca es que haya que aplicar la coincidencia más larga.
+
+En los tres casos se comprueba que la coincidencia más larga da, para cada red del nivel, el siguiente salto calculado.
+
+**Formato del nivel.** Un bloque nuevo `routing` y, en la ruta de cada paquete, los routers donde las tablas deciden un empate (`"gateway"` si es la puerta de enlace; vacío si la ruta no exige las tablas), que usan las sugerencias y el entrenamiento:
+
+```json
+"routing": {
+  "tableStyle": "summary",
+  "nextHop": "ip",
+  "gateways": {"net1": "R2", "net3": "R4"},
+  "tables": {
+    "R1": [{"prefix": "10.1.1.0/24", "direct": true},
+           {"prefix": "10.2.0.0/16", "via": "R5"},
+           {"prefix": "10.2.4.0/24", "via": "R6"},
+           {"prefix": "0.0.0.0/0", "via": "R3"}]
+  }
+},
+...
+"route": {"networks": ["net1", "net3", "net2"], "routers": ["R2", "R4"], "tableDecisions": ["gateway", "R4"]}
+```
+
+Las interfaces de cada router ya están en el nivel (`routers[].interfaces`) y la IP de cada equipo, en `nodes[].ip`. El motor calcula la coincidencia más larga a partir de `tables`, sin más datos.
+
+**Motor.** Nombre de cada router (R1, R2…) junto a él; panel con su tabla (sus interfaces encima, dos columnas: destino y siguiente salto) al tocarlo o al pasar el ratón; puerta de enlace en la leyenda de cada red; IP de destino en la ficha del paquete. Las sugerencias cambian el paso `route`: en lugar de «va por el camino con menos routers», sigue las tablas y explica cada consulta que decide un empate («R2 busca 10.2.4.9 en su tabla: coinciden 10.2.0.0/16 y 10.2.4.0/24, y gana la /24, que lo envía a R6»); `netdoku.js` calcula la coincidencia más larga (`lookup`) con `routing.tables`, y `hints.js` no cambia: el paso `route` ya sale de la ruta del nivel. Fichas de ayuda nuevas y teoría de la categoría (`categories.enrutamiento`), con sus textos en cada idioma.
+
+**Entrenamiento.** Un perfil de tablero propio en `training.PROFILES` (`table`: 6×6 con 4 o 5 redes y uno o dos routers de más, para que haya empates en poco espacio) y 13 variantes (`tab.*`). Cinco son para la regla implícita: el ejercicio pide dónde puede estar el paquete solo con su ruta (seguir la ruta por las tablas con un empate en un router, empate en la puerta de enlace, siguiente salto escrito con su IP, ruta por defecto y coincidencia más larga, esta con planes por zonas; `Variant.tables` fija el estilo y qué tiene que decidir la ruta, que comprueba `training._table_need`). Otra para cada subtipo nuevo (`crossed_router`, `last_entry`, `next_entry` con la entrega directa y `same_next_hop`) y otra para cada forma nueva (`gateway`, `next_hop`, `next_hop_network` y `router_side`). La explicación da la ruta según las tablas y cada consulta que la decide; el motor compone la consulta con la IP de destino de la ficha.
+
+**Desactivación.** `feature:routingTables` quita la categoría entera (el generador no la genera, `generate.py --index` deja fuera sus niveles y sus ejercicios, y el motor oculta la categoría, sus fichas y su teoría); `feature:tableDefault`, `feature:tableSummary` y `feature:nextHopIp` limitan los estilos de tabla y la forma del siguiente salto, y la tabla de interpretación se recorta a lo que quede (sin resúmenes, la interpretación 5 no se puede buscar y `--pool` lo avisa).
+
+**Lotes.** 75 niveles por dificultad (375), con `--category enrutamiento` y semillas desde 4 000 000 (más 10 000 por dificultad). Con 7 procesos, un nivel cuesta de media unos 20 s en las dificultades 1, 2, 4 y 5 y unos 40 s en la 3, la que menos intentos acierta (alrededor de uno de cada 40: las pistas no bastan, ninguna selección da la dificultad o las tablas no hacen falta). Muchas semillas fallan sus 100 intentos, así que `--pool` sigue tras la semilla más alta del lote en lugar de volver a probar las que faltan por debajo. `levels/test.json` añade niveles de la categoría para cubrir cada subtipo, forma, plan y estilo de tabla (`test_set.py`).
 
 ### 6. Validación de la solución
 
@@ -655,7 +728,7 @@ La **dificultad global** es la mayor de las dos, más un punto si ambas son 3 o 
 
 Los niveles se organizan en **categoría → dificultad → nivel**:
 
-1. **Categoría:** el conocimiento que exige el nivel, es decir, el bloque temático más alto entre los de sus pistas y formas de nombrar (`requirements.topic`). Son acumulativas: un nivel de una categoría puede usar todo lo de las anteriores. Por ejemplo: Inicial (`T3.dispositivos`, sin conocimientos previos), Direccionamiento (`T3.ip` a `T3.vlsm`), Encaminamiento, Transporte y aplicación (`T4` a `T6`). Encaminamiento (v0.4) es la excepción: no la define un bloque sino que los paquetes tengan ruta, porque el TTL y los routers atravesados se ven en la clase 10, antes que las máscaras; las tablas de encaminamiento (`T3.encaminamiento`, previstas para la v0.5) se añadirán después. Sus niveles van después de Direccionamiento en el menú y pueden usar sus formas de nombrar (hasta `T3.vlsm`); las más fáciles solo exigen `T3.ip`, y `requirements.topic` dice siempre lo que exige cada nivel.
+1. **Categoría:** el conocimiento que exige el nivel, es decir, el bloque temático más alto entre los de sus pistas y formas de nombrar (`requirements.topic`). Son acumulativas: un nivel de una categoría puede usar todo lo de las anteriores. Por ejemplo: Inicial (`T3.dispositivos`, sin conocimientos previos), Direccionamiento (`T3.ip` a `T3.vlsm`), Encaminamiento, Transporte y aplicación (`T4` a `T6`). Encaminamiento (v0.4) es la excepción: no la define un bloque sino que los paquetes tengan ruta, porque el TTL y los routers atravesados se ven en la clase 10, antes que las máscaras; las tablas de encaminamiento (`T3.encaminamiento`) tienen su propia categoría, [Tabla de enrutamiento](#implementación-en-la-v05-categoría-tabla-de-enrutamiento) (v0.5), que va después en el menú. Sus niveles van después de Direccionamiento en el menú y pueden usar sus formas de nombrar (hasta `T3.vlsm`); las más fáciles solo exigen `T3.ip`, y `requirements.topic` dice siempre lo que exige cada nivel.
 2. **Dificultad:** la global, de 1 a 5, a partir de la lógica y la de interpretación.
 3. **Nivel:** varios por cada combinación, elegidos de un lote grande generado.
 

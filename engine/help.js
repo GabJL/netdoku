@@ -234,6 +234,18 @@
       id: "route_relation",
       category: "clues",
     },
+    // Tabla de enrutamiento (v0.5).
+    { id: "routing_table", category: "rules" },
+    { id: "gateway", category: "rules" },
+    { id: "next_hop", category: "rules" },
+    { id: "default_route", category: "rules" },
+    { id: "longest_prefix", category: "rules" },
+    {
+      id: "crossed_router",
+      category: "clues",
+      mini: { ...ROUTE_MINI, ok: [...ROUTE_B, ...ROUTE_C] },
+    },
+    { id: "table_entry", category: "clues" },
     {
       id: "icons",
       category: "icons",
@@ -289,6 +301,10 @@
     "relation.closer_to_destination": "route_relation",
     "relation.same_origin": "route_relation",
     "relation.same_destination": "route_relation",
+    "relation.same_next_hop": "route_relation",
+    "route.crossed_router": "crossed_router",
+    "route.last_entry": "table_entry",
+    "route.next_entry": "table_entry",
   };
   const USES_ADJACENCY = new Set(["node.adjacent_to_node", "node.unique_adjacent_to_node", "node.not_adjacent_to_node"]);
   // Fichas de reglas que necesitan algunas formas de nombrar (clue.naming).
@@ -311,6 +327,9 @@
     size_compare: "network_size",
     privacy: "privacy",
     label_privacy: "privacy",
+    gateway: "gateway",
+    next_hop: "next_hop",
+    next_hop_network: "next_hop",
   };
   // Formas que nombran algo sin su nombre: explicadas en la ficha named_by_address.
   const ADDRESS_FORMS = new Set(["prefix", "size_rank", "ip_member", "label_prefix", "ip", "networks_prefix", "interfaces",
@@ -329,7 +348,14 @@
 
   let disabled = new Set();
   const ALWAYS = new Set(["how_to_play", "objective", "row_column", "icons", "route_trace", "ttl"]);
-  const REQUIRES = { corner_router: "feature:cornerRouter", hidden_endpoint: "feature:hiddenEndpoint" };
+  // Particularidades sin las que una ficha no sale nunca (todas deben estar activas).
+  const TABLES = "feature:routingTables";
+  const REQUIRES = {
+    corner_router: ["feature:cornerRouter"], hidden_endpoint: ["feature:hiddenEndpoint"],
+    routing_table: [TABLES], gateway: [TABLES], next_hop: [TABLES],
+    default_route: [TABLES, "feature:tableDefault"], longest_prefix: [TABLES, "feature:tableSummary"],
+    crossed_router: [TABLES], table_entry: [TABLES],
+  };
 
   function setDisabled(keys) {
     disabled = new Set(keys || []);
@@ -347,7 +373,7 @@
   function isEnabled(e) {
     const id = typeof e === "string" ? e : e.id;
     if (ALWAYS.has(id)) return true;
-    if (REQUIRES[id] && disabled.has(REQUIRES[id])) return false;
+    if ((REQUIRES[id] || []).some((k) => disabled.has(k))) return false;
     const keys = sources(id);
     return !keys.length || keys.some((k) => !disabled.has(k));
   }
@@ -361,6 +387,15 @@
     const ends = (p) => (p.origin && p.origin.hidden) || (p.destination && p.destination.hidden);
     if (((level.packets || {}).items || []).some(ends)) ids.add("hidden_endpoint");
     if ((level.routers || []).some((rt) => rt.position && rt.position.kind === "corner")) ids.add("corner_router");
+    // Tabla de enrutamiento: la tabla, la puerta de enlace y el siguiente salto; la ruta por
+    // defecto y la coincidencia más larga, si alguna tabla las tiene.
+    if (level.routing) {
+      ["routing_table", "gateway", "next_hop"].forEach((id) => ids.add(id));
+      const own = new Set((level.networks || []).map((n) => n.prefix));
+      const entries = Object.values(level.routing.tables || {}).flat();
+      if (entries.some((e) => e.prefix === "0.0.0.0/0")) ids.add("default_route");
+      if (entries.some((e) => e.prefix !== "0.0.0.0/0" && !own.has(e.prefix))) ids.add("longest_prefix");
+    }
     for (const clue of level.clues || []) {
       if (TYPE_TO_ENTRY[clue.type]) ids.add(TYPE_TO_ENTRY[clue.type]);
       if (USES_ADJACENCY.has(clue.type)) ids.add("adjacent");

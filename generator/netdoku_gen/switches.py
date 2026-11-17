@@ -5,7 +5,9 @@ Las reglas desactivadas se apuntan en levels/disabled.txt, una clave por línea:
 - un subtipo de pista (`network.in_network`, `relation.higher_ttl`…);
 - una forma de nombrar (`form:mask`, `form:ip_member`…);
 - una particularidad del tablero (`feature:cornerRouter`, `feature:hiddenEndpoint`,
-  `feature:transit`, `feature:broadcast`).
+  `feature:transit`, `feature:broadcast`) o de las tablas de encaminamiento
+  (`feature:routingTables`, toda la categoría Tabla de enrutamiento;
+  `feature:tableDefault`, `feature:tableSummary`, `feature:nextHopIp`).
 
 El generador no las usa al crear niveles ni ejercicios de entrenamiento;
 `generate.py --index` deja fuera de levels/index.json los niveles que usan
@@ -19,7 +21,8 @@ pueden desactivar.
 
 from pathlib import Path
 
-FEATURES = ("cornerRouter", "hiddenEndpoint", "transit", "broadcast")
+FEATURES = ("cornerRouter", "hiddenEndpoint", "transit", "broadcast",
+            "routingTables", "tableDefault", "tableSummary", "nextHopIp")
 
 
 def read_disabled(path):
@@ -58,6 +61,17 @@ def level_uses(level):
         uses.add("feature:broadcast")
     if any(n.get("transit") for n in level.get("networks", [])):
         uses.add("feature:transit")
+    routing = level.get("routing")
+    if routing:
+        uses.add("feature:routingTables")
+        entries = [e for table in routing.get("tables", {}).values() for e in table]
+        if any(e["prefix"] == "0.0.0.0/0" for e in entries):
+            uses.add("feature:tableDefault")
+        own = {n.get("prefix") for n in level.get("networks", [])}
+        if any(e["prefix"] not in own and e["prefix"] != "0.0.0.0/0" for e in entries):
+            uses.add("feature:tableSummary")
+        if routing.get("nextHop") == "ip":
+            uses.add("feature:nextHopIp")
     return uses
 
 

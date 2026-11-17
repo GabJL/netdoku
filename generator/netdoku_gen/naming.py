@@ -14,7 +14,8 @@ from .content import count_text, join_names, network_counts, node_classes
 TOPICS = ["T3.dispositivos", "T3.vlan", "T3.ip", "T3.fragmentacion", "T3.subredes", "T3.vlsm",
           "T3.encaminamiento", "T3.nat", "T4.udp", "T4.tcp", "T5.dns", "T5.web",
           "T5.ficheros_correo", "T6"]
-CATEGORIES = {"inicial": "Inicial", "direccionamiento": "Direccionamiento", "encaminamiento": "Encaminamiento"}
+CATEGORIES = {"inicial": "Inicial", "direccionamiento": "Direccionamiento", "encaminamiento": "Encaminamiento",
+              "enrutamiento": "Tabla de enrutamiento"}
 READING_TIERS = {1: "Muy fácil", 2: "Fácil", 3: "Media", 4: "Difícil", 5: "Muy difícil"}
 # Formas que hablan del tamaño de las redes: exigen la aclaración sobre las casillas.
 SIZE_FORMS = {"size_rank", "prefix_length", "address_count", "usable_count", "mask"}
@@ -26,6 +27,9 @@ FORM_WEIGHTS = {"size_rank": 4.0, "prefix_length": 2.0, "address_count": 2.0, "u
                 "label_privacy": 5.0}
 # Formas que se prefieren cuando caben: son raras porque exigen que la pista nombre una red concreta.
 PREFERRED_FORMS = {"privacy", "label_privacy"}
+# Formas que no son un cálculo esquivable: la pista no dice nada sin él (clase de entrada de una tabla).
+INHERENT_FORMS = {"table_entry"}
+TABLE_TOPIC = "T3.encaminamiento"
 # Las formas que cuentan direcciones solo se usan hasta 65 536 direcciones (/16).
 MIN_COUNT_LENGTH = 16
 SIZE_NOTE ="Las casillas no indican el tamaño de una red: su tamaño es su número de direcciones."
@@ -73,8 +77,11 @@ class Option:
 
 
 class Namer:
-    def __init__(self, rng, board, nodes, addressing, max_topic_allowed="T3.vlsm", disabled_forms=()):
+    def __init__(self, rng, board, nodes, addressing, max_topic_allowed="T3.vlsm", disabled_forms=(), tables=None,
+                 shown=()):
         self.rng = rng
+        self.tables = tables       # Tabla de enrutamiento (v0.5): tables.Tables
+        self.shown = set(shown)    # equipos cuya IP sale en la ficha de un paquete: nunca por su IP
         self.disabled_forms = set(disabled_forms)   # formas desactivadas (levels/disabled.txt)
         self.board = board
         self.nodes = {n.id: n for n in nodes}
@@ -133,7 +140,62 @@ class Namer:
                         self._ip_topic(), True, value=str(last))]
         for a, cost in self._ip_variants(net_id):
             opts.append(Option("ip_member", f"de la dirección {a}", cost, self._ip_topic(), True, value=str(a)))
+        if self.tables:
+            opts += self._table_network_options(net_id)
         return opts
+
+    # ---- Tabla de enrutamiento (v0.5) ----
+
+    def _destination_text(self, net_id):
+        """Una dirección cualquiera de la red o su prefijo: la consulta da lo mismo."""
+        prefix = self.addr.prefixes[net_id]
+        if self.rng.random() < 0.3:
+            return str(prefix)
+        return str(prefix.network_address + self.rng.randint(1, prefix.num_addresses - 2))
+
+    def _lookups(self, select):
+        """Consultas (router que consulta, red de destino) cuyo siguiente salto cumple `select`,
+        como mucho dos por coste."""
+        tables = self.tables
+        found = {}
+        for (y, d), hop in tables.next_hop.items():
+            if hop is not None and select(y, hop):
+                found.setdefault(tables.lookup_cost(y, d), []).append((y, d))
+        result = []
+        for cost, pairs in sorted(found.items()):
+            for y, d in self.rng.sample(pairs, min(2, len(pairs))):
+                result.append((cost, y, d))
+        return result
+
+    def _table_router_options(self, r):
+        tables = self.tables
+        opts = [Option("router_name", r.id, 0, "T3.dispositivos", False)]
+        for net_id, gw in tables.gateways.items():
+            if gw == r.id and sum(1 for x in self.board.routers if net_id in x.networks) > 1:
+                opts.append(Option("gateway", f"que es la puerta de enlace de {self.board.network(net_id).name}",
+                                   tables.gateway_cost(), TABLE_TOPIC, True, value=net_id))
+        for cost, y, d in self._lookups(lambda y, hop: hop == r.id):
+            a = self._destination_text(d)
+            opts.append(Option("next_hop", f"al que {y} envía lo que va a {a}", cost, TABLE_TOPIC, True,
+                               value={"router": y, "address": a}))
+        return opts
+
+    def _table_network_options(self, net_id):
+        tables = self.tables
+        opts = []
+        sharing = sorted(r.id for r in self.board.routers if net_id in r.networks)
+        for a, b in itertools.combinations(sharing, 2):
+            opts.append(Option("router_side", f"que comparten {a} y {b}", 0, "T3.dispositivos", False, value=[a, b]))
+        for cost, y, d in self._lookups(lambda y, hop: tables.shared[(y, hop)] == net_id):
+            a = self._destination_text(d)
+            opts.append(Option("next_hop_network", f"por la que {y} envía lo que va a {a}", cost, TABLE_TOPIC, True,
+                               value={"router": y, "address": a}))
+        return opts
+
+    @staticmethod
+    def entry_options(cost):
+        """Pistas sobre la clase de entrada de una tabla: lo que cuesta mirar las tablas de la ruta."""
+        return [Option("table_entry", "", cost, TABLE_TOPIC, True)]
 
     def _contents_options(self, net_id):
         """La red descrita por el número de equipos de una clase, si ninguna otra red lo comparte."""
@@ -167,6 +229,8 @@ class Namer:
             opts.append(Option("label_privacy", f"al {node.label} de la red {words}", self.addr.privacy_cost(),
                                "T3.nat", True, value=privacy))
         key = ("node", node_id)
+        if node_id in self.shown:
+            return opts
         for a, cost in self._ip_variants(node.network, key):
             opts.append(Option("ip", f"al {node.label} {a}", cost, self._ip_topic(), True, address=a, key=key,
                                value=str(a)))
@@ -185,6 +249,8 @@ class Namer:
                 words = "pública" if privacy == "public" else "privada"
                 opts.append(Option("privacy", f"de la red {words}", self.addr.privacy_cost(), "T3.nat", True,
                                    value=privacy))
+        if self.tables:
+            opts += self._table_router_options(r)
         variants = [self._ip_variants(n, ("router", router_id, n)) for n in r.networks]
         for combo in itertools.product(*variants):
             cost = max(v[1] for v in combo)
@@ -254,7 +320,8 @@ class Namer:
                  "router": self.router_options, "length": self.length_options,
                  "row": lambda v: self.line_options("row", v),
                  "column": lambda v: self.line_options("column", v),
-                 "view": self.view_options, "ttl": self.ttl_options, "compare": self.compare_options}[kind]
+                 "view": self.view_options, "ttl": self.ttl_options, "compare": self.compare_options,
+                 "entry": self.entry_options}[kind]
         return [o for o in maker(value) if self._allowed(o) and o.form not in self.disabled_forms]
 
     def plain(self, clues):
@@ -280,27 +347,28 @@ class Namer:
         names = list(clue.slots)
         per_slot = [self.slot_options(*clue.slots[n]) for n in names]
         if not needed:
-            per_slot = [[o for o in opts if o.cost == 0] for opts in per_slot]
+            per_slot = [[o for o in opts if o.cost == 0 or o.form in INHERENT_FORMS] for opts in per_slot]
         combos = []
         for choice in itertools.product(*per_slot):
             combos.append((max(o.cost for o in choice), dict(zip(names, choice))))
         return combos
 
-    def assign(self, clues, reading, ratio, needed=None, tries=30, require_category=True):
+    def assign(self, clues, reading, ratio, needed=None, tries=30, require_category=True, fixed_costs=()):
         """Elige formas para obtener la dificultad de interpretación `reading` (o None si no se puede).
 
         `needed`: ids de las pistas cuyo cálculo es imprescindible (None = todas);
         las demás solo pueden usar formas de coste 0. `require_category`: al
         menos una forma de la categoría (en Encaminamiento no hace falta: la
-        categoría la dan las pistas de ruta y TTL).
+        categoría la dan las pistas de ruta y TTL). `fixed_costs`: costes que ya están
+        decididos y cuentan en la interpretación (las rutas que exigen las tablas).
         """
         for _ in range(tries):
-            result = self._try_assign(clues, reading, ratio, needed, require_category)
+            result = self._try_assign(clues, reading, ratio, needed, require_category, list(fixed_costs))
             if result is not None:
                 return result
         return None
 
-    def _try_assign(self, clues, reading, ratio, needed, require_category=True):
+    def _try_assign(self, clues, reading, ratio, needed, require_category=True, fixed_costs=()):
         rng = self.rng
         options = [self.clue_options(c, needed is None or c.id in needed) for c in clues]
         chosen = [None] * len(clues)
@@ -331,7 +399,14 @@ class Namer:
             needs = [(1, rng.choice([1, 1, 2]))]
         else:
             needs = []
+        # Lo que ya dan los costes fijos.
+        needs = [(cost, count - sum(1 for c in fixed_costs if (c >= 3 if cost == 3 else c == cost)))
+                 for cost, count in needs]
+        if reading_level(list(fixed_costs)) > reading:
+            return None
         for cost, count in needs:
+            if count <= 0:
+                continue
             # Primero las pistas que pueden usar una forma preferida con ese coste.
             order.sort(key=lambda i, cost=cost: not any(
                 o[0] == cost and any(x.form in PREFERRED_FORMS for x in o[1].values()) for o in options[i]))
@@ -361,7 +436,7 @@ class Namer:
             chosen[i] = pick(i, lambda o: not is_cat(o) and o[0] == 0) or pick(i, lambda o: o[0] <= low_cap)
             if chosen[i] is None:
                 return None
-        if (require_category and have < 1) or reading_level([o[0] for o in chosen]) != reading:
+        if (require_category and have < 1) or reading_level([o[0] for o in chosen] + list(fixed_costs)) != reading:
             return None
         # Los equipos y routers nombrados por dirección deben ser coherentes entre pistas.
         fixed = {}

@@ -12,7 +12,9 @@ otra de la clase contraria y la misma máscara, para la forma `privacy`.
 import ipaddress
 
 PLANS = ("distinct", "octet_subnets", "bit_subnets", "vlsm")
-PLAN_COST = {"distinct": 1, "octet_subnets": 1, "bit_subnets": 2, "vlsm": 3}
+# Planes por zonas (v0.5, Tabla de enrutamiento): cada zona conexa del mapa tiene un bloque.
+ZONE_PLANS = ("octet_zones", "bit_zones")
+PLAN_COST = {"distinct": 1, "octet_subnets": 1, "bit_subnets": 2, "vlsm": 3, "octet_zones": 1, "bit_zones": 2}
 PRIVATE_RANGES = [ipaddress.IPv4Network(x) for x in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
 PRIVACY_PLANS = ("distinct", "octet_subnets")
 # addressing.privacyMix.public172Ratio: redes públicas añadidas que empiezan por 172 (fuera de 172.16.0.0/12).
@@ -129,6 +131,54 @@ def make_prefixes(rng, count, plan, privacy_mix=False):
             result = _mix_privacy(rng, result, plan)
         if result and all(not a.overlaps(b) for i, a in enumerate(result) for b in result[i + 1:]):
             return result
+    raise RuntimeError(f"No se ha podido crear el plan de direcciones {plan}")
+
+
+def _zones(rng, adjacency, count):
+    """Reparte las redes en `count` grupos conexos de al menos dos redes."""
+    nets = sorted(adjacency)
+    for _ in range(100):
+        zone = {s: i for i, s in enumerate(rng.sample(nets, count))}
+        while len(zone) < len(nets):
+            x, y = rng.choice(sorted((x, y) for x in zone for y in adjacency[x] if y not in zone))
+            zone[y] = zone[x]
+        groups = [[n for n in nets if zone[n] == i] for i in range(count)]
+        if all(len(g) >= 2 for g in groups):
+            return groups
+    return None
+
+
+def make_zone_prefixes(rng, adjacency, plan, counts=(2, 3)):
+    """Prefijos de un plan por zonas: {red: prefijo} y [(bloque de la zona, [redes])].
+
+    `octet_zones`: bloques /16 de 10.0.0.0/8 con redes /24. `bit_zones`: bloques cuya máscara no
+    acaba en un octeto (/20 con redes /24, /25 con redes /27 o /26 con redes /28)."""
+    options = [c for c in counts if 2 * c <= len(adjacency)]
+    for _ in range(50):
+        groups = _zones(rng, adjacency, rng.choice(options))
+        if groups is None:
+            continue
+        if plan == "octet_zones":
+            zone_len, net_len, parent = 16, 24, _net("10.0.0.0/8")
+        else:
+            zone_len, net_len = rng.choice([(20, 24), (25, 27), (26, 28)])
+            if zone_len == 20:
+                parent = _net(rng.choice([f"172.{rng.randrange(16, 32)}.0.0/16", f"10.{rng.randrange(256)}.0.0/16"]))
+            elif zone_len == 25:
+                parent = _net(rng.choice([f"192.168.{rng.randrange(0, 256, 2)}.0/23",
+                                          f"10.{rng.randrange(256)}.{rng.randrange(0, 256, 2)}.0/23"]))
+            else:
+                parent = _net(rng.choice([f"192.168.{rng.randrange(256)}.0/24",
+                                          f"10.{rng.randrange(256)}.{rng.randrange(256)}.0/24"]))
+        blocks = rng.sample(list(parent.subnets(new_prefix=zone_len)), len(groups))
+        if any(2 ** (net_len - zone_len) < len(g) for g in groups):
+            continue
+        prefixes, zones = {}, []
+        for block, group in sorted(zip(blocks, groups)):
+            for net, sub in zip(group, rng.sample(list(block.subnets(new_prefix=net_len)), len(group))):
+                prefixes[net] = sub
+            zones.append((block, group))
+        return prefixes, zones
     raise RuntimeError(f"No se ha podido crear el plan de direcciones {plan}")
 
 

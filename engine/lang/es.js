@@ -43,6 +43,15 @@
   const endWord = (end) => (end === "origin" ? "origen" : "destino");
   // «Aulas o Servicios», «Aulas, Servicios o Biblioteca».
   const orJoin = (names) => (names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} o ${names[names.length - 1]}`);
+  // Tabla de enrutamiento: una consulta en la tabla de un router (sugerencias y Entrenar).
+  const lookupText = ({ router, at, ip, matches, winner, hop, isDefault }) => {
+    const who = router || at;
+    if (isDefault) return `${who} busca ${ip} en su tabla: no coincide ninguna entrada, así que usa la ruta por defecto, que lo envía a ${hop}.`;
+    if (matches.length > 1) return `${who} busca ${ip} en su tabla: coinciden ${join(matches)}, y gana la más larga, ${winner}, que lo envía a ${hop}.`;
+    return `${who} busca ${ip} en su tabla: coincide ${winner}, que lo envía a ${hop}.`;
+  };
+  const ENTRY = { own: "la entrada de esa red", default: "la ruta por defecto", summary: "una entrada que agrupa varias redes", direct: "la entrega directa" };
+
   // Qué dice la trama en cada pista de ruta vista desde la capa de enlace (forma mac_view).
   const MAC_FACTS = {
     "endpoint.in_origin_network": "Cada equipo que reenvía el paquete lo mete en una trama nueva con su propia MAC de origen. Si la trama la envió el propio equipo de origen, el paquete aún no ha pasado por ningún router: sigue en la red de origen.",
@@ -75,6 +84,8 @@
         case "broadcast": return `la red cuya dirección de difusión es ${slot.value}`;
         case "ip_member": return `la red de la dirección ${slot.value}`;
         case "privacy": return `la red ${privacy(slot.value)}`;
+        case "router_side": return `la red que comparten ${slot.value[0]} y ${slot.value[1]}`;
+        case "next_hop_network": return `la red por la que ${slot.value.router} envía lo que va a ${slot.value.address}`;
         default: return `la red ${n.name} (${n.prefix})`;
       }
     };
@@ -96,6 +107,9 @@
       const nets = L.router(slot.ref).connectedNetworks.map((id) => L.network(id));
       if (slot.form === "interfaces") return `con las interfaces ${join(slot.value)}`;
       if (slot.form === "privacy") return `de la red ${privacy(slot.value)}`;
+      if (slot.form === "router_name") return slot.ref;
+      if (slot.form === "gateway") return `que es la puerta de enlace de ${L.network(slot.value).name}`;
+      if (slot.form === "next_hop") return `al que ${slot.value.router} envía lo que va a ${slot.value.address}`;
       return `que une ${join(nets.map((n) => (slot.form === "networks_prefix" ? n.prefix : n.name)))}`;
     };
     // Una fila o columna: por su número o por un equipo o un router que está en ella.
@@ -162,6 +176,20 @@
         return `Los paquetes ${p} y ${q} habían salido de la misma red.`;
       case "relation.same_destination":
         return `Los paquetes ${p} y ${q} iban a la misma red.`;
+      case "relation.same_next_hop":
+        return `El siguiente salto de los paquetes ${p} y ${q} era el mismo router.`;
+      case "route.crossed_router": {
+        const r = router(s.router || { ref: params.routerId, form: "router_name" });
+        return params.crossed ? `El paquete ${p} ya había pasado por el router ${r}.`
+          : `El paquete ${p} aún no había llegado al router ${r}.`;
+      }
+      case "route.last_entry":
+      case "route.next_entry": {
+        const how = params.entry === "summary" ? "por una entrada que agrupa varias redes" : "por su ruta por defecto";
+        if (c.type === "route.last_entry") return `El último router que había atravesado el paquete ${p} lo había reenviado ${how}.`;
+        if (params.entry === "direct") return `El siguiente router que iba a atravesar el paquete ${p} lo entregaría directamente a su destino.`;
+        return `El siguiente router que iba a atravesar el paquete ${p} lo reenviaría ${how}.`;
+      }
       case "endpoint.in_origin_network":
         return mac ? `La trama que llevaba el paquete ${p} la había enviado su propio equipo de origen.`
           : `El paquete ${p} aún no había salido de la red de su origen.`;
@@ -293,6 +321,8 @@
       origin: "Origen",
       destination: "Destino",
       ttlInitial: "TTL inicial",
+      destinationIp: "IP de destino",
+      tablesNote: "La ruta la deciden las tablas de encaminamiento: el equipo envía el paquete a la puerta de enlace de su red y cada router, al siguiente salto que dice su tabla. Toca un router para ver su tabla.",
       endpoint: ({ label, net }) => `${label} de ${net}`,
       broadcastTo: ({ address }) => `difusión (${address})`,
       originTag: "origen",
@@ -361,6 +391,16 @@
         const where = networks.length === 1 ? `a ${networks[0]}` : `ni a ${networks.slice(0, -1).join(", ni a ")} ni a ${networks[networks.length - 1]}`;
         return `El TTL inicial del paquete ${packet} es ${ttl}. Cada router le resta 1, y el que lo deja a 0 lo descarta: ${crossed}, así que no llega ${where}. Las casillas resaltadas quedan descartadas para ${packet}.`;
       },
+      // Tabla de enrutamiento: la ruta la dan las tablas y se explican las consultas que la deciden.
+      routeTables: ({ packet, route, networks, lookups }) => {
+        const where = networks.length === 1 ? `por ${networks[0]}` : `ni por ${networks.slice(0, -1).join(", ni por ")} ni por ${networks[networks.length - 1]}`;
+        const path = route.length === 1 ? `El paquete ${packet} no sale de ${route[0]}.`
+          : `Según las tablas de encaminamiento, el paquete ${packet} va por ${route.join(" → ")}.`;
+        const why = lookups.length ? ` ${lookups.join(" ")}` : "";
+        return `${path}${why} Solo puede estar en una red de su ruta, y no pasa ${where}: las casillas resaltadas quedan descartadas para ${packet}.`;
+      },
+      lookupGateway: ({ net, gw }) => `Su equipo de origen lo envía a la puerta de enlace de ${net}, ${gw}.`,
+      lookup: lookupText,
       relationFixed: ({ packet, other }) => `Una pista relaciona los paquetes ${packet} y ${other}. Con lo que ya sabes de ${other}, las casillas resaltadas no cumplen la pista: quedan descartadas para ${packet}.`,
       relationOpen: ({ packet, other }) => `Una pista relaciona los paquetes ${packet} y ${other}. Aunque ${other} aún tiene varias posibilidades, ninguna cumple la pista con ${packet} en las casillas resaltadas: quedan descartadas para ${packet}.`,
       relationEnds: ({ packet, other }) => `Una pista relaciona los paquetes ${packet} y ${other}. Con lo que ya sabes de ${other}, descarta alguna de las redes posibles del origen o del destino oculto de ${packet}.`,
@@ -428,15 +468,26 @@
     // Entrenar: ejercicios de cada pista y cada regla (véase generator/netdoku_gen/training.py).
     // Los motivos (reasons) explican por qué una casilla no vale; los hechos (facts), cómo se
     // resuelve el paso. Reciben las redes, equipos y routers ya con su nombre.
+    // Tabla de enrutamiento: la tabla de un router (se abre al tocarlo).
+    tables: {
+      title: ({ router }) => `Router ${router}`,
+      destination: "Destino",
+      nextHop: "Siguiente salto",
+      direct: "directa",
+      default: "default",
+      gatewayOf: ({ gw }) => `puerta de enlace ${gw}`,
+    },
+
     train: {
       title: "Entrenar",
       intro: "Ejercicios cortos para aprender cada pista y cada regla: un tablero pequeño con un paquete por decidir y, si hacen falta, otros ya colocados. Pulsa las casillas que pide el ejercicio; si eliges una que no vale, verás por qué. Los fallos no cuentan.",
-      categories: { rules: "Reglas del juego", inicial: "Inicial", direccionamiento: "Direccionamiento", encaminamiento: "Encaminamiento" },
+      categories: { rules: "Reglas del juego", inicial: "Inicial", direccionamiento: "Direccionamiento", encaminamiento: "Encaminamiento", enrutamiento: "Tabla de enrutamiento" },
       categoryIntro: {
         rules: "Lo que vale en todos los niveles: como mucho un paquete por fila y por columna, y qué casillas están junto a un equipo.",
         inicial: "Las pistas de la categoría Inicial: redes, equipos, routers, filas y columnas.",
         direccionamiento: "Redes y equipos nombrados por sus direcciones: prefijos, máscaras, tamaños, direcciones especiales y redes privadas.",
         encaminamiento: "Rutas y TTL: por dónde pasa cada paquete, hasta dónde llega, las tramas de cada salto y los extremos ocultos.",
+        enrutamiento: "Tablas de encaminamiento: la puerta de enlace, el siguiente salto, la ruta por defecto, la coincidencia más larga y las pistas que hablan de ellas.",
       },
       progress: ({ done, total }) => `✓ ${done}/${total}`,
       openHelp: "Ver la ficha de ayuda",
@@ -540,6 +591,19 @@
         "enc.more_routers": "Más routers que otro paquete",
         "enc.higher_ttl": "Más TTL que otro paquete",
         "enc.closer": "Más cerca de su destino que otro paquete",
+        "tab.route": "Seguir la ruta por las tablas",
+        "tab.gateway": "Empate en la puerta de enlace",
+        "tab.next_hop_ip": "Siguiente salto escrito con su IP",
+        "tab.default": "Ruta por defecto",
+        "tab.longest": "Coincidencia más larga",
+        "tab.crossed_router": "«Ya había pasado por el router…»",
+        "tab.last_entry": "Entrada que usó el último router",
+        "tab.next_entry": "«Lo entregaría directamente a su destino»",
+        "tab.same_next_hop": "El mismo siguiente salto",
+        "tab.gateway_form": "Router nombrado como puerta de enlace",
+        "tab.next_hop_form": "Router nombrado por una consulta",
+        "tab.next_hop_network": "Red nombrada por una consulta",
+        "tab.router_side": "Red que comparten dos routers",
       },
       reasons: {
         rowTaken: ({ r, packet }) => `En la fila ${r} ya está el paquete ${packet}, y solo cabe un paquete por fila.`,
@@ -579,9 +643,30 @@
         relCrossed: ({ packet, other, k, otherK }) => `Aquí el paquete ${packet} ${crossed(k, "habría")}, y ${other} ${crossed(otherK, "ha")}.`,
         relTtl: ({ packet, other, ttl, otherTtl }) => `Aquí el paquete ${packet} llevaría TTL ${ttl}, y ${other} lleva TTL ${otherTtl}.`,
         relLeft: ({ packet, other, l, otherL }) => `Aquí al paquete ${packet} ${left(l, ["quedaría", "quedarían"])}, y a ${other} ${left(otherL, ["queda", "quedan"])}.`,
+        // Tabla de enrutamiento.
+        routeRouterSide: ({ packet, net, at, passed }) => (passed ? `En ${net}, el paquete ${packet} ya habría pasado por ${at}.`
+          : `En ${net}, el paquete ${packet} aún no habría llegado a ${at}.`),
+        entryNone: ({ packet, net, which }) => (which === "last" ? `En ${net}, el paquete ${packet} aún no habría atravesado ningún router.`
+          : `En ${net}, el paquete ${packet} ya habría llegado a la red de su destino: no le quedaría ningún router.`),
+        entryAt: ({ net, at, entry, which }) => (which === "last" ? `En ${net}, el último router habría sido ${at}, y para este destino usa ${ENTRY[entry]}.`
+          : `Desde ${net}, el siguiente router sería ${at}, y para este destino usa ${ENTRY[entry]}.`),
+        relHop: ({ packet, other, net, hop, otherHop }) => (hop ? `En ${net}, el siguiente salto del paquete ${packet} sería ${hop}, y el de ${other} es ${otherHop}.`
+          : `En ${net}, el paquete ${packet} ya habría llegado a la red de su destino: no tendría siguiente salto.`),
       },
       facts: {
         route: ({ packet, route, ttl, reach, full }) => `Ruta del paquete ${packet}: ${route.join(" → ")}. Con TTL inicial ${ttl} puede atravesar ${routers0(ttl - 1)}: ${full ? "llega a la red de su destino" : `solo llega hasta ${reach}`}.`,
+        // Tabla de enrutamiento: la ruta la dan las tablas.
+        tableRoute: ({ packet, route, ttl, reach, full }) => `Según las tablas de encaminamiento, la ruta del paquete ${packet} es ${route.join(" → ")}. Con TTL inicial ${ttl} puede atravesar ${routers0(ttl - 1)}: ${full ? "llega a la red de su destino" : `solo llega hasta ${reach}`}.`,
+        tableGateway: ({ net, gw }) => `Su equipo de origen lo envía a la puerta de enlace de ${net}, ${gw}: por ahí empieza la ruta, aunque otro router de la red estuviera tan cerca del destino o más.`,
+        tableLookup: lookupText,
+        crossedRouter: ({ packet, at, crossed, nets }) => (crossed ? `Si ya había pasado por ${at}, el paquete ${packet} está en una red de su ruta posterior a ${at} a la que le llega el TTL: ${join(nets)}.`
+          : `Si aún no había llegado a ${at}, el paquete ${packet} está en una red de su ruta anterior a ${at}: ${join(nets)}.`),
+        entryClasses: ({ which, nets, ats, entries }) => `${which === "last" ? "Router por el que llega el paquete a cada red de su ruta" : "Siguiente router desde cada red de su ruta"} y entrada que usa para su destino: ${nets.map((n, i) => `${n}, ${ats[i]} (${ENTRY[entries[i]]})`).join("; ")}.`,
+        pHop: ({ other, net, hop }) => `El paquete ${other} está en ${net}: su siguiente salto es ${hop}.`,
+        fGateway: ({ net, via, gw }) => `La leyenda dice que la puerta de enlace de ${net} es ${gw}${gw !== via ? `, el router ${via}` : ""}.`,
+        fNextHop: (v) => `${lookupText(v)}${v.hop !== v.via ? ` Esa dirección es la del router ${v.via}.` : ""}`,
+        fNextHopNet: (v) => `${lookupText(v)} La red que ${v.at} comparte con ${v.via} es ${v.net}.`,
+        fRouterSide: ({ a, b, net }) => `${a} y ${b} solo comparten una red: ${net}.`,
         broadcastRoute: ({ packet, net, address }) => `El paquete ${packet} va a la dirección de difusión ${address}: no sale de ${net}, porque los routers no reenvían la difusión.`,
         hiddenAlt: ({ end, net, route, reach, full }) => `Si su ${endWord(end)} estaba en ${net}: ruta ${route.join(" → ")}; ${full ? "llega a la red de su destino" : `con su TTL solo llega hasta ${reach}`}.`,
         nets: ({ packet, nets }) => `Así que el paquete ${packet} puede estar en cualquier casilla libre de ${join(nets)}.`,
@@ -917,6 +1002,69 @@
           ],
           caption: "«Ya había atravesado algún router»: cualquier red de su ruta salvo la de origen.",
         },
+        routing_table: {
+          chip: "Tabla de encaminamiento",
+          title: "La tabla de encaminamiento de un router",
+          text: [
+            "Toca un router (o pasa el ratón por encima) para ver su tabla. Arriba están sus interfaces: la red y la IP que tiene en cada una. Debajo, sus entradas: un destino (una red con su prefijo, como 10.2.4.0/24) y el siguiente salto.",
+            "Para saber por dónde sigue un paquete, el router busca en su tabla la IP de destino del paquete, que está en su ficha. Si es de una de sus redes («directa»), lo entrega a su equipo de destino. Si no, lo envía al router del siguiente salto, por la red que comparten.",
+            "La ruta de un paquete es la que dan las tablas: la puerta de enlace de su red de origen y, desde ahí, el siguiente salto de cada router. Las tablas se calculan contando routers, como RIP, pero cuando hay dos caminos igual de cortos el mapa no basta: solo la tabla dice cuál se usa, y la ida y la vuelta pueden ir por sitios distintos.",
+            "En clase las tablas tienen también una columna con la interfaz de salida. Aquí no se pone porque no cambia nada: es la interfaz del router en la red que comparte con el siguiente salto o, en la entrega directa, la de la red del destino.",
+          ],
+        },
+        gateway: {
+          chip: "Puerta de enlace",
+          title: "La puerta de enlace",
+          text: [
+            "Un equipo envía directamente lo que va a su propia red. Todo lo demás lo envía a su puerta de enlace (gateway), un router de su red. La leyenda dice la puerta de enlace de cada red.",
+            "Si la red tiene varios routers, el primero de la ruta es siempre la puerta de enlace, aunque por otro router de la red el camino fuera igual de corto, o incluso más corto.",
+            "Una pista puede nombrar un router así: «el router que es la puerta de enlace de Aulas».",
+          ],
+        },
+        next_hop: {
+          chip: "Siguiente salto",
+          title: "El siguiente salto",
+          text: [
+            "El siguiente salto de una entrada es el router vecino al que se envía el paquete. Se escribe con su nombre (R5) o, como en clase, con la IP de su interfaz en la red que comparten (por ejemplo, 10.1.3.2). Para saber qué router es, busca qué router de esa red tiene esa dirección: las interfaces de cada router salen encima de su tabla.",
+            "Algunas pistas nombran un router o una red por una consulta: «el router al que R2 envía lo que va a 10.2.4.9» es el siguiente salto que da la tabla de R2 para esa dirección, y «la red por la que R2 envía lo que va a 10.2.4.9», la red que R2 comparte con ese router. La dirección puede ser cualquiera de una red, o la red misma: la consulta da lo mismo.",
+            "También: «el router R3», por su nombre, y «la red que comparten R2 y R5».",
+          ],
+        },
+        default_route: {
+          chip: "Ruta por defecto",
+          title: "La ruta por defecto",
+          text: [
+            "La entrada default (0.0.0.0/0) coincide con cualquier dirección. El router la usa cuando la IP de destino no coincide con ninguna otra entrada de su tabla.",
+            "Así la tabla es más corta: basta una entrada por cada red que va por un sitio distinto del de la ruta por defecto.",
+          ],
+        },
+        longest_prefix: {
+          chip: "Coincidencia más larga",
+          title: "Entradas que agrupan redes y coincidencia más larga",
+          text: [
+            "Una entrada puede agrupar varias redes cuyas direcciones empiezan igual: 10.2.0.0/16 incluye todas las direcciones que empiezan por 10.2, como las de 10.2.4.0/24 y 10.2.9.0/24. En esta categoría, las redes vecinas suelen compartir un bloque así, como en el encaminamiento jerárquico.",
+            "Para saber si una IP está en una entrada, compara los bits que marca su prefijo: con /16, los dos primeros octetos; con /20, los dos primeros y los cuatro primeros bits del tercero (10.2.37.5 está en 10.2.32.0/20, que va de 10.2.32.0 a 10.2.47.255).",
+            "Si varias entradas contienen la IP de destino, gana la más larga (la de prefijo mayor), que es la más específica: con 10.2.0.0/16 → R5 y 10.2.4.0/24 → R6, un paquete para 10.2.4.9 va a R6 y uno para 10.2.9.1, a R5. La ruta por defecto es la más corta de todas (/0): solo gana si no coincide ninguna otra.",
+          ],
+        },
+        crossed_router: {
+          chip: "Un router de la ruta",
+          title: "Pistas sobre un router de la ruta",
+          text: [
+            "«El paquete A ya había pasado por el router R3»: R3 está en su ruta y el paquete ya lo ha atravesado, así que está en una red de su ruta posterior a R3. «El paquete A aún no había llegado al router R3»: está en una red de su ruta anterior a R3.",
+            "Primero hay que trazar su ruta con las tablas para saber dónde está R3 en ella.",
+          ],
+          caption: "Ya había pasado por el primer router",
+        },
+        table_entry: {
+          chip: "Entrada usada",
+          title: "Pistas sobre la entrada que usa un router",
+          text: [
+            "«El último router que había atravesado el paquete A lo había reenviado por su ruta por defecto»: en cada red de su ruta, mira qué entrada usó, para el destino del paquete, el router por el que entró en esa red. El paquete está en las redes en las que fue la ruta por defecto.",
+            "«… por una entrada que agrupa varias redes»: igual, con una entrada que no es de una sola red ni la ruta por defecto.",
+            "«El siguiente router que iba a atravesar el paquete A lo entregaría directamente a su destino»: el paquete está en la red de su ruta anterior a la del destino.",
+          ],
+        },
         route_relation: {
           chip: "Rutas de dos paquetes",
           title: "Pistas que comparan dos paquetes",
@@ -924,6 +1072,7 @@
             "«El paquete A había atravesado más routers que el paquete B»: cuenta los routers que lleva cada uno desde su origen. «En ese momento, el paquete A llevaba más TTL que el paquete B»: compara el TTL actual de los dos (TTL inicial − routers atravesados).",
             "«Al paquete A le quedaban menos routers que al paquete B para llegar a la red de su destino»: compara cuántos routers le faltan a cada uno.",
             "«Los paquetes A y B habían salido de la misma red» o «iban a la misma red»: aparecen cuando el origen o el destino de alguno de los dos está oculto.",
+            "«El siguiente salto de los paquetes A y B era el mismo router» (Tabla de enrutamiento): el siguiente router de la ruta de los dos es el mismo; un paquete que ya está en la red de su destino no tiene siguiente salto.",
             "Como las demás pistas entre dos paquetes, aparecen en la ficha de los dos y descartan casillas aunque ninguno esté colocado.",
           ],
         },
@@ -984,6 +1133,20 @@
           "La **difusión** (por ejemplo, la petición DHCP de un equipo que aún no tiene dirección) va a todos los equipos de una red, pero los routers no la reenvían: un paquete de difusión no sale de la red de su origen.",
         ],
         rules: ["route_trace", "ttl", "frames", "corner_router", "hidden_endpoint", "route_position", "route_router", "ttl_count", "route_relation"],
+      },
+      enrutamiento: {
+        name: "Tabla de enrutamiento",
+        short: "Tablas de encaminamiento: sigue la ruta que deciden los routers con su tabla, desde la puerta de enlace hasta el destino.",
+        theory: [
+          "En Encaminamiento, la ruta de un paquete era el camino con menos routers. En una red real, cada router decide por su cuenta con su **tabla de encaminamiento**: una lista de destinos (redes, con su prefijo) y, para cada uno, el **siguiente salto**, el router vecino al que hay que enviar el paquete. Si el destino está en una de sus propias redes, la entrega es **directa**.",
+          "Un equipo solo conoce su propia red: todo lo que va a otra red lo envía a su **puerta de enlace**, un router de su red. Desde ahí, cada router busca la **IP de destino** del paquete en su tabla y lo envía al siguiente salto, hasta llegar al router que lo entrega directamente.",
+          "Las tablas se calculan contando routers, como RIP, así que la ruta suele ser uno de los caminos más cortos. Pero cuando hay **varios caminos igual de cortos**, solo la tabla dice cuál se usa, y la ida y la vuelta pueden ir por sitios distintos. Por eso aquí hay que mirar las tablas: la ruta no siempre se ve en el mapa.",
+          "La **ruta por defecto** (default, 0.0.0.0/0) coincide con cualquier dirección: se usa cuando no coincide ninguna otra entrada. Así la tabla no necesita una entrada por cada red.",
+          "Una entrada puede **agrupar varias redes** cuyas direcciones empiezan igual: por ejemplo, 10.2.0.0/16 incluye 10.2.4.0/24 y 10.2.9.0/24. Si varias entradas contienen la IP de destino, gana la **más larga**, la de prefijo mayor, que es la más específica: es la **coincidencia más larga** (longest prefix match).",
+          "El siguiente salto se escribe con el nombre del router o, como en clase, con la **IP de su interfaz** en la red que comparten. En clase las tablas llevan también la **interfaz de salida**; aquí no hace falta, porque es la del router en la red del siguiente salto.",
+          "Todo lo demás es como en Encaminamiento: el TTL, las tramas de cada salto, la difusión, las redes de tránsito y los extremos ocultos.",
+        ],
+        rules: ["routing_table", "gateway", "next_hop", "default_route", "longest_prefix", "route_trace", "ttl", "crossed_router", "table_entry", "route_relation"],
       },
     },
 

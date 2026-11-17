@@ -38,6 +38,7 @@ from .routes import Route, assign_routes, choose_transit, unique_shortest_paths
 from .rules import ROUTE_FAMILIES, Context, generate_instances, uncalculated
 from .solver import cell_of
 from .switches import features_of, forms_of
+from .tables import Tables
 
 
 class Retry(Exception):
@@ -53,10 +54,13 @@ PROFILES = {
              "routes": False},
     "corner": {"size": 5, "networks": [4], "min_size": 4, "plans": ["octet_subnets"], "routes": False, "corner": True},
     "route": {"size": 6, "networks": [4, 5], "min_size": 5, "plans": ["octet_subnets"], "routes": True},
+    # Tabla de enrutamiento (v0.5): rutas por tablas, con uno o dos routers de más que dan empates.
+    "table": {"size": 6, "networks": [4, 5], "min_size": 5, "plans": ["octet_subnets", "distinct"], "routes": True,
+              "tables": True, "cycles": (1, 2)},
 }
 # Categoría de juego con la que se escriben las pistas de cada categoría de entrenamiento.
 GAME_CATEGORY = {"rules": "inicial", "inicial": "inicial", "direccionamiento": "direccionamiento",
-                 "encaminamiento": "encaminamiento"}
+                 "encaminamiento": "encaminamiento", "enrutamiento": "enrutamiento"}
 
 
 @dataclass
@@ -78,6 +82,9 @@ class Variant:
     min_answer: int = 2
     features: tuple = ()          # particularidades que usa (para desactivarla)
     needs: tuple = ()             # otros subtipos que usa (pistas de los demás paquetes)
+    # Tabla de enrutamiento: estilo de las tablas ("style"), siguiente salto ("hop": name | ip) y
+    # qué tiene que decidir la ruta del paquete ("need", véase _table_need).
+    tables: dict = None
 
     @property
     def keys(self):
@@ -86,6 +93,8 @@ class Variant:
         keys += list(self.needs)
         keys += [f"form:{f}" for f in self.forms.values() if f not in PLAIN_FORMS]
         keys += [f"feature:{f}" for f in self.features]
+        if self.tables is not None:
+            keys.append("feature:routingTables")
         return keys
 
 
@@ -257,6 +266,37 @@ VARIANTS = [
     V("enc.closer", "encaminamiento", "route_relation", "route", "relation.closer_to_destination",
       partner=True, route=_reaching),
 ]
+# Tabla de enrutamiento (v0.5). Van al final para no cambiar las semillas de las demás.
+TAB_FULL = {"style": "full", "hop": "name"}
+VARIANTS += [
+    V("tab.route", "enrutamiento", "routing_table", "table", special="table_route", route=_long_route,
+      tables={**TAB_FULL, "need": "router"}),
+    V("tab.gateway", "enrutamiento", "gateway", "table", special="table_route", route=_long_route,
+      tables={**TAB_FULL, "need": "gateway"}),
+    V("tab.next_hop_ip", "enrutamiento", "next_hop", "table", special="table_route", route=_long_route,
+      tables={"style": "full", "hop": "ip", "need": "router"}, features=("nextHopIp",)),
+    V("tab.default", "enrutamiento", "default_route", "table", special="table_route", route=_long_route,
+      tables={"style": "default", "hop": "name", "need": "default"}, features=("tableDefault",)),
+    V("tab.longest", "enrutamiento", "longest_prefix", "table", special="table_route", route=_long_route,
+      plans=("octet_zones", "bit_zones"), tables={"style": "summary", "hop": "name", "need": "lpm"},
+      features=("tableDefault", "tableSummary")),
+    V("tab.crossed_router", "enrutamiento", "crossed_router", "table", "route.crossed_router",
+      {"router": "router_name"}, route=_long_route, tables={**TAB_FULL, "need": "any"}),
+    V("tab.last_entry", "enrutamiento", "table_entry", "table", "route.last_entry", {"entry": "table_entry"},
+      route=_long_route, tables={"style": "default", "hop": "name"}, features=("tableDefault",)),
+    V("tab.next_entry", "enrutamiento", "table_entry", "table", "route.next_entry", {"entry": "table_entry"},
+      accept=lambda ctx, c: c.params["entry"] == "direct", route=_long_route, tables=dict(TAB_FULL)),
+    V("tab.same_next_hop", "enrutamiento", "route_relation", "table", "relation.same_next_hop", partner=True,
+      route=_long_route, tables=dict(TAB_FULL)),
+    V("tab.gateway_form", "enrutamiento", "gateway", "table", "router.adjacent_to_router", {"router": "gateway"},
+      accept=_router_kind(False), tables=dict(TAB_FULL)),
+    V("tab.next_hop_form", "enrutamiento", "next_hop", "table", "router.adjacent_to_router", {"router": "next_hop"},
+      accept=_router_kind(False), tables=dict(TAB_FULL)),
+    V("tab.next_hop_network", "enrutamiento", "next_hop", "table", "network.in_network",
+      {"net": "next_hop_network"}, tables=dict(TAB_FULL)),
+    V("tab.router_side", "enrutamiento", "next_hop", "table", "network.in_network", {"net": "router_side"},
+      tables=dict(TAB_FULL)),
+]
 SPECIAL_PACKETS = {"row_annul": 1, "free_lines": 5, "last_cell": 5, "forced_line": 5}
 IN_NETWORK = Variant("_", "rules", "", "basic", "network.in_network", {"net": "name"})
 
@@ -294,7 +334,8 @@ def _attempt(v, rng, seed, attempt, disabled, strict=True):
     else:
         weights = {2: 0.75, 3: 0.20, 4: 0.05}
         corner = 1 if prof["routes"] and "cornerRouter" not in features else 0
-    board = generate_board(rng, size, size, rng.choice(prof["networks"]), prof["min_size"], plan, weights, corner)
+    board = generate_board(rng, size, size, rng.choice(prof["networks"]), prof["min_size"], plan, weights, corner,
+                           cycles=prof.get("cycles"))
     if prof.get("corner") and not any(r.corner for r in board.routers):
         raise Retry("sin router de esquina")
     if v.privacy:
@@ -306,6 +347,17 @@ def _attempt(v, rng, seed, attempt, disabled, strict=True):
         transit = choose_transit(rng, board, prob)
         if v.transit and not transit:
             raise Retry("sin red de tránsito")
+    tables, paths, prefer = None, None, ()
+    if prof.get("tables"):
+        spec = v.tables or {}
+        tables = Tables(rng, board, transit)
+        tables.write(spec.get("style", "full"), spec.get("hop", "name"), board.zones)
+        if tables.max_entries() > 6:
+            raise Retry("tabla demasiado larga")
+        paths = tables.routes()
+        prefer = {pair for pair, (n, r) in paths.items() if tables.requires(n, r, 99)}
+        if not prefer:
+            raise Retry("ninguna ruta exige las tablas")
     nodes = place_nodes(rng, board, empty={transit} if transit else ())
     count = SPECIAL_PACKETS.get(v.special, 2 if v.partner else 1)
     packets = _place_packets(rng, board, nodes, count)
@@ -314,15 +366,27 @@ def _attempt(v, rng, seed, attempt, disabled, strict=True):
     if prof["routes"]:
         broadcast = 1.0 if v.special == "route_broadcast" else 0.0
         short = 1.0 if v.special == "route_short" else 0.0 if v.special == "route_base" else 0.25
-        routes = assign_routes(rng, board, nodes, packets, "", transit, broadcast, short)
+        if tables:
+            broadcast, short = 0.0, 0.0
+        routes = assign_routes(rng, board, nodes, packets, "", transit, broadcast, short, paths, prefer, 8, count)
         if v.route and not v.route(routes[target.id]):
             raise Retry("ruta sin interés")
+        if tables and not _table_need((v.tables or {}).get("need"), tables, routes[target.id]):
+            raise Retry("la ruta no consulta las tablas como hace falta")
         if v.partner and routes[packets[1].id].broadcast:
             raise Retry("el otro paquete es de difusión")
         if v.hidden:
             hidden = _hide(board, nodes, routes, target.id, v.hidden, transit)
     ctx = Context(board, nodes, packets, addressing, routes, transit, hidden)
-    namer = Namer(rng, board, nodes, addressing, "T3.nat", forms_of(disabled))
+    ctx.tables = tables
+    shown = {rt.destination for rt in routes.values() if rt.destination} if tables else ()
+    if tables:
+        for r in board.routers:
+            for net in r.networks:
+                addressing.assign(rng, ("router", r.id, net), net)
+        for node_id in shown:
+            addressing.assign(rng, ("node", node_id), ctx.node(node_id).network)
+    namer = Namer(rng, board, nodes, addressing, "T3.nat", forms_of(disabled), tables, shown)
 
     placed = {}
     if v.special in ("row_annul", "free_lines", "last_cell", "forced_line"):
@@ -345,6 +409,30 @@ def _attempt(v, rng, seed, attempt, disabled, strict=True):
     if not v.special and giveaway:
         exercise["generation"]["giveaway"] = giveaway
     return exercise
+
+
+def _table_need(need, tables, route):
+    """La ruta del paquete consulta las tablas como pide la variante: alguna consulta decide un
+    empate ("any"), la de un router ("router") o la puerta de enlace ("gateway"), o un router
+    que decide usa la ruta por defecto ("default") o la coincidencia más larga ("lpm")."""
+    if not need:
+        return True
+    if route.broadcast:
+        return False
+    decisions = tables.decisions(route.networks, route.routers, route.ttl)
+    routers = [d for d in decisions if d != "gateway"]
+    dest = route.networks[-1]
+    if need == "any":
+        return bool(decisions)
+    if need == "router":
+        return bool(routers)
+    if need == "gateway":
+        return "gateway" in decisions
+    if need == "default":
+        return any(tables.entry_class(r, dest) == "default" for r in routers)
+    if need == "lpm":
+        return any(len(tables.lookup(r, tables.board.prefixes[dest])[0]) >= 2 for r in routers)
+    raise ValueError(need)
 
 
 def _set_prefixes(board, prefixes):
@@ -742,6 +830,17 @@ def _clue_reason(ctx, clue, target, partner, x):
                     "tags": sorted({y[2] for y in clue.domain})}
         route = ctx.routes[target.id]
         k = route.networks.index(net)
+        if t == "route.crossed_router":
+            i = route.routers.index(params["routerId"]) + 1
+            return {"key": "routeRouterSide", "packet": target.id, "net": net, "at": params["routerId"],
+                    "passed": k >= i}
+        if t in ("route.last_entry", "route.next_entry"):
+            last = t == "route.last_entry"
+            if (last and k == 0) or (not last and k >= route.length):
+                return {"key": "entryNone", "packet": target.id, "net": net, "which": "last" if last else "next"}
+            at = route.routers[k - 1] if last else route.routers[k]
+            return {"key": "entryAt", "packet": target.id, "net": net, "at": at,
+                    "entry": ctx.tables.entry_class(at, route.networks[-1]), "which": "last" if last else "next"}
         if t == "ttl.routers_left":
             return {"key": "routeLeft", "packet": target.id, "net": net, "left": route.length - k}
         if t == "route.last_router":
@@ -780,6 +879,9 @@ def _relation_reason(ctx, clue, target, partner, x):
         return {"key": "relCrossed", **base, "net": net, "k": mine, "otherK": theirs}
     if t == "relation.higher_ttl":
         return {"key": "relTtl", **base, "net": net, "ttl": mine, "otherTtl": theirs}
+    if t == "relation.same_next_hop":
+        none = mine.startswith("-")
+        return {"key": "relHop", **base, "net": net, "hop": None if none else mine, "otherHop": theirs}
     return {"key": "relLeft", **base, "net": net, "l": mine, "otherL": theirs}
 
 
@@ -795,8 +897,19 @@ def _route_facts(ctx, p):
                 for tag, rt in sorted(ctx.alternatives[p.id].items())]
     if route.broadcast:
         return [{"key": "broadcastRoute", "packet": p.id, "net": route.networks[0], "address": route.broadcast}]
-    return [{"key": "route", "packet": p.id, "route": route.networks, "ttl": route.ttl,
-             "reach": route.networks[route.last_reachable], "full": route.reaches_destination}]
+    fact = {"key": "route", "packet": p.id, "route": route.networks, "ttl": route.ttl,
+            "reach": route.networks[route.last_reachable], "full": route.reaches_destination}
+    if not ctx.tables:
+        return [fact]
+    # Tabla de enrutamiento: la ruta la dan las tablas; se explican las consultas que la deciden
+    # (el motor hace la consulta con la IP de destino de la ficha).
+    facts = [{**fact, "key": "tableRoute"}]
+    for d in ctx.tables.decisions(route.networks, route.routers, route.ttl):
+        if d == "gateway":
+            facts.append({"key": "tableGateway", "packet": p.id, "net": route.networks[0]})
+        else:
+            facts.append({"key": "tableLookup", "packet": p.id, "at": d})
+    return facts
 
 
 def _clue_facts(ctx, clue, target, partner):
@@ -823,6 +936,22 @@ def _clue_facts(ctx, clue, target, partner):
         router = ctx.router(params["routerId"])
         facts.append({"key": "endRouter", "packet": target.id, "end": "origin" if "first" in t else "destination",
                       "router": router.id, "tags": sorted({y[2] for y in clue.domain})})
+    elif t == "route.crossed_router":
+        route = ctx.routes[target.id]
+        i = route.routers.index(params["routerId"]) + 1
+        keep = [j for j in range(route.last_reachable + 1) if (j >= i if params["crossed"] else j < i)]
+        facts.append({"key": "crossedRouter", "packet": target.id, "at": params["routerId"],
+                      "crossed": params["crossed"], "nets": [route.networks[j] for j in keep]})
+    elif t in ("route.last_entry", "route.next_entry"):
+        route = ctx.routes[target.id]
+        last = t == "route.last_entry"
+        idx = (range(1, route.last_reachable + 1) if last
+               else range(min(route.last_reachable, route.length - 1) + 1))
+        ats = [route.routers[j - 1] if last else route.routers[j] for j in idx]
+        facts.append({"key": "entryClasses", "packet": target.id, "which": "last" if last else "next",
+                      "nets": [route.networks[j] for j in idx], "ats": ats,
+                      "entries": [ctx.tables.entry_class(a, route.networks[-1]) for a in ats],
+                      "entry": params["entry"]})
     elif clue.other:
         facts.append(_partner_fact(ctx, clue, partner))
         values = _relation_values(ctx, clue, target, partner)
@@ -871,7 +1000,15 @@ def _partner_fact(ctx, clue, partner):
         return {"key": "pCrossed", **base, "k": route.crossed}
     if t == "relation.higher_ttl":
         return {"key": "pTtl", **base, "ttl0": route.ttl, "k": route.crossed, "ttl": route.current_ttl}
+    if t == "relation.same_next_hop":
+        return {"key": "pHop", **base, "hop": route.routers[route.crossed]}
     return {"key": "pLeft", **base, "left": route.length - route.crossed}
+
+
+def _net_of(ctx, address):
+    """Red del nivel de una dirección o un prefijo."""
+    a = ipaddress.ip_network(address, strict=False)
+    return next(n for n, p in ctx.addressing.prefixes.items() if a.subnet_of(p))
 
 
 def _mask(length):
@@ -890,6 +1027,11 @@ def _form_facts(ctx, clue, data):
             return [{"key": simple[form], **common, "mask": _mask(prefix.prefixlen), "value": value}]
         if form == "contents":
             return [{"key": "fContents", **common, "cls": _cls(value), "count": value["count"]}]
+        if form == "router_side":
+            return [{"key": "fRouterSide", **common, "a": value[0], "b": value[1]}]
+        if form == "next_hop_network":
+            return [{"key": "fNextHopNet", **common, "at": value["router"], "ip": value["address"],
+                     "via": ctx.tables.next_hop[(value["router"], _net_of(ctx, value["address"]))]}]
         if form in ("first_host", "last_host", "broadcast", "ip_member"):
             key = {"first_host": "fFirstHost", "last_host": "fLastHost", "broadcast": "fBroadcast",
                    "ip_member": "fIpMember"}[form]
@@ -917,6 +1059,10 @@ def _form_facts(ctx, clue, data):
         if form == "interfaces":
             return [{"key": "fRouterIps", "router": ref, "nets": nets, "addresses": value,
                      "prefixes": [str(addr.prefixes[n]) for n in nets]}]
+        if form == "gateway":
+            return [{"key": "fGateway", "via": ref, "net": value}]
+        if form == "next_hop":
+            return [{"key": "fNextHop", "via": ref, "at": value["router"], "ip": value["address"]}]
         if form == "privacy":
             net = next(n for n in nets if addr.privacy_rank(n) == value)
             return [{"key": "fRouterPrivacy", "router": ref, "net": net, "prefix": str(addr.prefixes[net]),
@@ -1014,7 +1160,7 @@ def _check(v, ctx, steps, placed):
         raise Retry("respuesta demasiado pequeña")
     if len(impossible) < 3:
         raise Retry("casi todas las casillas valen")
-    if v.profile == "route" and not v.special:
+    if v.profile in ("route", "table") and not v.special:
         # La pista tiene que descartar algo dentro de la ruta (no basta con la ruta y el TTL).
         target = first["packet"]
         base = _cells(ctx.base[target])
@@ -1038,10 +1184,12 @@ def _export(v, seed, attempt, ctx, clues, steps, placed):
         "addressing": {"plan": addressing.plan},
         "board": board_dict(board),
         "rules": {"onePacketPerCell": True, "onePacketPerRow": True, "onePacketPerColumn": True,
-                  **({"packetOnRoute": True} if ctx.routes else {})},
+                  **({"packetOnRoute": True} if ctx.routes else {}),
+                  **({"routingTables": True} if ctx.tables else {})},
         "networks": networks_list(board, addressing, ctx),
         "routers": [router_dict(board, addressing, r) for r in board.routers],
         "topology": topology_dict(board),
+        **({"routing": ctx.tables.to_dict()} if ctx.tables else {}),
         "nodes": nodes_list(ctx.nodes, addressing),
         "packets": {"items": [packet_item(ctx, p) for p in ctx.packets]},
         "objective": {"type": "training"},

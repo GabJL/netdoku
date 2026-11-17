@@ -38,6 +38,7 @@
   let expanded = new Set();
   // Encaminamiento: paquete bajo el ratón, cuyo origen y destino se marcan en el tablero.
   let routeFocus = null;
+  let tableFocus = null; // Tabla de enrutamiento: { id, pinned } del router cuya tabla se ve
   let bound = false;
 
   // ---------- Nombres en el idioma activo ----------
@@ -74,6 +75,124 @@
     return level.clues.filter((c) => (c.packets || [c.packet]).includes(id));
   }
 
+  // ---------- Tablas de encaminamiento (categoría Tabla de enrutamiento) ----------
+
+  const routing = () => (level && level.routing) || null;
+  const routerById = (id) => level.routers.find((r) => r.id === id);
+  const DEFAULT_ROUTE = "0.0.0.0/0";
+
+  function ipNumber(ip) {
+    return ip.split(".").reduce((n, x) => n * 256 + Number(x), 0);
+  }
+
+  function prefixLength(prefix) {
+    return Number(prefix.split("/")[1]);
+  }
+
+  function inPrefix(ip, prefix) {
+    const size = 2 ** (32 - prefixLength(prefix));
+    return Math.floor(ipNumber(ip) / size) === Math.floor(ipNumber(prefix.split("/")[0]) / size);
+  }
+
+  // Coincidencia más larga: entradas que contienen la IP (sin la ruta por defecto) y la que gana.
+  function lookup(routerId, ip) {
+    const table = routing().tables[routerId] || [];
+    const matches = table.filter((e) => e.prefix !== DEFAULT_ROUTE && inPrefix(ip, e.prefix));
+    const best = matches.reduce((a, e) => (!a || prefixLength(e.prefix) > prefixLength(a.prefix) ? e : a), null);
+    return { matches, entry: best || table.find((e) => e.prefix === DEFAULT_ROUTE) || null };
+  }
+
+  // Siguiente salto como lo escribe el nivel: el nombre del router o la IP de su
+  // interfaz en la red que comparte con `fromId`.
+  function hopText(fromId, viaId) {
+    const via = routerById(viaId);
+    if (routing().nextHop !== "ip" || !via) return viaId;
+    const from = routerById(fromId);
+    const shared = from ? from.connectedNetworks.find((n) => via.connectedNetworks.includes(n)) : null;
+    return (via.interfaces || {})[shared] || viaId;
+  }
+
+  // Puerta de enlace de una red, escrita como los siguientes saltos.
+  function gatewayText(netId) {
+    const gw = routing() && routing().gateways[netId];
+    if (!gw) return null;
+    return routing().nextHop === "ip" ? (routerById(gw).interfaces || {})[netId] || gw : gw;
+  }
+
+  const prefixText = (prefix) => (prefix === DEFAULT_ROUTE ? t("tables.default") : prefix);
+
+  function openTable(id, pin) {
+    if (pin) tableFocus = tableFocus && tableFocus.id === id && tableFocus.pinned ? null : { id, pinned: true };
+    else if (!tableFocus || !tableFocus.pinned) tableFocus = { id, pinned: false };
+    renderBoard();
+  }
+
+  function closeTable(force) {
+    if (!tableFocus || (tableFocus.pinned && !force)) return;
+    tableFocus = null;
+    renderBoard();
+  }
+
+  // Tabla del router enfocado, junto a él sobre el tablero: sus interfaces y sus entradas.
+  function renderRouterTable() {
+    const box = $("router-table");
+    if (!box) return;
+    const rt = tableFocus && routing() ? routerById(tableFocus.id) : null;
+    box.innerHTML = "";
+    box.hidden = !rt;
+    if (!rt) return;
+    const head = document.createElement("div");
+    head.className = "head";
+    const title = document.createElement("strong");
+    title.textContent = t("tables.title", { router: rt.id });
+    head.appendChild(title);
+    if (tableFocus.pinned) {
+      const close = document.createElement("button");
+      close.type = "button";
+      close.className = "close";
+      close.textContent = "✕";
+      close.setAttribute("aria-label", t("theme.close"));
+      close.addEventListener("click", () => closeTable(true));
+      head.appendChild(close);
+    }
+    box.appendChild(head);
+    const ifaces = document.createElement("div");
+    ifaces.className = "interfaces";
+    for (const id of rt.connectedNetworks) {
+      const ip = (rt.interfaces || {})[id];
+      ifaces.appendChild(chip(ip ? `${networkName(networkById(id))} · ${ip}` : networkName(networkById(id)), networkColor(id)));
+    }
+    box.appendChild(ifaces);
+    const table = document.createElement("table");
+    const header = table.createTHead().insertRow();
+    for (const key of ["tables.destination", "tables.nextHop"]) {
+      const th = document.createElement("th");
+      th.textContent = t(key);
+      header.appendChild(th);
+    }
+    const body = table.createTBody();
+    for (const e of routing().tables[rt.id] || []) {
+      const row = body.insertRow();
+      row.insertCell().textContent = prefixText(e.prefix);
+      row.insertCell().textContent = e.direct ? t("tables.direct") : hopText(rt.id, e.via);
+      if (e.direct) row.className = "direct";
+    }
+    box.appendChild(table);
+    // Junto al router: a su derecha o a su izquierda, debajo o encima, según dónde esté.
+    const board = $("board-wrap").querySelector("svg");
+    if (!board) return;
+    const view = board.viewBox.baseVal;
+    const area = box.parentElement.getBoundingClientRect();
+    const rect = board.getBoundingClientRect();
+    const [cx, cy] = routerCenter(rt);
+    const x = rect.left - area.left + (cx / view.width) * rect.width;
+    const y = rect.top - area.top + (cy / view.height) * rect.height;
+    box.style.left = `${x}px`;
+    box.style.top = `${y}px`;
+    box.classList.toggle("from-right", cx > view.width / 2);
+    box.classList.toggle("from-bottom", cy > view.height / 2);
+  }
+
   function maskOf(length) {
     const bits = length ? (0xffffffff << (32 - length)) >>> 0 : 0;
     return [24, 16, 8, 0].map((s) => (bits >>> s) & 255).join(".");
@@ -108,6 +227,7 @@
     options = opts || {};
     expanded = new Set();
     routeFocus = null;
+    tableFocus = null;
     const saved = options.saved;
     state = {
       lives: saved ? saved.lives : START_LIVES,
@@ -143,10 +263,15 @@
     $("hint-button").addEventListener("click", askHint);
     window.addEventListener("netdoku-theme", () => { if (level) render(); });
     window.addEventListener("netdoku-lang", refresh);
+    document.addEventListener("click", (e) => {
+      if (tableFocus && !e.target.closest(".router-table, .router-hit")) closeTable(true);
+    });
+    window.addEventListener("resize", () => { if (tableFocus) renderRouterTable(); });
     // Atajo: A activa o desactiva el modo anotar.
     document.addEventListener("keydown", (e) => {
       if (!state || $("view-game").hidden) return;
       if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest("input, select, textarea, dialog[open]")) return;
+      if (e.key === "Escape" && tableFocus) closeTable(true);
       if (e.key.toLowerCase() === "a") setMode(state.mode === "note" ? "place" : "note");
     });
   }
@@ -215,6 +340,7 @@
 
     let objective = isTraining() ? t("train.objective") : t("game.objective", { victim: level.objective.victimPacketId });
     if ((level.rules || {}).packetOnRoute) objective += " " + t("game.routeNote");
+    if (level.routing) objective += " " + t("game.tablesNote");
     if (level.packets.items.some(hasHiddenEnd)) objective += " " + t("game.hiddenNote");
     if (level.clues.some((c) => Object.values(c.naming || {}).some((f) => SIZE_FORMS.has(f)))) {
       objective += " " + t("game.sizeNote");
@@ -499,21 +625,40 @@
 
     // Routers, encima de los bordes (o del vértice, si unen tres o cuatro redes).
     for (const rt of level.routers) {
-      const cells = routerCells(rt);
-      const cx = cells.reduce((sum, [, c]) => sum + px(c), 0) / cells.length + CELL / 2;
-      const cy = cells.reduce((sum, [r]) => sum + py(r), 0) / cells.length + CELL / 2;
+      const [cx, cy] = routerCenter(rt);
       const g = svg("g", {}, root);
+      if (routing() && tableFocus && tableFocus.id === rt.id) {
+        svg("circle", { cx, cy, r: 19, fill: "none", stroke: tv("--hint"), "stroke-width": 3 }, g);
+      }
       svg("circle", { cx, cy, r: 14, fill: tv("--router"), stroke: tv("--router-edge"), "stroke-width": 2 }, g);
       // Flechas cruzadas: símbolo habitual de router.
       const arrow = { stroke: "#fff", "stroke-width": 2, "stroke-linecap": "round", fill: "none" };
       svg("path", { d: `M${cx - 7} ${cy - 3} h14 m-4 -4 l4 4 l-4 4`, ...arrow }, g);
       svg("path", { d: `M${cx + 7} ${cy + 4} h-14 m4 -4 l-4 4 l4 4`, ...arrow, opacity: 0.75 }, g);
       svg("title", {}, g).textContent = routerTitle(rt);
+      if (routing()) {
+        // Tabla de enrutamiento: nombre del router y su tabla al tocarlo (o al pasar el ratón).
+        g.setAttribute("class", "router-hit");
+        text(g, cx + 18, cy - 12, rt.id, {
+          "font-size": 13, "font-weight": 700, fill: tv("--router"),
+          stroke: tv("--panel"), "stroke-width": 3, "paint-order": "stroke",
+        });
+        g.addEventListener("click", (e) => { e.stopPropagation(); openTable(rt.id, true); });
+        g.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") openTable(rt.id, false); });
+        g.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") closeTable(false); });
+      }
     }
 
     const wrap = $("board-wrap");
     wrap.innerHTML = "";
     wrap.appendChild(root);
+    renderRouterTable();
+  }
+
+  function routerCenter(rt) {
+    const cells = routerCells(rt);
+    return [cells.reduce((sum, [, c]) => sum + px(c), 0) / cells.length + CELL / 2,
+      cells.reduce((sum, [r]) => sum + py(r), 0) / cells.length + CELL / 2];
   }
 
   // Nombre de cada red dentro del tablero, como las habitaciones de Murdoku:
@@ -808,6 +953,13 @@
       sw.style.background = networkColor(n.id);
       item.appendChild(sw);
       item.appendChild(document.createTextNode(`${networkName(n)} · ${n.prefix}`));
+      const gw = gatewayText(n.id);
+      if (gw) {
+        const g = document.createElement("span");
+        g.className = "gateway";
+        g.textContent = t("tables.gatewayOf", { gw });
+        item.appendChild(g);
+      }
       el.appendChild(item);
     }
   }
@@ -937,6 +1089,7 @@
     row("game.origin", end(p.origin, "origin") || endpoint(p.origin.node));
     row("game.destination", end(p.destination, "destination") || (p.destination.node ? endpoint(p.destination.node)
       : chip(t("game.broadcastTo", { address: p.destination.broadcast }), null, null, "addr")));
+    if (p.destination.ip) row("game.destinationIp", chip(p.destination.ip, null, null, "addr"));
     row("game.ttlInitial", document.createTextNode(String(p.ttl.initial)));
     return box;
   }
@@ -1102,6 +1255,26 @@
     if (o.cls) {
       v.clsKey = o.cls.service || o.cls.nodeType;
       v.cls = t(`nodes.${v.clsKey}`);
+    }
+    if (routing()) Object.assign(v, tableVars(o));
+    return v;
+  }
+
+  // Entrenar (Tabla de enrutamiento): la puerta de enlace y las consultas se calculan con
+  // los datos del ejercicio (la IP de destino de la ficha o la dirección de la forma).
+  function tableVars(o) {
+    const v = {};
+    if (o.key === "tableGateway" || o.key === "fGateway") v.gw = gatewayText(o.net);
+    const p = o.packet ? packetById(o.packet) : null;
+    const ip = o.ip || (o.key === "tableLookup" && p && p.destination ? p.destination.ip : null);
+    if (o.at && ip) {
+      const { matches, entry } = lookup(o.at, ip.split("/")[0]);
+      if (entry) {
+        Object.assign(v, {
+          ip, matches: matches.map((e) => e.prefix), winner: prefixText(entry.prefix),
+          hop: entry.direct ? t("tables.direct") : hopText(o.at, entry.via), isDefault: entry.prefix === DEFAULT_ROUTE,
+        });
+      }
     }
     return v;
   }
@@ -1307,7 +1480,9 @@
       case "route":
       case "ttl": {
         const name = (id) => networkName(level.networks.find((n) => n.id === id) || { name: id });
-        return t(`hint.${s.t}`, { packet: s.packet, ttl: s.ttl, route: s.route.map(name), networks: s.networks.map(name) });
+        const vars = { packet: s.packet, ttl: s.ttl, route: s.route.map(name), networks: s.networks.map(name) };
+        if (s.t === "route" && routing()) return t("hint.routeTables", { ...vars, lookups: tableLookups(s.packet) });
+        return t(`hint.${s.t}`, vars);
       }
       case "relation":
         // Sin casillas resaltadas: solo descarta redes posibles del extremo oculto.
@@ -1322,6 +1497,28 @@
       default:
         return "";
     }
+  }
+
+  // Consultas que deciden la ruta de un paquete (route.tableDecisions), explicadas.
+  function tableLookups(id) {
+    const p = packetById(id);
+    const route = (p && p.route) || {};
+    const ip = p && p.destination && p.destination.ip;
+    if (!ip) return [];
+    const name = (netId) => networkName(networkById(netId));
+    return (route.tableDecisions || []).map((d) => {
+      if (d === "gateway") {
+        const net = route.networks[0];
+        return t("hint.lookupGateway", { net: name(net), gw: gatewayText(net) });
+      }
+      const { matches, entry } = lookup(d, ip);
+      if (!entry) return "";
+      const hop = entry.direct ? t("tables.direct") : hopText(d, entry.via);
+      return t("hint.lookup", {
+        router: d, ip, matches: matches.map((e) => e.prefix), winner: prefixText(entry.prefix), hop,
+        isDefault: entry.prefix === DEFAULT_ROUTE,
+      });
+    }).filter(Boolean);
   }
 
   // Paso de la sugerencia que se está mirando (se resalta uno cada vez).

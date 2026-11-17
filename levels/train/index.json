@@ -939,6 +939,214 @@
      ]
     }
    ]
+  },
+  {
+   "id": "enrutamiento",
+   "groups": [
+    {
+     "id": "routing_table",
+     "variants": [
+      {
+       "id": "tab.route",
+       "keys": [
+        "feature:routingTables"
+       ],
+       "files": [
+        "train/tab.route/tab.route-5069000.json",
+        "train/tab.route/tab.route-5069001.json",
+        "train/tab.route/tab.route-5069002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "gateway",
+     "variants": [
+      {
+       "id": "tab.gateway",
+       "keys": [
+        "feature:routingTables"
+       ],
+       "files": [
+        "train/tab.gateway/tab.gateway-5070000.json",
+        "train/tab.gateway/tab.gateway-5070001.json",
+        "train/tab.gateway/tab.gateway-5070002.json"
+       ]
+      },
+      {
+       "id": "tab.gateway_form",
+       "keys": [
+        "router.adjacent_to_router",
+        "form:gateway",
+        "feature:routingTables"
+       ],
+       "files": [
+        "train/tab.gateway_form/tab.gateway_form-5078000.json",
+        "train/tab.gateway_form/tab.gateway_form-5078001.json",
+        "train/tab.gateway_form/tab.gateway_form-5078002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "next_hop",
+     "variants": [
+      {
+       "id": "tab.next_hop_ip",
+       "keys": [
+        "feature:nextHopIp",
+        "feature:routingTables"
+       ],
+       "files": [
+        "train/tab.next_hop_ip/tab.next_hop_ip-5071000.json",
+        "train/tab.next_hop_ip/tab.next_hop_ip-5071001.json",
+        "train/tab.next_hop_ip/tab.next_hop_ip-5071002.json"
+       ]
+      },
+      {
+       "id": "tab.next_hop_form",
+       "keys": [
+        "router.adjacent_to_router",
+        "form:next_hop",
+        "feature:routingTables"
+       ],
+       "files": [
+        "train/tab.next_hop_form/tab.next_hop_form-5079000.json",
+        "train/tab.next_hop_form/tab.next_hop_form-5079001.json",
+        "train/tab.next_hop_form/tab.next_hop_form-5079002.json"
+       ]
+      },
+      {
+       "id": "tab.next_hop_network",
+       "keys": [
+        "network.in_network",
+        "form:next_hop_network",
+        "feature:routingTables"
+       ],
+       "files": [
+        "train/tab.next_hop_network/tab.next_hop_network-5080000.json",
+        "train/tab.next_hop_network/tab.next_hop_network-5080001.json",
+        "train/tab.next_hop_network/tab.next_hop_network-5080002.json"
+       ]
+      },
+      {
+       "id": "tab.router_side",
+       "keys": [
+        "network.in_network",
+        "form:router_side",
+        "feature:routingTables"
+       ],
+       "files": [
+        "train/tab.router_side/tab.router_side-5081000.json",
+        "train/tab.router_side/tab.router_side-5081001.json",
+        "train/tab.router_side/tab.router_side-5081002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "default_route",
+     "variants": [
+      {
+       "id": "tab.default",
+       "keys": [
+        "feature:tableDefault",
+        "feature:routingTables"
+       ],
+       "files": [
+        "train/tab.default/tab.default-5072000.json",
+        "train/tab.default/tab.default-5072001.json",
+        "train/tab.default/tab.default-5072002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "longest_prefix",
+     "variants": [
+      {
+       "id": "tab.longest",
+       "keys": [
+        "feature:tableDefault",
+        "feature:tableSummary",
+        "feature:routingTables"
+       ],
+       "files": [
+        "train/tab.longest/tab.longest-5073000.json",
+        "train/tab.longest/tab.longest-5073001.json",
+        "train/tab.longest/tab.longest-5073002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "crossed_router",
+     "variants": [
+      {
+       "id": "tab.crossed_router",
+       "keys": [
+        "route.crossed_router",
+        "form:router_name",
+        "feature:routingTables"
+       ],
+       "files": [
+        "train/tab.crossed_router/tab.crossed_router-5074000.json",
+        "train/tab.crossed_router/tab.crossed_router-5074001.json",
+        "train/tab.crossed_router/tab.crossed_router-5074002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "table_entry",
+     "variants": [
+      {
+       "id": "tab.last_entry",
+       "keys": [
+        "route.last_entry",
+        "form:table_entry",
+        "feature:tableDefault",
+        "feature:routingTables"
+       ],
+       "files": [
+        "train/tab.last_entry/tab.last_entry-5075000.json",
+        "train/tab.last_entry/tab.last_entry-5075001.json",
+        "train/tab.last_entry/tab.last_entry-5075002.json"
+       ]
+      },
+      {
+       "id": "tab.next_entry",
+       "keys": [
+        "route.next_entry",
+        "form:table_entry",
+        "feature:routingTables"
+       ],
+       "files": [
+        "train/tab.next_entry/tab.next_entry-5076000.json",
+        "train/tab.next_entry/tab.next_entry-5076001.json",
+        "train/tab.next_entry/tab.next_entry-5076002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "route_relation",
+     "variants": [
+      {
+       "id": "tab.same_next_hop",
+       "keys": [
+        "relation.same_next_hop",
+        "feature:routingTables"
+       ],
+       "files": [
+        "train/tab.same_next_hop/tab.same_next_hop-5077000.json",
+        "train/tab.same_next_hop/tab.same_next_hop-5077001.json",
+        "train/tab.same_next_hop/tab.same_next_hop-5077002.json"
+       ]
+      }
+     ]
+    }
+   ]
   }
  ]
 }

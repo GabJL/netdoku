@@ -1,0 +1,2817 @@
+{
+ "schemaVersion": "0.2",
+ "level": {
+  "id": "enrutamiento-4040027",
+  "name": "Nivel generado 4040027",
+  "language": "es",
+  "category": "enrutamiento",
+  "categoryName": "Tabla de enrutamiento",
+  "difficulty": {
+   "global": 4,
+   "tier": "Difícil",
+   "logic": 3,
+   "reading": 3,
+   "knowledge": "basic"
+  },
+  "scenario": "same_network_attacker",
+  "seed": 4040027
+ },
+ "requirements": {
+  "topic": "T3.encaminamiento",
+  "knowledge": "basic"
+ },
+ "addressing": {
+  "plan": "distinct"
+ },
+ "board": {
+  "width": 7,
+  "height": 7,
+  "coordinateSystem": {
+   "origin": "top-left",
+   "rowIndexStartsAt": 1,
+   "columnIndexStartsAt": 1
+  },
+  "networkGrid": [
+   [
+    "net1",
+    "net2",
+    "net2",
+    "net2",
+    "net2",
+    "net3",
+    "net3"
+   ],
+   [
+    "net1",
+    "net1",
+    "net1",
+    "net2",
+    "net2",
+    "net3",
+    "net3"
+   ],
+   [
+    "net1",
+    "net1",
+    "net4",
+    "net4",
+    "net2",
+    "net3",
+    "net3"
+   ],
+   [
+    "net1",
+    "net1",
+    "net4",
+    "net4",
+    "net4",
+    "net3",
+    "net3"
+   ],
+   [
+    "net5",
+    "net5",
+    "net4",
+    "net4",
+    "net6",
+    "net3",
+    "net6"
+   ],
+   [
+    "net5",
+    "net5",
+    "net4",
+    "net6",
+    "net6",
+    "net6",
+    "net6"
+   ],
+   [
+    "net5",
+    "net5",
+    "net5",
+    "net5",
+    "net6",
+    "net6",
+    "net6"
+   ]
+  ]
+ },
+ "rules": {
+  "onePacketPerCell": true,
+  "onePacketPerRow": true,
+  "onePacketPerColumn": true,
+  "packetOnRoute": true,
+  "routingTables": true
+ },
+ "networks": [
+  {
+   "id": "net1",
+   "name": "Investigación",
+   "nameKey": "research",
+   "prefix": "70.74.0.0/16",
+   "addresses": 65536,
+   "cellCount": 8,
+   "cells": [
+    [
+     1,
+     1
+    ],
+    [
+     2,
+     1
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     2,
+     3
+    ],
+    [
+     3,
+     1
+    ],
+    [
+     3,
+     2
+    ],
+    [
+     4,
+     1
+    ],
+    [
+     4,
+     2
+    ]
+   ]
+  },
+  {
+   "id": "net2",
+   "name": "Administración",
+   "nameKey": "admin",
+   "prefix": "13.205.0.0/16",
+   "addresses": 65536,
+   "cellCount": 7,
+   "cells": [
+    [
+     1,
+     2
+    ],
+    [
+     1,
+     3
+    ],
+    [
+     1,
+     4
+    ],
+    [
+     1,
+     5
+    ],
+    [
+     2,
+     4
+    ],
+    [
+     2,
+     5
+    ],
+    [
+     3,
+     5
+    ]
+   ]
+  },
+  {
+   "id": "net3",
+   "name": "Invitados",
+   "nameKey": "guests",
+   "prefix": "126.70.0.0/16",
+   "addresses": 65536,
+   "cellCount": 9,
+   "cells": [
+    [
+     1,
+     6
+    ],
+    [
+     1,
+     7
+    ],
+    [
+     2,
+     6
+    ],
+    [
+     2,
+     7
+    ],
+    [
+     3,
+     6
+    ],
+    [
+     3,
+     7
+    ],
+    [
+     4,
+     6
+    ],
+    [
+     4,
+     7
+    ],
+    [
+     5,
+     6
+    ]
+   ]
+  },
+  {
+   "id": "net4",
+   "name": "Biblioteca",
+   "nameKey": "library",
+   "prefix": "84.8.0.0/16",
+   "addresses": 65536,
+   "cellCount": 8,
+   "cells": [
+    [
+     3,
+     3
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     4,
+     3
+    ],
+    [
+     4,
+     4
+    ],
+    [
+     4,
+     5
+    ],
+    [
+     5,
+     3
+    ],
+    [
+     5,
+     4
+    ],
+    [
+     6,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "net5",
+   "name": "Desarrollo",
+   "nameKey": "dev",
+   "prefix": "149.136.104.0/24",
+   "addresses": 256,
+   "cellCount": 8,
+   "cells": [
+    [
+     5,
+     1
+    ],
+    [
+     5,
+     2
+    ],
+    [
+     6,
+     1
+    ],
+    [
+     6,
+     2
+    ],
+    [
+     7,
+     1
+    ],
+    [
+     7,
+     2
+    ],
+    [
+     7,
+     3
+    ],
+    [
+     7,
+     4
+    ]
+   ]
+  },
+  {
+   "id": "net6",
+   "name": "Aulas",
+   "nameKey": "classrooms",
+   "prefix": "81.0.0.0/8",
+   "addresses": 16777216,
+   "cellCount": 9,
+   "cells": [
+    [
+     5,
+     5
+    ],
+    [
+     5,
+     7
+    ],
+    [
+     6,
+     4
+    ],
+    [
+     6,
+     5
+    ],
+    [
+     6,
+     6
+    ],
+    [
+     6,
+     7
+    ],
+    [
+     7,
+     5
+    ],
+    [
+     7,
+     6
+    ],
+    [
+     7,
+     7
+    ]
+   ]
+  }
+ ],
+ "routers": [
+  {
+   "id": "R1",
+   "name": "Router de Invitados, Biblioteca y Aulas",
+   "connectedNetworks": [
+    "net3",
+    "net4",
+    "net6"
+   ],
+   "degree": 3,
+   "interfaces": {
+    "net3": "126.70.169.109",
+    "net4": "84.8.111.22",
+    "net6": "81.40.143.243"
+   },
+   "position": {
+    "kind": "corner",
+    "cells": [
+     [
+      4,
+      5
+     ],
+     [
+      4,
+      6
+     ],
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      6
+     ]
+    ]
+   }
+  },
+  {
+   "id": "R2",
+   "name": "Router de Investigación, Administración y Biblioteca",
+   "connectedNetworks": [
+    "net1",
+    "net2",
+    "net4"
+   ],
+   "degree": 3,
+   "interfaces": {
+    "net1": "70.74.168.44",
+    "net2": "13.205.68.148",
+    "net4": "84.8.241.185"
+   },
+   "position": {
+    "kind": "corner",
+    "cells": [
+     [
+      2,
+      3
+     ],
+     [
+      2,
+      4
+     ],
+     [
+      3,
+      3
+     ],
+     [
+      3,
+      4
+     ]
+    ]
+   }
+  },
+  {
+   "id": "R3",
+   "name": "Router de Biblioteca y Desarrollo",
+   "connectedNetworks": [
+    "net4",
+    "net5"
+   ],
+   "degree": 2,
+   "interfaces": {
+    "net4": "84.8.114.218",
+    "net5": "149.136.104.196"
+   },
+   "position": {
+    "kind": "edge",
+    "between": [
+     [
+      6,
+      3
+     ],
+     [
+      7,
+      3
+     ]
+    ]
+   },
+   "orientation": "horizontal"
+  },
+  {
+   "id": "R4",
+   "name": "Router de Administración e Invitados",
+   "connectedNetworks": [
+    "net2",
+    "net3"
+   ],
+   "degree": 2,
+   "interfaces": {
+    "net2": "13.205.168.82",
+    "net3": "126.70.230.180"
+   },
+   "position": {
+    "kind": "edge",
+    "between": [
+     [
+      3,
+      5
+     ],
+     [
+      3,
+      6
+     ]
+    ]
+   },
+   "orientation": "vertical"
+  },
+  {
+   "id": "R5",
+   "name": "Router de Desarrollo y Aulas",
+   "connectedNetworks": [
+    "net5",
+    "net6"
+   ],
+   "degree": 2,
+   "interfaces": {
+    "net5": "149.136.104.171",
+    "net6": "81.28.166.121"
+   },
+   "position": {
+    "kind": "edge",
+    "between": [
+     [
+      7,
+      4
+     ],
+     [
+      6,
+      4
+     ]
+    ]
+   },
+   "orientation": "horizontal"
+  },
+  {
+   "id": "R6",
+   "name": "Router de Investigación y Desarrollo",
+   "connectedNetworks": [
+    "net1",
+    "net5"
+   ],
+   "degree": 2,
+   "interfaces": {
+    "net1": "70.74.96.152",
+    "net5": "149.136.104.157"
+   },
+   "position": {
+    "kind": "edge",
+    "between": [
+     [
+      4,
+      1
+     ],
+     [
+      5,
+      1
+     ]
+    ]
+   },
+   "orientation": "horizontal"
+  }
+ ],
+ "topology": {
+  "bipartite": true,
+  "connected": true,
+  "networkNodes": [
+   "net1",
+   "net2",
+   "net3",
+   "net4",
+   "net5",
+   "net6"
+  ],
+  "routerNodes": [
+   "R1",
+   "R2",
+   "R3",
+   "R4",
+   "R5",
+   "R6"
+  ],
+  "edges": [
+   [
+    "net3",
+    "R1"
+   ],
+   [
+    "net4",
+    "R1"
+   ],
+   [
+    "net6",
+    "R1"
+   ],
+   [
+    "net1",
+    "R2"
+   ],
+   [
+    "net2",
+    "R2"
+   ],
+   [
+    "net4",
+    "R2"
+   ],
+   [
+    "net4",
+    "R3"
+   ],
+   [
+    "net5",
+    "R3"
+   ],
+   [
+    "net2",
+    "R4"
+   ],
+   [
+    "net3",
+    "R4"
+   ],
+   [
+    "net5",
+    "R5"
+   ],
+   [
+    "net6",
+    "R5"
+   ],
+   [
+    "net1",
+    "R6"
+   ],
+   [
+    "net5",
+    "R6"
+   ]
+  ]
+ },
+ "routing": {
+  "tableStyle": "default",
+  "nextHop": "ip",
+  "gateways": {
+   "net1": "R2",
+   "net2": "R2",
+   "net3": "R1",
+   "net4": "R1",
+   "net5": "R5",
+   "net6": "R1"
+  },
+  "tables": {
+   "R1": [
+    {
+     "prefix": "81.0.0.0/8",
+     "direct": true
+    },
+    {
+     "prefix": "84.8.0.0/16",
+     "direct": true
+    },
+    {
+     "prefix": "126.70.0.0/16",
+     "direct": true
+    },
+    {
+     "prefix": "149.136.104.0/24",
+     "via": "R3"
+    },
+    {
+     "prefix": "0.0.0.0/0",
+     "via": "R2"
+    }
+   ],
+   "R2": [
+    {
+     "prefix": "13.205.0.0/16",
+     "direct": true
+    },
+    {
+     "prefix": "70.74.0.0/16",
+     "direct": true
+    },
+    {
+     "prefix": "84.8.0.0/16",
+     "direct": true
+    },
+    {
+     "prefix": "126.70.0.0/16",
+     "via": "R4"
+    },
+    {
+     "prefix": "149.136.104.0/24",
+     "via": "R6"
+    },
+    {
+     "prefix": "0.0.0.0/0",
+     "via": "R1"
+    }
+   ],
+   "R3": [
+    {
+     "prefix": "81.0.0.0/8",
+     "via": "R5"
+    },
+    {
+     "prefix": "84.8.0.0/16",
+     "direct": true
+    },
+    {
+     "prefix": "126.70.0.0/16",
+     "via": "R1"
+    },
+    {
+     "prefix": "149.136.104.0/24",
+     "direct": true
+    },
+    {
+     "prefix": "0.0.0.0/0",
+     "via": "R2"
+    }
+   ],
+   "R4": [
+    {
+     "prefix": "13.205.0.0/16",
+     "direct": true
+    },
+    {
+     "prefix": "81.0.0.0/8",
+     "via": "R1"
+    },
+    {
+     "prefix": "126.70.0.0/16",
+     "direct": true
+    },
+    {
+     "prefix": "0.0.0.0/0",
+     "via": "R2"
+    }
+   ],
+   "R5": [
+    {
+     "prefix": "13.205.0.0/16",
+     "via": "R3"
+    },
+    {
+     "prefix": "70.74.0.0/16",
+     "via": "R6"
+    },
+    {
+     "prefix": "81.0.0.0/8",
+     "direct": true
+    },
+    {
+     "prefix": "149.136.104.0/24",
+     "direct": true
+    },
+    {
+     "prefix": "0.0.0.0/0",
+     "via": "R1"
+    }
+   ],
+   "R6": [
+    {
+     "prefix": "70.74.0.0/16",
+     "direct": true
+    },
+    {
+     "prefix": "81.0.0.0/8",
+     "via": "R5"
+    },
+    {
+     "prefix": "84.8.0.0/16",
+     "via": "R3"
+    },
+    {
+     "prefix": "149.136.104.0/24",
+     "direct": true
+    },
+    {
+     "prefix": "0.0.0.0/0",
+     "via": "R2"
+    }
+   ]
+  }
+ },
+ "nodes": [
+  {
+   "id": "N1",
+   "type": "server",
+   "services": [
+    "web"
+   ],
+   "label": "Servidor web",
+   "network": "net1",
+   "position": [
+    1,
+    1
+   ],
+   "ip": "70.74.243.251"
+  },
+  {
+   "id": "N2",
+   "type": "client",
+   "label": "Equipo de usuario",
+   "network": "net2",
+   "position": [
+    1,
+    5
+   ],
+   "ip": "13.205.73.94"
+  },
+  {
+   "id": "N3",
+   "type": "server",
+   "services": [
+    "dns"
+   ],
+   "label": "Servidor DNS",
+   "network": "net3",
+   "position": [
+    1,
+    7
+   ],
+   "ip": "126.70.64.240"
+  },
+  {
+   "id": "N4",
+   "type": "client",
+   "label": "Equipo de usuario",
+   "network": "net1",
+   "position": [
+    3,
+    2
+   ],
+   "ip": "70.74.223.113"
+  },
+  {
+   "id": "N5",
+   "type": "client",
+   "label": "Equipo de usuario",
+   "network": "net3",
+   "position": [
+    4,
+    7
+   ],
+   "ip": "126.70.244.71"
+  },
+  {
+   "id": "N6",
+   "type": "client",
+   "label": "Equipo de usuario",
+   "network": "net5",
+   "position": [
+    5,
+    2
+   ],
+   "ip": "149.136.104.31"
+  },
+  {
+   "id": "N7",
+   "type": "server",
+   "services": [
+    "mail"
+   ],
+   "label": "Servidor de correo",
+   "network": "net4",
+   "position": [
+    5,
+    4
+   ],
+   "ip": "84.8.187.239"
+  },
+  {
+   "id": "N8",
+   "type": "server",
+   "services": [
+    "storage"
+   ],
+   "label": "Servidor de ficheros",
+   "network": "net5",
+   "position": [
+    7,
+    1
+   ],
+   "ip": "149.136.104.16"
+  },
+  {
+   "id": "N9",
+   "type": "server",
+   "services": [
+    "web"
+   ],
+   "label": "Servidor web",
+   "network": "net6",
+   "position": [
+    7,
+    6
+   ],
+   "ip": "81.114.44.109"
+  }
+ ],
+ "packets": {
+  "victimId": "C",
+  "attackerId": "B",
+  "items": [
+   {
+    "id": "A",
+    "color": "#d6519b",
+    "colorName": "rosa",
+    "origin": {
+     "node": "N8"
+    },
+    "destination": {
+     "node": "N7",
+     "ip": "84.8.187.239"
+    },
+    "ttl": {
+     "initial": 6
+    },
+    "route": {
+     "networks": [
+      "net5",
+      "net6",
+      "net4"
+     ],
+     "routers": [
+      "R5",
+      "R1"
+     ],
+     "tableDecisions": [
+      "gateway",
+      "R5"
+     ]
+    },
+    "domain": [
+     [
+      3,
+      3
+     ],
+     [
+      3,
+      4
+     ],
+     [
+      4,
+      3
+     ],
+     [
+      4,
+      4
+     ],
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      1
+     ],
+     [
+      5,
+      3
+     ],
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      7
+     ],
+     [
+      6,
+      1
+     ],
+     [
+      6,
+      2
+     ],
+     [
+      6,
+      3
+     ],
+     [
+      6,
+      4
+     ],
+     [
+      6,
+      5
+     ],
+     [
+      6,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      2
+     ],
+     [
+      7,
+      3
+     ],
+     [
+      7,
+      4
+     ],
+     [
+      7,
+      5
+     ],
+     [
+      7,
+      7
+     ]
+    ],
+    "solution": {
+     "position": [
+      7,
+      7
+     ],
+     "network": "net6",
+     "routersCrossed": 1,
+     "ttl": 5
+    }
+   },
+   {
+    "id": "B",
+    "color": "#d64545",
+    "colorName": "rojo",
+    "role": "attacker",
+    "origin": {
+     "node": "N3"
+    },
+    "destination": {
+     "node": "N2",
+     "ip": "13.205.73.94"
+    },
+    "ttl": {
+     "initial": 4
+    },
+    "route": {
+     "networks": [
+      "net3",
+      "net4",
+      "net2"
+     ],
+     "routers": [
+      "R1",
+      "R2"
+     ],
+     "tableDecisions": [
+      "gateway",
+      "R1"
+     ]
+    },
+    "domain": [
+     [
+      1,
+      2
+     ],
+     [
+      1,
+      3
+     ],
+     [
+      1,
+      4
+     ],
+     [
+      1,
+      6
+     ],
+     [
+      2,
+      4
+     ],
+     [
+      2,
+      5
+     ],
+     [
+      2,
+      6
+     ],
+     [
+      2,
+      7
+     ],
+     [
+      3,
+      3
+     ],
+     [
+      3,
+      4
+     ],
+     [
+      3,
+      5
+     ],
+     [
+      3,
+      6
+     ],
+     [
+      3,
+      7
+     ],
+     [
+      4,
+      3
+     ],
+     [
+      4,
+      4
+     ],
+     [
+      4,
+      5
+     ],
+     [
+      4,
+      6
+     ],
+     [
+      5,
+      3
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      3
+     ]
+    ],
+    "solution": {
+     "position": [
+      3,
+      5
+     ],
+     "network": "net2",
+     "routersCrossed": 2,
+     "ttl": 2
+    }
+   },
+   {
+    "id": "C",
+    "color": "#1fa3a3",
+    "colorName": "turquesa",
+    "role": "victim",
+    "origin": {
+     "node": "N1"
+    },
+    "destination": {
+     "node": "N3",
+     "ip": "126.70.64.240"
+    },
+    "ttl": {
+     "initial": 3
+    },
+    "route": {
+     "networks": [
+      "net1",
+      "net2",
+      "net3"
+     ],
+     "routers": [
+      "R2",
+      "R4"
+     ],
+     "tableDecisions": [
+      "R2"
+     ]
+    },
+    "domain": [
+     [
+      1,
+      2
+     ],
+     [
+      1,
+      3
+     ],
+     [
+      1,
+      4
+     ],
+     [
+      1,
+      6
+     ],
+     [
+      2,
+      1
+     ],
+     [
+      2,
+      2
+     ],
+     [
+      2,
+      3
+     ],
+     [
+      2,
+      4
+     ],
+     [
+      2,
+      5
+     ],
+     [
+      2,
+      6
+     ],
+     [
+      2,
+      7
+     ],
+     [
+      3,
+      1
+     ],
+     [
+      3,
+      5
+     ],
+     [
+      3,
+      6
+     ],
+     [
+      3,
+      7
+     ],
+     [
+      4,
+      1
+     ],
+     [
+      4,
+      2
+     ],
+     [
+      4,
+      6
+     ],
+     [
+      5,
+      6
+     ]
+    ],
+    "solution": {
+     "position": [
+      1,
+      4
+     ],
+     "network": "net2",
+     "routersCrossed": 1,
+     "ttl": 2
+    }
+   },
+   {
+    "id": "D",
+    "color": "#8a5a33",
+    "colorName": "marrón",
+    "origin": {
+     "node": "N2"
+    },
+    "destination": {
+     "node": "N8",
+     "ip": "149.136.104.16"
+    },
+    "ttl": {
+     "initial": 4
+    },
+    "route": {
+     "networks": [
+      "net2",
+      "net1",
+      "net5"
+     ],
+     "routers": [
+      "R2",
+      "R6"
+     ],
+     "tableDecisions": [
+      "R2"
+     ]
+    },
+    "domain": [
+     [
+      1,
+      2
+     ],
+     [
+      1,
+      3
+     ],
+     [
+      1,
+      4
+     ],
+     [
+      2,
+      1
+     ],
+     [
+      2,
+      2
+     ],
+     [
+      2,
+      3
+     ],
+     [
+      2,
+      4
+     ],
+     [
+      2,
+      5
+     ],
+     [
+      3,
+      1
+     ],
+     [
+      3,
+      5
+     ],
+     [
+      4,
+      1
+     ],
+     [
+      4,
+      2
+     ],
+     [
+      5,
+      1
+     ],
+     [
+      6,
+      1
+     ],
+     [
+      6,
+      2
+     ],
+     [
+      7,
+      2
+     ],
+     [
+      7,
+      3
+     ],
+     [
+      7,
+      4
+     ]
+    ],
+    "solution": {
+     "position": [
+      2,
+      1
+     ],
+     "network": "net1",
+     "routersCrossed": 1,
+     "ttl": 3
+    }
+   },
+   {
+    "id": "E",
+    "color": "#8a4fd0",
+    "colorName": "morado",
+    "origin": {
+     "node": "N9"
+    },
+    "destination": {
+     "node": "N6",
+     "ip": "149.136.104.31"
+    },
+    "ttl": {
+     "initial": 3
+    },
+    "route": {
+     "networks": [
+      "net6",
+      "net4",
+      "net5"
+     ],
+     "routers": [
+      "R1",
+      "R3"
+     ],
+     "tableDecisions": [
+      "gateway",
+      "R1"
+     ]
+    },
+    "domain": [
+     [
+      3,
+      3
+     ],
+     [
+      3,
+      4
+     ],
+     [
+      4,
+      3
+     ],
+     [
+      4,
+      4
+     ],
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      1
+     ],
+     [
+      5,
+      3
+     ],
+     [
+      5,
+      5
+     ],
+     [
+      5,
+      7
+     ],
+     [
+      6,
+      1
+     ],
+     [
+      6,
+      2
+     ],
+     [
+      6,
+      3
+     ],
+     [
+      6,
+      4
+     ],
+     [
+      6,
+      5
+     ],
+     [
+      6,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      2
+     ],
+     [
+      7,
+      3
+     ],
+     [
+      7,
+      4
+     ],
+     [
+      7,
+      5
+     ],
+     [
+      7,
+      7
+     ]
+    ],
+    "solution": {
+     "position": [
+      6,
+      3
+     ],
+     "network": "net4",
+     "routersCrossed": 1,
+     "ttl": 2
+    }
+   },
+   {
+    "id": "F",
+    "color": "#e08a1e",
+    "colorName": "naranja",
+    "origin": {
+     "node": "N3"
+    },
+    "destination": {
+     "hidden": true
+    },
+    "ttl": {
+     "initial": 2
+    },
+    "route": {
+     "networks": [
+      "net3",
+      "net4"
+     ],
+     "routers": [
+      "R1"
+     ]
+    },
+    "domain": [
+     [
+      1,
+      6,
+      "net1"
+     ],
+     [
+      1,
+      6,
+      "net2"
+     ],
+     [
+      1,
+      6,
+      "net4"
+     ],
+     [
+      1,
+      6,
+      "net5"
+     ],
+     [
+      1,
+      6,
+      "net6"
+     ],
+     [
+      2,
+      6,
+      "net1"
+     ],
+     [
+      2,
+      6,
+      "net2"
+     ],
+     [
+      2,
+      6,
+      "net4"
+     ],
+     [
+      2,
+      6,
+      "net5"
+     ],
+     [
+      2,
+      6,
+      "net6"
+     ],
+     [
+      2,
+      7,
+      "net1"
+     ],
+     [
+      2,
+      7,
+      "net2"
+     ],
+     [
+      2,
+      7,
+      "net4"
+     ],
+     [
+      2,
+      7,
+      "net5"
+     ],
+     [
+      2,
+      7,
+      "net6"
+     ],
+     [
+      3,
+      3,
+      "net1"
+     ],
+     [
+      3,
+      3,
+      "net2"
+     ],
+     [
+      3,
+      3,
+      "net4"
+     ],
+     [
+      3,
+      3,
+      "net5"
+     ],
+     [
+      3,
+      4,
+      "net1"
+     ],
+     [
+      3,
+      4,
+      "net2"
+     ],
+     [
+      3,
+      4,
+      "net4"
+     ],
+     [
+      3,
+      4,
+      "net5"
+     ],
+     [
+      3,
+      6,
+      "net1"
+     ],
+     [
+      3,
+      6,
+      "net2"
+     ],
+     [
+      3,
+      6,
+      "net4"
+     ],
+     [
+      3,
+      6,
+      "net5"
+     ],
+     [
+      3,
+      6,
+      "net6"
+     ],
+     [
+      3,
+      7,
+      "net1"
+     ],
+     [
+      3,
+      7,
+      "net2"
+     ],
+     [
+      3,
+      7,
+      "net4"
+     ],
+     [
+      3,
+      7,
+      "net5"
+     ],
+     [
+      3,
+      7,
+      "net6"
+     ],
+     [
+      4,
+      3,
+      "net1"
+     ],
+     [
+      4,
+      3,
+      "net2"
+     ],
+     [
+      4,
+      3,
+      "net4"
+     ],
+     [
+      4,
+      3,
+      "net5"
+     ],
+     [
+      4,
+      4,
+      "net1"
+     ],
+     [
+      4,
+      4,
+      "net2"
+     ],
+     [
+      4,
+      4,
+      "net4"
+     ],
+     [
+      4,
+      4,
+      "net5"
+     ],
+     [
+      4,
+      5,
+      "net1"
+     ],
+     [
+      4,
+      5,
+      "net2"
+     ],
+     [
+      4,
+      5,
+      "net4"
+     ],
+     [
+      4,
+      5,
+      "net5"
+     ],
+     [
+      4,
+      6,
+      "net1"
+     ],
+     [
+      4,
+      6,
+      "net2"
+     ],
+     [
+      4,
+      6,
+      "net4"
+     ],
+     [
+      4,
+      6,
+      "net5"
+     ],
+     [
+      4,
+      6,
+      "net6"
+     ],
+     [
+      5,
+      3,
+      "net1"
+     ],
+     [
+      5,
+      3,
+      "net2"
+     ],
+     [
+      5,
+      3,
+      "net4"
+     ],
+     [
+      5,
+      3,
+      "net5"
+     ],
+     [
+      5,
+      5,
+      "net6"
+     ],
+     [
+      5,
+      6,
+      "net1"
+     ],
+     [
+      5,
+      6,
+      "net2"
+     ],
+     [
+      5,
+      6,
+      "net4"
+     ],
+     [
+      5,
+      6,
+      "net5"
+     ],
+     [
+      5,
+      6,
+      "net6"
+     ],
+     [
+      5,
+      7,
+      "net6"
+     ],
+     [
+      6,
+      3,
+      "net1"
+     ],
+     [
+      6,
+      3,
+      "net2"
+     ],
+     [
+      6,
+      3,
+      "net4"
+     ],
+     [
+      6,
+      3,
+      "net5"
+     ],
+     [
+      6,
+      4,
+      "net6"
+     ],
+     [
+      6,
+      5,
+      "net6"
+     ],
+     [
+      6,
+      6,
+      "net6"
+     ],
+     [
+      6,
+      7,
+      "net6"
+     ],
+     [
+      7,
+      5,
+      "net6"
+     ],
+     [
+      7,
+      7,
+      "net6"
+     ]
+    ],
+    "solution": {
+     "position": [
+      5,
+      6
+     ],
+     "network": "net3",
+     "routersCrossed": 0,
+     "ttl": 2,
+     "destination": "N7"
+    }
+   },
+   {
+    "id": "G",
+    "color": "#3b6fd6",
+    "colorName": "azul",
+    "origin": {
+     "node": "N2"
+    },
+    "destination": {
+     "node": "N6",
+     "ip": "149.136.104.31"
+    },
+    "ttl": {
+     "initial": 5
+    },
+    "route": {
+     "networks": [
+      "net2",
+      "net1",
+      "net5"
+     ],
+     "routers": [
+      "R2",
+      "R6"
+     ],
+     "tableDecisions": [
+      "R2"
+     ]
+    },
+    "domain": [
+     [
+      1,
+      2
+     ],
+     [
+      1,
+      3
+     ],
+     [
+      1,
+      4
+     ],
+     [
+      2,
+      1
+     ],
+     [
+      2,
+      2
+     ],
+     [
+      2,
+      3
+     ],
+     [
+      2,
+      4
+     ],
+     [
+      2,
+      5
+     ],
+     [
+      3,
+      1
+     ],
+     [
+      3,
+      5
+     ],
+     [
+      4,
+      1
+     ],
+     [
+      4,
+      2
+     ],
+     [
+      5,
+      1
+     ],
+     [
+      6,
+      1
+     ],
+     [
+      6,
+      2
+     ],
+     [
+      7,
+      2
+     ],
+     [
+      7,
+      3
+     ],
+     [
+      7,
+      4
+     ]
+    ],
+    "solution": {
+     "position": [
+      4,
+      2
+     ],
+     "network": "net1",
+     "routersCrossed": 1,
+     "ttl": 4
+    }
+   }
+  ]
+ },
+ "objective": {
+  "type": "identify_attacker",
+  "text": "Coloca los paquetes para descubrir al atacante. En cada fila y en cada columna hay como mucho un paquete. La víctima es el paquete C: en su red solo había otro paquete, el atacante. La ficha de cada paquete dice su origen, su destino y su TTL inicial: estaba en una red de su ruta a la que le llegaba el TTL. La ruta la deciden las tablas de encaminamiento: el equipo envía el paquete a la puerta de enlace de su red y cada router lo envía al siguiente salto que dice su tabla. Si la ficha no dice el origen o el destino de un paquete, hay que deducirlo con las pistas: cada red posible da una ruta distinta. Las casillas no indican el tamaño de una red: su tamaño es su número de direcciones.",
+  "victimPacketId": "C",
+  "packetsInVictimNetwork": 2,
+  "observableAnswer": {
+   "attackerPacketId": "B"
+  }
+ },
+ "clues": [
+  {
+   "id": "C1",
+   "packet": "B",
+   "type": "relation.closer_to_destination",
+   "text": "Al paquete B le quedaban menos routers que al paquete G para llegar a la red de su destino.",
+   "parameters": {},
+   "slots": {},
+   "naming": {},
+   "readingCost": 0,
+   "topic": "T3.ip",
+   "packets": [
+    "B",
+    "G"
+   ],
+   "relation": {
+    "values": {
+     "B": {
+      "0": [
+       [
+        1,
+        2
+       ],
+       [
+        1,
+        3
+       ],
+       [
+        1,
+        4
+       ],
+       [
+        2,
+        4
+       ],
+       [
+        2,
+        5
+       ],
+       [
+        3,
+        5
+       ]
+      ],
+      "1": [
+       [
+        3,
+        3
+       ],
+       [
+        3,
+        4
+       ],
+       [
+        4,
+        3
+       ],
+       [
+        4,
+        4
+       ],
+       [
+        4,
+        5
+       ],
+       [
+        5,
+        3
+       ],
+       [
+        6,
+        3
+       ]
+      ],
+      "2": [
+       [
+        1,
+        6
+       ],
+       [
+        2,
+        6
+       ],
+       [
+        2,
+        7
+       ],
+       [
+        3,
+        6
+       ],
+       [
+        3,
+        7
+       ],
+       [
+        4,
+        6
+       ],
+       [
+        5,
+        6
+       ]
+      ]
+     },
+     "G": {
+      "0": [
+       [
+        5,
+        1
+       ],
+       [
+        6,
+        1
+       ],
+       [
+        6,
+        2
+       ],
+       [
+        7,
+        2
+       ],
+       [
+        7,
+        3
+       ],
+       [
+        7,
+        4
+       ]
+      ],
+      "1": [
+       [
+        2,
+        1
+       ],
+       [
+        2,
+        2
+       ],
+       [
+        2,
+        3
+       ],
+       [
+        3,
+        1
+       ],
+       [
+        4,
+        1
+       ],
+       [
+        4,
+        2
+       ]
+      ],
+      "2": [
+       [
+        1,
+        2
+       ],
+       [
+        1,
+        3
+       ],
+       [
+        1,
+        4
+       ],
+       [
+        2,
+        4
+       ],
+       [
+        2,
+        5
+       ],
+       [
+        3,
+        5
+       ]
+      ]
+     }
+    },
+    "allowed": [
+     [
+      "0",
+      "1"
+     ],
+     [
+      "0",
+      "2"
+     ],
+     [
+      "1",
+      "2"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "C2",
+   "packet": "B",
+   "type": "router.adjacent_to_router",
+   "text": "El paquete B estaba junto al router R4.",
+   "parameters": {
+    "routerId": "R4"
+   },
+   "slots": {
+    "router": {
+     "kind": "router",
+     "ref": "R4",
+     "form": "router_name"
+    }
+   },
+   "naming": {
+    "router": "router_name"
+   },
+   "readingCost": 0,
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     3,
+     5
+    ],
+    [
+     3,
+     6
+    ]
+   ]
+  },
+  {
+   "id": "C3",
+   "packet": "D",
+   "type": "route.crossed_router",
+   "text": "El paquete D aún no había llegado al router R6.",
+   "parameters": {
+    "routerId": "R6",
+    "crossed": false
+   },
+   "slots": {
+    "router": {
+     "kind": "router",
+     "ref": "R6",
+     "form": "router_name"
+    }
+   },
+   "naming": {
+    "router": "router_name"
+   },
+   "readingCost": 0,
+   "topic": "T3.encaminamiento",
+   "domain": [
+    [
+     1,
+     2
+    ],
+    [
+     1,
+     3
+    ],
+    [
+     1,
+     4
+    ],
+    [
+     2,
+     1
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     2,
+     3
+    ],
+    [
+     2,
+     4
+    ],
+    [
+     2,
+     5
+    ],
+    [
+     3,
+     1
+    ],
+    [
+     3,
+     5
+    ],
+    [
+     4,
+     1
+    ],
+    [
+     4,
+     2
+    ]
+   ]
+  },
+  {
+   "id": "C4",
+   "packet": "D",
+   "type": "node.adjacent_to_node",
+   "text": "El paquete D estaba junto a un servidor.",
+   "parameters": {
+    "nodeType": "server"
+   },
+   "slots": {},
+   "naming": {},
+   "readingCost": 0,
+   "topic": "T3.dispositivos",
+   "domain": [
+    [
+     1,
+     6
+    ],
+    [
+     2,
+     1
+    ],
+    [
+     2,
+     7
+    ],
+    [
+     4,
+     4
+    ],
+    [
+     5,
+     3
+    ],
+    [
+     6,
+     1
+    ],
+    [
+     6,
+     6
+    ],
+    [
+     7,
+     2
+    ],
+    [
+     7,
+     5
+    ],
+    [
+     7,
+     7
+    ]
+   ]
+  },
+  {
+   "id": "C5",
+   "packet": "E",
+   "type": "route.next_entry",
+   "text": "El siguiente router que iba a atravesar el paquete E lo entregaría directamente a su destino.",
+   "parameters": {
+    "entry": "direct"
+   },
+   "slots": {
+    "entry": {
+     "kind": "entry",
+     "ref": 0,
+     "form": "table_entry"
+    }
+   },
+   "naming": {
+    "entry": "table_entry"
+   },
+   "readingCost": 0,
+   "topic": "T3.encaminamiento",
+   "domain": [
+    [
+     3,
+     3
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     4,
+     3
+    ],
+    [
+     4,
+     4
+    ],
+    [
+     4,
+     5
+    ],
+    [
+     5,
+     3
+    ],
+    [
+     6,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "C6",
+   "packet": "F",
+   "type": "spatial.in_row",
+   "text": "El paquete F estaba en la misma fila que el equipo de usuario de la red 149.136.104.0/24.",
+   "parameters": {
+    "row": 5
+   },
+   "slots": {
+    "row": {
+     "kind": "row",
+     "ref": 5,
+     "form": "aligned_node",
+     "value": {
+      "node": "N6",
+      "form": "label_prefix"
+     }
+    }
+   },
+   "naming": {
+    "row": "aligned_node"
+   },
+   "readingCost": 0,
+   "topic": "T3.ip",
+   "domain": [
+    [
+     5,
+     3,
+     "net1"
+    ],
+    [
+     5,
+     3,
+     "net2"
+    ],
+    [
+     5,
+     3,
+     "net4"
+    ],
+    [
+     5,
+     3,
+     "net5"
+    ],
+    [
+     5,
+     5,
+     "net6"
+    ],
+    [
+     5,
+     6,
+     "net1"
+    ],
+    [
+     5,
+     6,
+     "net2"
+    ],
+    [
+     5,
+     6,
+     "net4"
+    ],
+    [
+     5,
+     6,
+     "net5"
+    ],
+    [
+     5,
+     6,
+     "net6"
+    ],
+    [
+     5,
+     7,
+     "net6"
+    ]
+   ]
+  },
+  {
+   "id": "C7",
+   "packet": "F",
+   "type": "endpoint.destination",
+   "text": "El paquete F iba dirigido al servidor de correo.",
+   "parameters": {
+    "nodeId": "N7"
+   },
+   "slots": {
+    "node": {
+     "kind": "node",
+     "ref": "N7",
+     "form": "label"
+    }
+   },
+   "naming": {
+    "node": "label"
+   },
+   "readingCost": 0,
+   "topic": "T3.ip",
+   "domain": [
+    [
+     1,
+     6,
+     "net4"
+    ],
+    [
+     2,
+     6,
+     "net4"
+    ],
+    [
+     2,
+     7,
+     "net4"
+    ],
+    [
+     3,
+     3,
+     "net4"
+    ],
+    [
+     3,
+     4,
+     "net4"
+    ],
+    [
+     3,
+     6,
+     "net4"
+    ],
+    [
+     3,
+     7,
+     "net4"
+    ],
+    [
+     4,
+     3,
+     "net4"
+    ],
+    [
+     4,
+     4,
+     "net4"
+    ],
+    [
+     4,
+     5,
+     "net4"
+    ],
+    [
+     4,
+     6,
+     "net4"
+    ],
+    [
+     5,
+     3,
+     "net4"
+    ],
+    [
+     5,
+     6,
+     "net4"
+    ],
+    [
+     6,
+     3,
+     "net4"
+    ]
+   ]
+  },
+  {
+   "id": "C8",
+   "packet": "G",
+   "type": "network.in_either_network",
+   "text": "El paquete G estaba en la red Investigación (70.74.0.0/16) o en la red de 256 direcciones.",
+   "parameters": {
+    "networkIds": [
+     "net1",
+     "net5"
+    ]
+   },
+   "slots": {
+    "net1": {
+     "kind": "network",
+     "ref": "net1",
+     "form": "name"
+    },
+    "net2": {
+     "kind": "network",
+     "ref": "net5",
+     "form": "address_count"
+    }
+   },
+   "naming": {
+    "net1": "name",
+    "net2": "address_count"
+   },
+   "readingCost": 2,
+   "topic": "T3.subredes",
+   "domain": [
+    [
+     2,
+     1
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     2,
+     3
+    ],
+    [
+     3,
+     1
+    ],
+    [
+     4,
+     1
+    ],
+    [
+     4,
+     2
+    ],
+    [
+     5,
+     1
+    ],
+    [
+     6,
+     1
+    ],
+    [
+     6,
+     2
+    ],
+    [
+     7,
+     2
+    ],
+    [
+     7,
+     3
+    ],
+    [
+     7,
+     4
+    ]
+   ]
+  }
+ ],
+ "solution": {
+  "placements": {
+   "A": [
+    7,
+    7
+   ],
+   "B": [
+    3,
+    5
+   ],
+   "C": [
+    1,
+    4
+   ],
+   "D": [
+    2,
+    1
+   ],
+   "E": [
+    6,
+    3
+   ],
+   "F": [
+    5,
+    6
+   ],
+   "G": [
+    4,
+    2
+   ]
+  },
+  "victimNetwork": "net2",
+  "attackerPacketId": "B"
+ },
+ "generation": {
+  "generator": "netdoku_gen v0.5",
+  "novelties": [
+   "relation",
+   "cornerRouter",
+   "hiddenEndpoint",
+   "routingTables"
+  ],
+  "attempt": 38,
+  "clueCount": 8,
+  "cluesByType": {
+   "relation.closer_to_destination": 1,
+   "router.adjacent_to_router": 1,
+   "route.crossed_router": 1,
+   "node.adjacent_to_node": 1,
+   "route.next_entry": 1,
+   "spatial.in_row": 1,
+   "endpoint.destination": 1,
+   "network.in_either_network": 1
+  },
+  "maxReservationSize": 0,
+  "difficulty": {
+   "logic": 3,
+   "tier": "Media",
+   "hardestTechnique": "Relación entre valores abiertos",
+   "steps": 13,
+   "advancedSteps": 5,
+   "bottlenecks": 0,
+   "techniqueCounts": {
+    "single": 7,
+    "line": 4,
+    "relopen": 1,
+    "relfixed": 1
+   },
+   "minOptions": 1,
+   "trace": [
+    [
+     "single",
+     5
+    ],
+    [
+     "line",
+     4
+    ],
+    [
+     "line",
+     4
+    ],
+    [
+     "relopen",
+     3
+    ],
+    [
+     "single",
+     2
+    ],
+    [
+     "relfixed",
+     1
+    ],
+    [
+     "single",
+     2
+    ],
+    [
+     "line",
+     6
+    ],
+    [
+     "single",
+     4
+    ],
+    [
+     "line",
+     3
+    ],
+    [
+     "single",
+     2
+    ],
+    [
+     "single",
+     2
+    ],
+    [
+     "single",
+     1
+    ]
+   ],
+   "reading": 3,
+   "readingCosts": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    2
+   ],
+   "routeCosts": {
+    "A": 1,
+    "B": 1,
+    "C": 1,
+    "D": 1,
+    "E": 1,
+    "G": 1
+   },
+   "global": 4
+  }
+ }
+}

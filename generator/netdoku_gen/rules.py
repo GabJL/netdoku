@@ -94,6 +94,8 @@ class Context:
         self.routes = routes or {}
         self.transit = transit
         # Extremos ocultos: paquete -> "origin" | "destination", y la ruta con cada red posible del extremo.
+        # "path" (solo al comprobar si las tablas son imprescindibles): cada camino mínimo es una
+        # hipótesis, y la ruta verdadera lleva la etiqueta "route".
         self.hidden = {pid: kind for pid, (kind, _) in (hidden or {}).items()}
         self.alternatives = {pid: alts for pid, (_, alts) in (hidden or {}).items()}
         self.base = {}
@@ -106,6 +108,7 @@ class Context:
             else:
                 self.base[p.id] = self.free_cells
         self.distance = _network_distances(board)
+        self.tables = None   # Tabla de enrutamiento (v0.5): tables.Tables
 
     def node(self, node_id):
         return next(n for n in self.nodes if n.id == node_id)
@@ -122,6 +125,8 @@ class Context:
         kind = self.hidden.get(p.id)
         if not kind:
             return p.cell
+        if kind == "path":
+            return (*p.cell, "route")
         route = self.routes[p.id]
         return (*p.cell, route.networks[0] if kind == "origin" else route.networks[-1])
 
@@ -662,6 +667,96 @@ def _same_end(ctx, p, kind):
             yield clue
 
 
+# ---------- Tabla de enrutamiento (v0.5) ----------
+
+TABLE_TOPIC = "T3.encaminamiento"
+
+
+def _crossed_router(ctx, p):
+    """«El paquete A ya había pasado por el router R3» / «… aún no había llegado al router R3»."""
+    route = ctx.routes.get(p.id)
+    if not ctx.tables or not route or route.broadcast:
+        return
+    k, top = route.crossed, route.last_reachable
+    for i, router_id in enumerate(route.routers, start=1):
+        crossed = i <= k
+        keep = [j for j in range(top + 1) if (j >= i if crossed else j < i)]
+        if len(keep) < 2 or len(keep) == top + 1:
+            continue
+
+        def cells(rt, router_id=router_id, crossed=crossed):
+            if router_id not in rt.routers:
+                return frozenset()
+            i = rt.routers.index(router_id) + 1
+            return _nets(ctx, rt, [j for j in range(rt.last_reachable + 1) if (j >= i if crossed else j < i)])
+        if crossed:
+            template = f"El paquete {p.id} ya había pasado por el router {{router}}."
+        else:
+            template = f"El paquete {p.id} aún no había llegado al router {{router}}."
+        yield Clue(p.id, "route.crossed_router", {"routerId": router_id, "crossed": crossed},
+                   template.format(router=router_id), _route_cells(ctx, p.id, cells), topic=TABLE_TOPIC,
+                   template=template, slots={"router": ("router", router_id)})
+
+
+def _entry_clue(ctx, p, kind):
+    """Clase de entrada que usó el último router atravesado o que usará el siguiente."""
+    route = ctx.routes.get(p.id)
+    tables = ctx.tables
+    if not tables or not route:
+        return
+    k = route.crossed
+    if (kind == "last" and k < 1) or (kind == "next" and k >= route.length):
+        return
+    dest = route.networks[-1]
+    router_id = route.routers[k - 1] if kind == "last" else route.routers[k]
+    entry = tables.entry_class(router_id, dest)
+    if entry not in ("default", "summary", "direct") or (kind == "last" and entry == "direct"):
+        return
+
+    def cells(rt):
+        d = rt.networks[-1]
+        if kind == "last":
+            idx = [j for j in range(1, rt.last_reachable + 1) if tables.entry_class(rt.routers[j - 1], d) == entry]
+        else:
+            idx = [j for j in range(min(rt.last_reachable, rt.length - 1) + 1)
+                   if tables.entry_class(rt.routers[j], d) == entry]
+        return _nets(ctx, rt, idx)
+    who = (f"El último router que había atravesado el paquete {p.id} lo había reenviado" if kind == "last"
+           else f"El siguiente router que iba a atravesar el paquete {p.id} lo reenviaría")
+    text = {"default": f"{who} por su ruta por defecto.",
+            "summary": f"{who} por una entrada que agrupa varias redes.",
+            "direct": f"El siguiente router que iba a atravesar el paquete {p.id} lo entregaría directamente "
+                      f"a su destino."}[entry]
+    # Coste: el de la consulta más cara de los routers de la ruta que hay que mirar.
+    cost = 0
+    for rt in (ctx.alternatives.get(p.id) or {"": route}).values():
+        last = rt.last_reachable if kind == "last" else min(rt.last_reachable + 1, rt.length)
+        cost = max([cost] + [tables.match_cost(r, rt.networks[-1]) for r in rt.routers[:last]])
+    yield Clue(p.id, f"route.{kind}_entry", {"entry": entry}, text, _route_cells(ctx, p.id, cells),
+               topic=TABLE_TOPIC, template=text, slots={"entry": ("entry", cost)})
+
+
+def _same_next_hop(ctx, p):
+    """«El siguiente salto de los paquetes A y B era el mismo router»."""
+    if not ctx.tables or p.id not in ctx.routes:
+        return
+
+    def value(pid, x):
+        route, k = ctx.route_at(pid, x)
+        return route.routers[k] if k < route.length else f"-{pid}"   # en la red del destino, ninguno
+    for q in _partners(ctx, p, True):
+        if q.id not in ctx.routes:
+            continue
+        mine, theirs = value(p.id, ctx.true_state(p)), value(q.id, ctx.true_state(q))
+        if mine != theirs:
+            continue
+        clue = _relation(ctx, "relation.same_next_hop", p, q, value, lambda a, b: a == b,
+                         f"El siguiente salto de los paquetes {p.id} y {q.id} era el mismo router.",
+                         topic=TABLE_TOPIC)
+        if clue:
+            yield clue
+
+
 # Orden: si dos pistas dicen lo mismo (mismas D y A), se queda la primera. El
 # recuento va antes que la disyuntiva y la negativa porque, con pocas redes,
 # suele coincidir con alguna de ellas.
@@ -677,6 +772,9 @@ SUBTYPES = {
     "route.in_transit_network": _in_transit_network,
     "route.last_router": _last_router,
     "route.next_router": _next_router,
+    "route.crossed_router": _crossed_router,
+    "route.last_entry": lambda ctx, p: _entry_clue(ctx, p, "last"),
+    "route.next_entry": lambda ctx, p: _entry_clue(ctx, p, "next"),
     "ttl.routers_crossed": _routers_crossed,
     "ttl.routers_left": _routers_left,
     "ttl.routers_crossed_range": _routers_crossed_range,
@@ -699,6 +797,7 @@ SUBTYPES = {
     "relation.closer_to_destination": _closer_to_destination,
     "relation.same_origin": lambda ctx, p: _same_end(ctx, p, "origin"),
     "relation.same_destination": lambda ctx, p: _same_end(ctx, p, "destination"),
+    "relation.same_next_hop": _same_next_hop,
 }
 # Subtipos que solo genera un extremo oculto de cierto tipo (los demás generadores no los distinguen).
 HIDDEN_KIND = {"endpoint.origin": "origin", "endpoint.destination": "destination",

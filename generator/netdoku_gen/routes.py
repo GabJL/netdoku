@@ -11,6 +11,10 @@ tablas de encaminamiento.
 v0.4.5: los routers pueden unir tres o cuatro redes, y un paquete puede tener
 oculto su origen o su destino (`choose_hidden`): su ruta depende entonces de
 la red de ese extremo, que el jugador tiene que deducir.
+
+v0.5 (Tabla de enrutamiento): las rutas salen de las tablas (`tables.Tables`),
+que se pasan como `paths`, y se prefieren los pares cuya ruta exige las tablas
+(`prefer`).
 """
 
 from collections import deque
@@ -130,9 +134,16 @@ def _ttl(rng, crossed, length, short):
 
 
 def assign_routes(rng, board, nodes, packets, victim_id, transit=None, broadcast_probability=0.3,
-                  short_ratio=None):
-    """Origen, destino, ruta y TTL inicial de cada paquete, coherentes con su posición."""
-    paths = unique_shortest_paths(board)
+                  short_ratio=None, paths=None, prefer=(), prefer_weight=4, prefer_min=0):
+    """Origen, destino, ruta y TTL inicial de cada paquete, coherentes con su posición.
+
+    `paths`: {(red de origen, red de destino): (redes, routers)}; por defecto, los caminos
+    mínimos únicos. `prefer`: pares que pesan `prefer_weight` veces más mientras no se hayan
+    elegido `prefer_min` (rutas que exigen las tablas, routes.tables.requiredRouteWeight).
+    """
+    if paths is None:
+        paths = unique_shortest_paths(board)
+    preferred = 0
     endpoints = {n.id: identifiable(nodes, n.id) for n in board.networks if n.id != transit}
     endpoints = {k: v for k, v in endpoints.items() if v}
     if short_ratio is None:
@@ -166,9 +177,12 @@ def assign_routes(rng, board, nodes, packets, victim_id, transit=None, broadcast
         role = rng.choices(roles, weights=[ROLE_WEIGHTS[r] for r in roles])[0]
         options = by_role[role]
         # Se prefieren las rutas largas, que dan más juego, y las que no lleva otro paquete.
-        weights = [len(o[1]) / (1 + 4 * used.get((o[0][0], o[0][-1]), 0)) for o in options]
+        weights = [len(o[1]) / (1 + 4 * used.get((o[0][0], o[0][-1]), 0))
+                   * (prefer_weight if preferred < prefer_min and (o[0][0], o[0][-1]) in prefer else 1)
+                   for o in options]
         nets, routers, k = rng.choices(options, weights=weights)[0]
         used[(nets[0], nets[-1])] = used.get((nets[0], nets[-1]), 0) + 1
+        preferred += (nets[0], nets[-1]) in prefer
         ttl = None
         if k < len(routers) and rng.random() < short_ratio:
             ttl = _ttl(rng, k, len(routers), short=True)
@@ -183,7 +197,7 @@ def assign_routes(rng, board, nodes, packets, victim_id, transit=None, broadcast
     return routes
 
 
-def choose_hidden(rng, board, nodes, routes, victim_id, transit=None, probability=0.0, max_count=2):
+def choose_hidden(rng, board, nodes, routes, victim_id, transit=None, probability=0.0, max_count=2, paths=None):
     """Paquetes con el origen o el destino oculto: paquete -> (extremo, {red posible: ruta}).
 
     Las redes posibles del extremo son todas las que tienen equipos, salvo la del
@@ -193,7 +207,8 @@ def choose_hidden(rng, board, nodes, routes, victim_id, transit=None, probabilit
     """
     if not probability or rng.random() >= probability:
         return {}
-    paths = unique_shortest_paths(board)
+    if paths is None:
+        paths = unique_shortest_paths(board)
     with_nodes = [n.id for n in board.networks if n.id != transit and any(x.network == n.id for x in nodes)]
     options = []
     for pid, route in routes.items():

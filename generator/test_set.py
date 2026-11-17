@@ -2,10 +2,12 @@
 lotes del juego, para validar reglas y textos con pocos tableros.
 
 Selección voraz que cubre cada subtipo de pista en 3 tableros; cada forma de
-nombrar y cada plan de direcciones de Direccionamiento, en 1; cada
-particularidad de Encaminamiento (difusión, red de tránsito, TTL que no llega
-al destino, router de esquina, origen o destino oculto), en 2, y en cada categoría, una dificultad de 1-2, una de 3 y una
-de 4-5. Prefiere los niveles fáciles, que se juegan antes.
+nombrar y cada plan de direcciones de Direccionamiento y de Tabla de
+enrutamiento, en 1; cada particularidad de Encaminamiento (difusión, red de
+tránsito, TTL que no llega al destino, router de esquina, origen o destino
+oculto) y de Tabla de enrutamiento (estilo de tabla, siguiente salto con su IP),
+en 2, y en cada categoría, una dificultad de 1-2, una de 3 y una de 4-5.
+Prefiere los niveles fáciles, que se juegan antes.
 
 Uso: python generator/test_set.py [--write] [--fresh] [subtype=N form=N ...]
 Sin --write solo muestra la selección; con --write escribe levels/test.json.
@@ -18,7 +20,7 @@ import pathlib
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent / "levels"
-CATEGORIES = ["inicial", "direccionamiento", "encaminamiento"]
+CATEGORIES = ["inicial", "direccionamiento", "encaminamiento", "enrutamiento"]
 DEMAND = {"subtype": 3, "form": 1, "plan": 1, "feature": 2, "tier": 0}
 for arg in sys.argv[1:]:
     if "=" in arg:
@@ -38,6 +40,12 @@ def features(d):
     # Novedades de la v0.4.5 que no son un subtipo ni una forma.
     novelties = d.get("generation", {}).get("novelties", [])
     out |= {x for x in novelties if x in ("cornerRouter", "hiddenEndpoint")}
+    # Tabla de enrutamiento (v0.5): estilo de las tablas y siguiente salto escrito con su IP.
+    routing = d.get("routing")
+    if routing:
+        out.add(f"table:{routing['tableStyle']}")
+        if routing["nextHop"] == "ip":
+            out.add("nextHopIp")
     return out
 
 
@@ -48,7 +56,7 @@ def describe(path):
     subtypes = sorted({c["type"] for c in d["clues"]})
     forms = sorted({f for c in d["clues"] for f in (c.get("naming") or {}).values()})
     plan = d.get("addressing", {}).get("plan") if cat != "inicial" else None
-    plan_item = plan if cat == "direccionamiento" else None
+    plan_item = plan if cat in ("direccionamiento", "enrutamiento") else None
     feats = sorted(features(d))
     items = {("subtype", s) for s in subtypes} | {("form", f) for f in forms} | {("feature", f) for f in feats}
     if plan_item:

@@ -22,7 +22,7 @@ Cada tipo agrupa subtipos relacionados y depende de una familia de propiedades (
 | `router` | `spatial` + `networks` | Relación con routers: junto a un router, a N casillas de un router. | Definido parcialmente |
 | `protocol` | `protocols` | Protocolo, transporte y puerto del paquete. | Previsto |
 | `endpoint` | `origins` / `destinations` | Origen y destino del paquete. | Definido parcialmente (v0.4; orígenes y destinos ocultos, v0.4.5) |
-| `route` | `routes` / `hops` | Ruta seguida, routers atravesados, siguiente salto. | Definido parcialmente (v0.4) |
+| `route` | `routes` / `hops` | Ruta seguida, routers atravesados, siguiente salto, entradas de las tablas de encaminamiento. | Definido parcialmente (v0.4; tablas, v0.5) |
 | `ttl` | `ttl` | Valor del TTL y comparaciones de TTL. | Definido parcialmente (v0.4) |
 | `relation` | según las propiedades comparadas | Comparaciones entre dos paquetes. | Definido parcialmente (v0.4.5) |
 
@@ -111,7 +111,8 @@ Una forma con coste solo se usa si su **cálculo es imprescindible**. Para compr
 | `broadcast` | «la red cuya dirección de difusión es 192.168.0.255» | C | como `ip_member` | `basic` |
 | `last_host` | «la red cuya última dirección asignable es 192.168.0.254» | C | como `ip_member` | `basic` |
 | `privacy` | «la red pública», «la red privada» (v0.4.5; solo si es la única de su clase en el nivel) | 1 (2 si hay que mirar el rango 172.16.0.0/12) | `T3.nat` | `basic` |
-| `router_side` | «la red que une el router de Aulas con …» (pendiente de definir) | 2 | `T3.dispositivos` | `basic` |
+| `router_side` | «la red que comparten R2 y R5» (v0.5, solo en la categoría Tabla de enrutamiento, donde los routers tienen nombre; dos routers comparten como mucho una red) | 0 | `T3.dispositivos` | `basic` |
+| `next_hop_network` | «la red por la que R2 envía lo que va a 10.2.4.9» (v0.5, categoría Tabla de enrutamiento; nunca una red del propio R2 a la que entrega directamente) | el de la [consulta](#coste-de-consultar-la-tabla) en la tabla de R2 | `T3.encaminamiento` | `basic` |
 
 **Longitud de prefijo** (solo en `network.prefix_length`):
 
@@ -170,8 +171,13 @@ Son la única forma de su pista. `size_compare` cuesta lo mismo que `size_rank`:
 | `networks` | «el router que une Aulas y Laboratorio» o «…que une 10.0.1.0/24 y 10.0.2.0/24» | 0 | el de la forma de nombrar de cada red | `basic` |
 | `interfaces` | «el router con las interfaces 10.0.1.1 y 10.0.2.1» | C (el mayor de los dos cálculos) | como `ip_member` | `basic` |
 | `privacy` | «el router de la red pública» (v0.4.5; solo si la red es la única de su clase y este es su único router) | como `privacy` | `T3.nat` | `basic` |
+| `router_name` | «el router R3» (v0.5, solo en la categoría Tabla de enrutamiento) | 0 | `T3.dispositivos` | `basic` |
+| `gateway` | «la puerta de enlace de Aulas» (v0.5, categoría Tabla de enrutamiento; solo en redes con más de un router) | 0, o 1 si las puertas de enlace se escriben por su IP | `T3.encaminamiento` | `basic` |
+| `next_hop` | «el siguiente salto de R2 hacia 10.2.4.9», «el router al que R2 envía lo que va a 10.2.0.0/24» (v0.5, categoría Tabla de enrutamiento) | el de la [consulta](#coste-de-consultar-la-tabla) en la tabla de R2 | `T3.encaminamiento` | `basic` |
 
 Un router de tres o cuatro redes (v0.4.5; véase [Routers de tres o cuatro redes](#routers-de-tres-o-cuatro-redes-v045)) se nombra igual, con todas sus redes («el router que une Aulas, Servicios y Troncal») o todas sus interfaces, y el coste de `interfaces` es el mayor de sus cálculos. Como está en una esquina, no está en una sola fila ni en una sola columna, así que nunca se usa en `aligned_router`.
+
+`next_hop` y `next_hop_network` nombran la dirección de destino por una dirección cualquiera de una red del nivel (no tiene por qué ser la de un equipo) o por su prefijo: la consulta da lo mismo, porque ninguna entrada de una tabla parte una red del nivel. Sin hacer la consulta, `next_hop` se queda en «algún router vecino de R2» y `next_hop_network`, en «alguna red de R2»; con eso se comprueba si su cálculo es imprescindible.
 
 #### Coste C de calcular la red de una dirección
 
@@ -186,7 +192,7 @@ Las direcciones IP de los equipos no se muestran en el tablero. `ip_member`, `ip
 
 C sube un punto, hasta 3, si la dirección está a `addressing.nearBoundaryDistance` direcciones o menos del límite con otra red del nivel y alguna de las dos máscaras no acaba en un octeto (192.168.0.130 con dos /25; no 172.16.1.254 frente a 172.16.2.0/24, que se distingue comparando el tercer octeto). Las direcciones de red y de difusión solo se usan con `addressing.allowSpecialAddresses`.
 
-Las redes de un nivel nunca se solapan: una dirección pertenece a una sola red. Los prefijos solapados y la coincidencia más larga (LPM) aparecen en las tablas de encaminamiento (v0.5).
+Las redes de un nivel nunca se solapan: una dirección pertenece a una sola red. Los prefijos solapados y la coincidencia más larga (LPM) aparecen en las [tablas de encaminamiento](#tabla-de-enrutamiento-v05) (v0.5).
 
 #### Identificador, difusión y direcciones asignables
 
@@ -222,7 +228,7 @@ Su bloque es `T3.nat` (clase 15), posterior a los de Direccionamiento y Encamina
 
 En una categoría que no es la primera, una parte de las pistas usa formas de nombrar propias de esa categoría aunque su coste sea 0 (por ejemplo, `prefix` en lugar de `name` en Direccionamiento), para que el nivel trabaje sus conceptos. La proporción la fija `clues.naming.categoryFormRatio` y varía de un nivel a otro. Siempre hay al menos una, porque es la que hace que el nivel pertenezca a la categoría.
 
-La v0.2 solo usa `name` (con el prefijo entre paréntesis, como etiqueta) y `label_network`. La v0.3 añade las formas de redes, longitudes, equipos y routers de esta sección, salvo `router_side` y `service`. La v0.3.5 añade `contents`, `first_host`, `broadcast`, `last_host`, `usable_count`, las formas de tamaño para redes concretas y las de filas y columnas. En la categoría Inicial, cada pista elige al azar entre las formas de coste 0 que no son de otra categoría (`name` o `contents`; `number`, `aligned_node` o `aligned_router`).
+La v0.2 solo usa `name` (con el prefijo entre paréntesis, como etiqueta) y `label_network`. La v0.3 añade las formas de redes, longitudes, equipos y routers de esta sección, salvo `router_side` y `service`. La v0.3.5 añade `contents`, `first_host`, `broadcast`, `last_host`, `usable_count`, las formas de tamaño para redes concretas y las de filas y columnas. La v0.5 añade las de la categoría Tabla de enrutamiento: `router_side`, `next_hop_network`, `router_name`, `gateway` y `next_hop`. En la categoría Inicial, cada pista elige al azar entre las formas de coste 0 que no son de otra categoría (`name` o `contents`; `number`, `aligned_node` o `aligned_router`).
 
 ### Reglas de colocación y objetivo
 
@@ -385,7 +391,7 @@ Este catálogo recoge solo las reglas que ayudan a **colocar** paquetes. La info
 
 ### Encaminamiento: rutas y TTL (v0.4)
 
-En la categoría Encaminamiento, la ficha de cada paquete muestra su **origen** (un equipo), su **destino** (un equipo o la difusión de su red) y su **TTL inicial**. El jugador no ve la ruta: la traza él en el mapa. Para que pueda hacerlo sin las tablas de encaminamiento, previstas para la v0.5, el generador solo usa pares de origen y destino con un **único camino mínimo** en el grafo Red↔Router.
+En la categoría Encaminamiento, la ficha de cada paquete muestra su **origen** (un equipo), su **destino** (un equipo o la difusión de su red) y su **TTL inicial**. El jugador no ve la ruta: la traza él en el mapa. Para que pueda hacerlo sin tablas de encaminamiento (están en otra categoría, [Tabla de enrutamiento](#tabla-de-enrutamiento-v05)), el generador solo usa pares de origen y destino con un **único camino mínimo** en el grafo Red↔Router.
 
 Conceptos que usan los subtipos de esta sección:
 
@@ -478,9 +484,9 @@ Para comprobar que un cálculo es imprescindible (véase [Coste C](#coste-c-de-c
 
 Hasta la v0.4 todas las pistas son unarias: lo único que relaciona a dos paquetes es la regla de una casilla, una fila y una columna por paquete. Las pistas de esta sección relacionan dos paquetes, `m` (el primero que nombran) y `n`.
 
-**Modelo.** Cada subtipo da a cada paquete un **valor** en cada una de sus casillas posibles (la red de la casilla, el número de direcciones de esa red, los routers atravesados, el TTL actual…) y una **relación** entre los dos valores (igual, mayor, a `k` routers en el grafo de redes). La pista es verdadera si el valor de `m` en su casilla y el de `n` en la suya cumplen la relación. El nivel guarda los valores de cada casilla y los pares de valores permitidos (véase el formato en la [implementación prevista](game_round_generation.md#implementación-prevista-en-la-v045)).
+**Modelo.** Cada subtipo da a cada paquete un **valor** en cada una de sus casillas posibles (la red de la casilla, el número de direcciones de esa red, los routers atravesados, el TTL actual…) y una **relación** entre los dos valores (igual, mayor, a `k` routers en el grafo de redes). La pista es verdadera si el valor de `m` en su casilla y el de `n` en la suya cumplen la relación. El nivel guarda los valores de cada casilla y los pares de valores permitidos (véase el formato en la [implementación](game_round_generation.md#implementación-en-la-v045)).
 
-**Deducción** (propagación por valores): mirando los valores que aún le quedan a `n`, se descartan para `m` las casillas cuyo valor no casa con ninguno, y al revés. Por ejemplo, si `n` solo puede estar en Aulas o en Servicios y «`m` y `n` estaban en la misma red», `m` solo puede estar en Aulas o en Servicios. Si a `n` le queda un solo valor (porque está colocado o porque todas sus casillas posibles dan el mismo), la pista se usa como una unaria; si le quedan varios, hay que razonar con todos a la vez. Son dos técnicas distintas en la [dificultad lógica](game_round_generation.md#implementación-prevista-en-la-v045).
+**Deducción** (propagación por valores): mirando los valores que aún le quedan a `n`, se descartan para `m` las casillas cuyo valor no casa con ninguno, y al revés. Por ejemplo, si `n` solo puede estar en Aulas o en Servicios y «`m` y `n` estaban en la misma red», `m` solo puede estar en Aulas o en Servicios. Si a `n` le queda un solo valor (porque está colocado o porque todas sus casillas posibles dan el mismo), la pista se usa como una unaria; si le quedan varios, hay que razonar con todos a la vez. Son dos técnicas distintas en la [dificultad lógica](game_round_generation.md#implementación-en-la-v045).
 
 Reglas comunes de los subtipos de esta sección:
 
@@ -589,6 +595,109 @@ Se descarta «aún estaba en su equipo de origen»: los paquetes nunca ocupan la
 
 En los niveles nuevos de Encaminamiento, algunos routers unen tres o cuatro redes. Están en una **esquina**: cuatro casillas que comparten un vértice y son de tres o cuatro redes distintas (`position.kind: corner`). Sus casillas de apoyo para `router.adjacent_to_router` son esas cuatro. Como mucho hay dos por nivel (`routers.cornerRouters.max`), y dos routers nunca comparten dos redes: así entre dos redes vecinas hay un solo router y los caminos mínimos siguen siendo únicos. Las pistas que nombran routers no cambian; sus formas, sí (véanse los routers en las [formas de nombrar](#formas-de-nombrar)).
 
+### Tabla de enrutamiento (v0.5)
+
+Categoría nueva, **Tabla de enrutamiento** (id `enrutamiento`), separada de Encaminamiento. En esta, la ruta de un paquete ya no es el camino con menos routers que se ve en el mapa, sino la que dan las **tablas de encaminamiento** de los routers, como en la clase 14. Bloque mínimo de la categoría: `T3.encaminamiento`. Va después de Encaminamiento en el menú y tiene su mismo tablero (7×7, 7 paquetes; aquí siempre 6 redes) y sus particularidades: redes de tránsito, difusión, routers de esquina, extremos ocultos y pistas entre dos paquetes. Además, el grafo de redes tiene ciclos que dan empates (véase más abajo): uno de cuatro o de seis redes los da entre las redes opuestas; uno de tres o de cinco, no. Todas las pistas de Encaminamiento valen igual, pero sobre la ruta de las tablas, y puede usar las formas de nombrar de Direccionamiento hasta `T3.vlsm`, como Encaminamiento. Los niveles de Encaminamiento no cambian.
+
+**Lo que ve el jugador:**
+
+- Cada router tiene un nombre (R1, R2…) dibujado junto a él. Al tocarlo, o al pasar el ratón, se abre su tabla: sus interfaces (una IP en cada red que une) y sus entradas, `destino/prefijo → siguiente salto`. El siguiente salto es otro router de una red que comparten o, en las redes del propio router, la entrega directa. La tabla no tiene columna de interfaz (véase [Tablas](#tablas)).
+- La leyenda dice la **puerta de enlace** de cada red: el router al que sus equipos envían todo lo que va a otra red. La tabla de un equipo tiene solo su red, con entrega directa, y la ruta por defecto hacia su puerta de enlace. En una red con un solo router, la puerta de enlace es ese router.
+- La ficha de cada paquete muestra, como en Encaminamiento, su origen, su destino y su TTL inicial, y además la IP de destino, que es la que buscan los routers en su tabla. Un equipo cuya IP sale en una ficha nunca se nombra por su IP (`ip`) en las pistas del nivel: la ficha daría el cálculo hecho.
+
+**Ruta de un paquete.** Su equipo de origen lo envía a la puerta de enlace de su red (`R1`), salvo que el destino esté en la misma red. Cada router busca la IP de destino en su tabla y, según la entrada que coincida, envía el paquete al siguiente salto por la red que comparten o lo entrega directamente si el destino está en una de sus redes. La ruta son las redes `r0 … rL` y los routers `R1 … RL` que resultan, con el mismo significado que en [Encaminamiento](#encaminamiento-rutas-y-ttl-v04) (routers atravesados `k`, TTL actual, `Alcanzables(m)`), y la regla `packetOnRoute` se aplica igual. Lo que cambia es que la ruta puede no ser el camino más corto del mapa:
+
+- **Empates:** si hay dos caminos con el mismo número de routers, la tabla de cada router elige uno. Se elige una sola vez por router y red de destino (`routes.tables.tieBreak`), así que dos paquetes que llegan al mismo router hacia la misma red siguen por el mismo sitio, y la ruta de ida puede no ser la de vuelta.
+- **Puerta de enlace:** si la red de origen tiene varios routers, el primer salto es siempre su puerta de enlace. Si el camino más corto saliera por otro router de la red, la puerta de enlace tendría que devolver el paquete a la red de origen, y esos pares no se usan (véase el párrafo siguiente). Así que, en la práctica, la puerta de enlace decide entre caminos igual de cortos, como un empate más. Solo si su propia tabla tiene un empate entre volver a la red de origen y seguir por otra red, y elige seguir, la ruta tiene un router más que la mínima.
+
+Las tablas de los routers se calculan con el número de routers como métrica, como en RIP, así que desde la puerta de enlace la ruta es mínima y sin bucles. El generador solo usa pares de origen y destino cuya ruta no pasa dos veces por la misma red: la puerta de enlace nunca devuelve el paquete a la red de origen para enviarlo a otro router de esa red. Así cada casilla sigue correspondiendo a un único `k`.
+
+**Rutas que exigen las tablas.** Una ruta exige las tablas si, en la parte a la que le llega el TTL (`r0 … rK`), no es el único camino mínimo entre la red de origen y la de destino: hay un empate (en la tabla de un router o en la elección de la puerta de enlace) o la puerta de enlace la alarga. Si es el único camino mínimo, el jugador puede trazarla en el mapa, como en Encaminamiento, sin abrir ninguna tabla. Cada nivel tiene al menos `routes.tables.minRequiredRoutes` (2) paquetes cuya ruta exige las tablas, y la consulta tiene que ser imprescindible, como el cálculo de las formas de nombrar. Para comprobarlo, a esos paquetes se les permiten, además de las redes de su ruta, todas las de cualquier camino mínimo entre su red de origen y la de destino (a las que les llegue el TTL). Si con eso el nivel se sigue resolviendo con la misma dificultad lógica o con una menor, las tablas no hacían falta y el nivel no vale para esta categoría.
+
+#### Tablas
+
+Cada router tiene una entrada de entrega directa por cada red que une. El resto de las entradas dependen del estilo de tabla del nivel (`routes.tables.style` en la configuración; `routing.tableStyle` en el nivel), que crece con la dificultad de interpretación:
+
+| Estilo | Qué hay en la tabla | Ejemplo |
+|---|---|---|
+| `full` | Una entrada por cada red del nivel. | `10.2.4.0/24 → R5` |
+| `default` | La ruta por defecto (`default` o `0.0.0.0/0`), hacia el siguiente salto más usado, y una entrada por cada red que va por otro sitio. | `10.2.4.0/24 → R5`, `default → R1` |
+| `summary` | Además, entradas que agrupan varias redes con el mismo siguiente salto, con entradas más específicas para las redes de ese bloque que van por otro sitio. | `10.2.0.0/16 → R5`, `10.2.4.0/24 → R6`, `default → R1` |
+
+Con los tres estilos, la tabla da a cada red del nivel el mismo siguiente salto (el del cálculo por número de routers); solo cambia cómo se escribe. Las entradas solapadas se resuelven con la **coincidencia más larga** (*Longest Prefix Match*): de las entradas que contienen la IP de destino gana la de prefijo más largo, y la ruta por defecto solo se usa si no coincide ninguna otra. Como las redes del tablero nunca se solapan, ninguna entrada parte una red del nivel: una entrada contiene todas sus direcciones o ninguna.
+
+Para que haya resúmenes, las redes vecinas tienen que compartir un bloque. Por eso, en esta categoría el plan de direcciones reparte bloques por zonas del mapa, como el encaminamiento jerárquico de la clase 12: por ejemplo, 10.1.0.0/16 para las redes de un lado y 10.2.0.0/16 para las del otro. Así un router lejano resume toda una zona en una entrada. Cada tabla tiene como mucho `routes.tables.maxEntries` (6) entradas, para que quepa en el panel.
+
+El **siguiente salto** se escribe con el nombre del router (`R5`) o, en los niveles más difíciles, como en clase, con la IP de su interfaz en la red que comparten (`10.1.3.2`). La puerta de enlace de cada red se escribe igual que los siguientes saltos.
+
+**Formato.** La tabla tiene dos columnas: el destino, con la longitud del prefijo como en la leyenda (`10.2.4.0/24`, `default`), y el siguiente salto (`R5`, `10.1.3.2` o «directa»). En clase las tablas llevan además la **interfaz** de salida. Aquí no se pone porque no cambia la ruta y se deduce del siguiente salto: es la del router en la red que comparte con él o, en la entrega directa, la de la red de destino. Además alargaría la tabla, sobre todo en el móvil. Las interfaces del router (la red y la IP de cada una) salen una sola vez, encima de su tabla. Para reconocer un siguiente salto escrito por su IP, hay que buscar qué router de esa red tiene esa dirección. La ficha de ayuda «Tabla de encaminamiento» explica la columna que falta, para que el formato no extrañe a quien viene de clase.
+
+#### Coste de consultar la tabla
+
+Seguir la ruta por las tablas es el trabajo propio de la categoría, como trazarla en el mapa en Encaminamiento, pero cada consulta tiene un coste de interpretación, igual que una forma de nombrar:
+
+| Consulta | Coste |
+|---|---|
+| La IP de destino está en una red del propio router (entrega directa) o tiene su propia entrada, y el siguiente salto se escribe con su nombre. | 0 |
+| El siguiente salto, o la puerta de enlace, se escribe con su IP: hay que buscar qué router tiene esa interfaz. | 1 |
+| No coincide ninguna entrada salvo la ruta por defecto. | 1 |
+| Coincide una sola entrada, que agrupa varias redes. | 1 (2 si su máscara no acaba en un octeto) |
+| Coinciden varias entradas, sin contar la ruta por defecto, y gana la más larga. | 2 (3 si alguna de esas máscaras no acaba en un octeto) |
+
+El coste de una consulta es el mayor de los que se dan en ella. El de una ruta es el de la consulta más cara entre las que deciden un empate dentro de sus redes alcanzables (`r0 … rK`, con `K = min(L, TTL inicial − 1)`): la puerta de enlace, si la red de origen tiene varios routers en caminos igual de cortos, y la tabla de cada router `Ri` desde el que hay dos caminos igual de cortos. Las demás consultas se pueden esquivar trazando el camino más corto en el mapa, así que no cuentan; tampoco cuenta ninguna si la ruta no exige las tablas. En la [escala de interpretación](game_round_generation.md#evaluación-de-la-dificultad), cada ruta que exige las tablas cuenta como una pista más, con ese coste. Así la dificultad de interpretación de la categoría la marcan sobre todo las tablas: completas y con nombres en los niveles fáciles, con siguientes saltos por IP y ruta por defecto en los medios, y con resúmenes y coincidencia más larga en los difíciles.
+
+#### Subtipos nuevos
+
+Todos son de la categoría Tabla de enrutamiento, restringen la posición y tienen `A = ∅`, bloque mínimo `T3.encaminamiento` y conocimiento `basic`. Como en Encaminamiento, dos pistas de estos subtipos solo se consideran repetidas si además son del mismo subtipo.
+
+##### `route.crossed_router`
+
+- **Descripción:** el paquete ya ha pasado por un router concreto de su ruta, o aún no ha llegado a él.
+- **Aridad:** unaria.
+- **Parámetros:** `router` (un router `Ri` de su ruta) y `crossed` (sí o no).
+- **Plantilla textual:** «El paquete {packet} ya había pasado por el router {router}.» / «El paquete {packet} aún no había llegado al router {router}.»
+- **Formas:** las de los routers (`router_name`, `networks`, `interfaces`, `gateway`, `next_hop`).
+- **Generación de instancias:** para cada router `Ri` de su ruta, «ya había pasado» si `i ≤ k` y «aún no había llegado» si `i > k`. Solo las que quitan alguna red de `Alcanzables(m)` y dejan más de una (si dejan una, dicen lo mismo que `route.last_router` o `route.next_router`).
+- **Dominio:** `D = Libres(m) ∩ ⋃ Casillas(rj)` para `j ≥ i` (ya había pasado) o `j < i` (aún no había llegado).
+- **Compatibilidad:** con un extremo oculto, quedan fuera los estados cuya ruta no pasa por ese router.
+
+##### `route.last_entry` y `route.next_entry`
+
+- **Descripción:** qué clase de entrada de su tabla usó el último router que atravesó el paquete, o usará el siguiente: la ruta por defecto, una entrada que agrupa varias redes o la entrega directa.
+- **Aridad:** unaria.
+- **Parámetros:** `entry`: `default`, `summary` o `direct`. `direct` solo se usa en `next_entry`: en `last_entry` equivaldría a «ya había llegado a la red de su destino».
+- **Plantilla textual:** «El último router que había atravesado el paquete {packet} lo había reenviado por su ruta por defecto.» / «… por una entrada que agrupa varias redes.» / «El siguiente router que iba a atravesar el paquete {packet} lo reenviaría por su ruta por defecto.» / «… lo entregaría directamente a su destino.»
+- **Generación de instancias:** una por paquete y clase de entrada que se dé en su ruta: `last_entry` con `k ≥ 1`; `next_entry` con `k < L`, aunque el TTL no le alcance para atravesar ese router, como en `route.next_router`. `default` y `summary` solo salen en niveles cuyo estilo de tabla las tiene.
+- **Dominio:** `D = Libres(m) ∩ ⋃ Casillas(rj)` para las `j ≥ 1` en las que `Rj` usa para su destino una entrada de esa clase (en `next_entry`, las `j < L` en las que la usa `R(j+1)`).
+- **Coste de interpretación:** el de la consulta más cara de los routers de la ruta que hay que mirar. `next_entry` con `direct` es la pista prevista como `next_hop_is_destination_network`: tiene el mismo `D` que `ttl.routers_left` con `n = 1`, dicho con el vocabulario de las tablas.
+
+##### `relation.same_next_hop`
+
+- **Descripción:** los dos paquetes van a atravesar a continuación el mismo router.
+- **Aridad:** relacional (véase [Pistas entre dos paquetes](#pistas-entre-dos-paquetes-v045); cuenta en su máximo por nivel y nunca nombra a la víctima).
+- **Plantilla textual:** «El siguiente salto de los paquetes {m} y {n} era el mismo router.»
+- **Valores:** el siguiente router `R(k+1)` en cada casilla; en la red del destino no hay ninguno, y esas casillas no casan con nada. **Relación:** iguales.
+- **Generación de instancias:** una por pareja de paquetes con el mismo siguiente router.
+
+#### Formas nuevas
+
+Las de redes (`router_side`, `next_hop_network`) y routers (`router_name`, `gateway`, `next_hop`) están en las [formas de nombrar](#formas-de-nombrar). `router_name` y `router_side` cuestan 0 porque los nombres de los routers se ven en el tablero; `next_hop` y `next_hop_network` cuestan lo que la consulta que exigen.
+
+#### Desactivación
+
+Como todo lo nuevo, se puede desactivar en `levels/disabled.txt`: los subtipos (`route.crossed_router`, `route.last_entry`, `route.next_entry`, `relation.same_next_hop`), las formas (`form:router_name`, `form:gateway`, `form:next_hop`, `form:router_side`, `form:next_hop_network`) y estas particularidades:
+
+- `feature:tableDefault`: sin ruta por defecto (solo tablas `full`);
+- `feature:tableSummary`: sin entradas que agrupan varias redes;
+- `feature:nextHopIp`: siguientes saltos y puertas de enlace solo por su nombre;
+- `feature:routingTables`: toda la categoría (el menú la oculta, el índice deja fuera sus niveles y sus ejercicios, y la ayuda, sus fichas).
+
+Los empates no se pueden desactivar por separado: sin ellos ninguna ruta exige las tablas y la categoría no tendría sentido.
+
+#### Ayuda y entrenamiento
+
+Fichas de ayuda nuevas: tabla de encaminamiento, siguiente salto, puerta de enlace, ruta por defecto y coincidencia más larga, más las de los subtipos nuevos. En Entrenar, además de una variante por subtipo y forma, la regla implícita «seguir la ruta por las tablas» tiene una variante por cada caso: tabla completa, siguiente salto por IP, ruta por defecto, coincidencia más larga, empate en un router y empate en la puerta de enlace. Las sugerencias explican cada consulta: «R2 busca 10.2.4.9 en su tabla: coinciden 10.2.0.0/16 y 10.2.4.0/24, y gana la /24, que lo envía a R6».
+
 ### `spatial.in_row` y `spatial.in_column`
 
 - **Descripción:** el paquete está en una fila (o columna) concreta del tablero.
@@ -613,12 +722,15 @@ Las pistas de la v0.4 (categoría Encaminamiento) están en la [sección 2](#enc
 
 Las de la v0.4.5 también están en la sección 2: las relacionales, en [Pistas entre dos paquetes](#pistas-entre-dos-paquetes-v045) (`same_network`, `routers_between` en lugar de `neighbor_networks`, `more_addresses_network`, `higher_ttl`, `closer_to_destination` y `same_destination`); `origin_gateway`, en [Orígenes y destinos ocultos](#orígenes-y-destinos-ocultos-v045) como `route.first_router`; y la forma `privacy`, en [Redes privadas y públicas](#redes-privadas-y-públicas-v045). `at_origin` y `at_destination` se descartan (los paquetes no ocupan casillas de equipos).
 
-**Después de la v0.4.5:**
+Las de la v0.5 (categoría Tabla de enrutamiento) están en [Tabla de enrutamiento](#tabla-de-enrutamiento-v05): `next_hop_is_destination_network` es `route.next_entry` con la entrega directa, y `next_hop` es una forma de nombrar routers; `router_side` queda definida como «la red que comparten R2 y R5».
+
+**Después de la v0.5:**
 
 | Tipo | Subtipo o forma propuesta | Ejemplo de texto | Bloque mínimo | Versión prevista |
 |---|---|---|---|---|
 | `node` | dirección de cada equipo | Razonar sobre qué dirección tiene cada equipo: «el servidor web 10.0.3.7 no es el que está junto a A». Exige una incógnita por equipo, como los estados de los paquetes. | `T3.subredes` | Sin fecha |
-| `route` | `next_hop_is_destination_network`, `next_hop` | «El siguiente salto será la red del destino.» | `T3.encaminamiento` | v0.5, Encaminamiento |
+| `route` | tablas con un bucle | Una tabla mal configurada devuelve el paquete hacia atrás y da vueltas hasta que el TTL llega a 0. Una red se repite en la ruta, así que una casilla ya no corresponde a un único `k`. | `T3.encaminamiento` | Sin fecha |
+| `endpoint` | destinos fuera del tablero | «Destino: 8.8.8.8»: el paquete sale por la ruta por defecto hacia un router de borde. | `T3.encaminamiento` | Sin fecha |
 | `endpoint` | `source_translated` | «Su IP de origen ya no era privada.» (ya había pasado por el router NAT) | `T3.nat` | Con NAT |
 | `protocol` | `uses_protocol` | «Utiliza HTTPS.» | El del protocolo (`topic` del catálogo). | v0.6, Transporte |
 | `protocol` | `uses_transport`, `destination_port` | «Viaja sobre UDP.» | `T4.udp` o `T4.tcp`, y como mínimo el del protocolo que permite deducir. | v0.6, Transporte |

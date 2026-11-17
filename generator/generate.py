@@ -51,7 +51,8 @@ RETIRED = LEVELS_DIR / "retired.txt"
 DISABLED = LEVELS_DIR / "disabled.txt"
 DIFFICULTIES = range(1, 6)
 # Primera semilla de cada lote: categoría y dificultad no comparten semillas.
-SEED_BASE = {"inicial": 1_000_000, "direccionamiento": 2_000_000, "encaminamiento": 3_000_000}
+SEED_BASE = {"inicial": 1_000_000, "direccionamiento": 2_000_000, "encaminamiento": 3_000_000,
+             "enrutamiento": 4_000_000}
 # Filtros de los lotes: como mucho una pista de fila o columna por nivel.
 POOL_CONFIG = {"maxSpatial": 1}
 
@@ -179,7 +180,11 @@ def fill_pool(category, target, size, workers, replace, novelties=False):
         print(f"{category} {target}: ya tiene {len(have)} niveles")
         return
     base = SEED_BASE[category] + 10_000 * target
-    seeds = (s for s in range(base, base + 10_000)
+    # Se sigue tras la semilla más alta del lote (o retirada): las que faltan por debajo
+    # fallaron o se cortaron en una tanda anterior, y repetirlas solo gasta tiempo.
+    used = [int(n.rsplit("-", 1)[1]) for n in existing | retired if n.startswith(f"{category}-")]
+    start = max((s for s in used if base <= s < base + 10_000), default=base - 1) + 1
+    seeds = (s for s in range(start, base + 10_000)
              if f"{category}-{s}" not in existing and f"{category}-{s}" not in retired)
     jobs = ((s, category, target, novelties, tuple(sorted(disabled))) for s in seeds)
     made = 0
@@ -286,6 +291,22 @@ def main():
             corners = [r["name"] for r in level["routers"] if r["position"]["kind"] == "corner"]
             if corners:
                 print("  Routers de esquina: " + "; ".join(corners))
+            routing = level.get("routing")
+            if routing:
+                costs = d.get("routeCosts", {})
+                print(f"  Tablas {routing['tableStyle']}, siguiente salto por {routing['nextHop']}; "
+                      f"rutas que exigen las tablas (coste): "
+                      + ", ".join(f"{pid} ({c})" for pid, c in sorted(costs.items())))
+                for p in level["packets"]["items"]:
+                    decisions = p.get("route", {}).get("tableDecisions")
+                    if decisions:
+                        print(f"    {p['id']}: decide {', '.join(decisions)}")
+                print("  Puertas de enlace: " + ", ".join(f"{n} {r}" for n, r in routing["gateways"].items()))
+                for r in level["routers"]:
+                    nets = "+".join(r["connectedNetworks"])
+                    entries = ", ".join(f"{e['prefix']} -> {'directa' if e.get('direct') else e['via']}"
+                                        for e in routing["tables"][r["id"]])
+                    print(f"    {r['id']} ({nets}): {entries}")
     if args.stats:
         print_stats(reports)
 

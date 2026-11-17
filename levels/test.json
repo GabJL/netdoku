@@ -209,9 +209,9 @@
     "spatial.in_column"
    ],
    "forms": [
-    "aligned_node",
     "label",
     "networks",
+    "number",
     "size_compare"
    ],
    "features": []
@@ -1335,6 +1335,320 @@
    ],
    "features": [
     "hiddenEndpoint"
+   ]
+  },
+  {
+   "file": "enrutamiento/1/enrutamiento-4010007.json",
+   "seed": 4010007,
+   "category": "enrutamiento",
+   "difficulty": {
+    "global": 1,
+    "logic": 1,
+    "reading": 1
+   },
+   "plan": "octet_subnets",
+   "clues": 9,
+   "subtypes": [
+    "endpoint.origin",
+    "network.in_either_network",
+    "node.not_adjacent_to_node",
+    "relation.closer_to_destination",
+    "route.next_entry",
+    "route.next_router",
+    "router.adjacent_to_router",
+    "spatial.in_row"
+   ],
+   "forms": [
+    "gateway",
+    "ip_view",
+    "label_prefix",
+    "name",
+    "networks",
+    "number",
+    "router_side",
+    "table_entry"
+   ],
+   "features": [
+    "broadcast",
+    "cornerRouter",
+    "hiddenEndpoint",
+    "shortTtl",
+    "table:full"
+   ]
+  },
+  {
+   "file": "enrutamiento/1/enrutamiento-4010030.json",
+   "seed": 4010030,
+   "category": "enrutamiento",
+   "difficulty": {
+    "global": 1,
+    "logic": 1,
+    "reading": 1
+   },
+   "plan": "octet_subnets",
+   "clues": 8,
+   "subtypes": [
+    "node.adjacent_to_node",
+    "relation.same_next_hop",
+    "route.next_router",
+    "router.adjacent_to_router",
+    "spatial.in_row",
+    "ttl.routers_crossed",
+    "ttl.routers_crossed_range"
+   ],
+   "forms": [
+    "aligned_node",
+    "count",
+    "gateway",
+    "ip_view",
+    "label_network",
+    "router_name"
+   ],
+   "features": [
+    "table:full",
+    "transit"
+   ]
+  },
+  {
+   "file": "enrutamiento/1/enrutamiento-4010055.json",
+   "seed": 4010055,
+   "category": "enrutamiento",
+   "difficulty": {
+    "global": 1,
+    "logic": 1,
+    "reading": 1
+   },
+   "plan": "distinct",
+   "clues": 8,
+   "subtypes": [
+    "network.not_in_network",
+    "node.adjacent_to_node",
+    "node.unique_adjacent_to_node",
+    "route.crossed_router",
+    "router.adjacent_to_router",
+    "ttl.routers_crossed",
+    "ttl.routers_crossed_range"
+   ],
+   "forms": [
+    "count",
+    "label_prefix",
+    "next_hop_network",
+    "router_name"
+   ],
+   "features": [
+    "cornerRouter",
+    "table:full",
+    "transit"
+   ]
+  },
+  {
+   "file": "enrutamiento/2/enrutamiento-4020023.json",
+   "seed": 4020023,
+   "category": "enrutamiento",
+   "difficulty": {
+    "global": 2,
+    "logic": 2,
+    "reading": 2
+   },
+   "plan": "distinct",
+   "clues": 7,
+   "subtypes": [
+    "node.adjacent_to_node",
+    "route.last_entry",
+    "route.next_router",
+    "router.adjacent_to_router",
+    "spatial.in_column",
+    "ttl.routers_left"
+   ],
+   "forms": [
+    "aligned_router",
+    "ip_view",
+    "next_hop",
+    "router_name",
+    "table_entry"
+   ],
+   "features": [
+    "shortTtl",
+    "table:default",
+    "transit"
+   ]
+  },
+  {
+   "file": "enrutamiento/3/enrutamiento-4030007.json",
+   "seed": 4030007,
+   "category": "enrutamiento",
+   "difficulty": {
+    "global": 3,
+    "logic": 3,
+    "reading": 2
+   },
+   "plan": "octet_subnets",
+   "clues": 8,
+   "subtypes": [
+    "node.adjacent_to_node",
+    "node.not_adjacent_to_node",
+    "relation.closer_to_destination",
+    "relation.same_next_hop",
+    "route.next_entry",
+    "router.adjacent_to_router",
+    "ttl.routers_crossed",
+    "ttl.routers_crossed_range"
+   ],
+   "forms": [
+    "router_name",
+    "table_entry",
+    "ttl_value"
+   ],
+   "features": [
+    "cornerRouter",
+    "shortTtl",
+    "table:default",
+    "transit"
+   ]
+  },
+  {
+   "file": "enrutamiento/3/enrutamiento-4030019.json",
+   "seed": 4030019,
+   "category": "enrutamiento",
+   "difficulty": {
+    "global": 3,
+    "logic": 3,
+    "reading": 2
+   },
+   "plan": "distinct",
+   "clues": 8,
+   "subtypes": [
+    "endpoint.in_destination_network",
+    "node.not_adjacent_to_node",
+    "node.unique_adjacent_to_node",
+    "route.crossed_router",
+    "route.next_entry",
+    "router.adjacent_to_router",
+    "spatial.in_row"
+   ],
+   "forms": [
+    "ip_view",
+    "label_network",
+    "next_hop",
+    "number",
+    "router_name",
+    "table_entry"
+   ],
+   "features": [
+    "broadcast",
+    "cornerRouter",
+    "nextHopIp",
+    "table:default"
+   ]
+  },
+  {
+   "file": "enrutamiento/3/enrutamiento-4030100.json",
+   "seed": 4030100,
+   "category": "enrutamiento",
+   "difficulty": {
+    "global": 3,
+    "logic": 3,
+    "reading": 1
+   },
+   "plan": "distinct",
+   "clues": 9,
+   "subtypes": [
+    "endpoint.destination",
+    "node.adjacent_to_node",
+    "node.not_adjacent_to_node",
+    "relation.same_next_hop",
+    "route.in_transit_network",
+    "route.last_router",
+    "router.adjacent_to_router",
+    "ttl.routers_crossed_range"
+   ],
+   "forms": [
+    "count",
+    "ip_view",
+    "label_prefix",
+    "networks",
+    "router_name"
+   ],
+   "features": [
+    "cornerRouter",
+    "hiddenEndpoint",
+    "shortTtl",
+    "table:full",
+    "transit"
+   ]
+  },
+  {
+   "file": "enrutamiento/4/enrutamiento-4040005.json",
+   "seed": 4040005,
+   "category": "enrutamiento",
+   "difficulty": {
+    "global": 4,
+    "logic": 2,
+    "reading": 4
+   },
+   "plan": "bit_zones",
+   "clues": 7,
+   "subtypes": [
+    "route.crossed_router",
+    "route.final_router",
+    "route.last_entry",
+    "router.adjacent_to_router",
+    "spatial.in_column",
+    "ttl.routers_crossed"
+   ],
+   "forms": [
+    "aligned_router",
+    "count",
+    "interfaces",
+    "ip_view",
+    "networks",
+    "next_hop",
+    "router_name",
+    "table_entry"
+   ],
+   "features": [
+    "hiddenEndpoint",
+    "nextHopIp",
+    "shortTtl",
+    "table:summary"
+   ]
+  },
+  {
+   "file": "enrutamiento/4/enrutamiento-4040051.json",
+   "seed": 4040051,
+   "category": "enrutamiento",
+   "difficulty": {
+    "global": 4,
+    "logic": 2,
+    "reading": 4
+   },
+   "plan": "octet_zones",
+   "clues": 10,
+   "subtypes": [
+    "endpoint.destination",
+    "endpoint.destination_class",
+    "node.not_adjacent_to_node",
+    "route.last_entry",
+    "route.next_entry",
+    "route.next_router",
+    "router.adjacent_to_router",
+    "spatial.in_row"
+   ],
+   "forms": [
+    "aligned_router",
+    "label",
+    "label_prefix",
+    "mac_view",
+    "networks",
+    "next_hop",
+    "table_entry"
+   ],
+   "features": [
+    "broadcast",
+    "cornerRouter",
+    "hiddenEndpoint",
+    "nextHopIp",
+    "table:summary"
    ]
   }
  ]

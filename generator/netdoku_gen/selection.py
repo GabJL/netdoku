@@ -60,6 +60,11 @@ SUBTYPE_WEIGHTS = {
     "relation.closer_to_destination": 1.2,
     "relation.same_origin": 1.6,
     "relation.same_destination": 1.6,
+    # Tabla de enrutamiento (v0.5).
+    "route.crossed_router": 1.4,
+    "route.last_entry": 1.6,
+    "route.next_entry": 1.6,
+    "relation.same_next_hop": 1.4,
 }
 
 
@@ -68,10 +73,12 @@ MAX_CANDIDATES = 40
 
 
 class Selector:
-    def __init__(self, rng, ctx, pool, victim_id, rules, max_relations=2, boost_networks=()):
+    def __init__(self, rng, ctx, pool, victim_id, rules, max_relations=2, boost_networks=(), boost_packets=()):
         self.rng = rng
         self.max_relations = max_relations
         self.boost_networks = set(boost_networks)
+        # Tabla de enrutamiento: paquetes cuya ruta exige las tablas; sus pistas de ruta pesan más.
+        self.boost_packets = set(boost_packets)
         self.ctx = ctx
         self.pool = pool
         self.victim = victim_id
@@ -145,6 +152,9 @@ class Selector:
                     weight = SUBTYPE_WEIGHTS.get(c.type, 1.0) * min(gain, 2.5) ** 0.5
                     if self.boost_networks and self._names_boosted(c):
                         weight *= 4
+                    if (self.boost_packets and c.type.split(".")[0] in ROUTE_FAMILIES
+                            and ({c.packet, c.other} & self.boost_packets)):
+                        weight *= 3
                     options.append((c, weight))
             if options:
                 return self.rng.choices([o[0] for o in options], weights=[o[1] for o in options])[0]

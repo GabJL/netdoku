@@ -27,7 +27,7 @@ packets:
   # Regla básica: como mucho un paquete por fila y por columna.
   onePerRow: true
   onePerColumn: true
-  # Propiedades que muestra la ficha del paquete: origin, destination, ttlInitial.
+  # Propiedades que muestra la ficha del paquete: origin, destination, ttlInitial, destinationIp (v0.5).
   visibleProperties: []
 
 features:
@@ -43,8 +43,8 @@ features:
   enabledRuleTypes: null
   enabledRuleSubtypes: null
   # Reglas desactivadas en todo el juego: subtipos (network.in_network), formas (form:mask) o
-  # particularidades (feature:cornerRouter, hiddenEndpoint, transit, broadcast). En la v0 se leen
-  # de levels/disabled.txt.
+  # particularidades (feature:cornerRouter, hiddenEndpoint, transit, broadcast; v0.5: routingTables,
+  # tableDefault, tableSummary, nextHopIp). En la v0 se leen de levels/disabled.txt.
   disabledRuleSubtypes: []
   requiredRuleSubtypes: []
 
@@ -55,6 +55,7 @@ topology:
     target: null
   connected: true
   allowCycles: true
+  # Routers de dos redes que cierran ciclos sobre el árbol generador (Tabla de enrutamiento: 2-3).
   cycles:
     min: 0
     max: null
@@ -240,8 +241,17 @@ routes:
   tables:
     metric: hops
     tieBreak: random
+    # shortest | default_gateway (Tabla de enrutamiento, v0.5)
     hostGateway: shortest
     store: true
+    # Tabla de enrutamiento (v0.5): full | default | summary | auto
+    style: auto
+    # name | ip | auto
+    nextHop: auto
+    maxEntries: 6
+    # Paquetes como mínimo cuya ruta exige las tablas (Tabla de enrutamiento: 2).
+    minRequiredRoutes: 0
+    requiredRouteWeight: 4
   # Solo pares con un único camino mínimo: la ruta se traza sin ver las tablas.
   requireUniqueShortestPath: true
   minHops: 0
@@ -334,8 +344,11 @@ difficulty:
   scorePolicy: easiest_valid_order
 
 addressing:
-  # distinct | octet_subnets | bit_subnets | vlsm | auto
+  # distinct | octet_subnets | bit_subnets | vlsm | octet_zones | bit_zones | auto
   plan: auto
+  # Zonas de los planes octet_zones y bit_zones (v0.5).
+  zones:
+    count: [2, 3]
   nearBoundaryDistance: 4
   allowSpecialAddresses: false
   # Mezcla de redes privadas y públicas para la forma privacy (v0.4.5; solo en Direccionamiento).
@@ -399,6 +412,29 @@ categoryProfiles:
     nodes:
       allowEmptyNetworks: true
       emptyNetworks: {max: 1}
+    ttl:
+      initialValues: [2, 3, 4, 5, 6]
+      initialValueWeights: {2: 0.15, 3: 0.25, 4: 0.25, 5: 0.20, 6: 0.15}
+    clues: {categoryMinClues: 3}
+  # Tabla de enrutamiento (v0.5): rutas por tablas de encaminamiento.
+  enrutamiento:
+    level: {minTopic: T3.encaminamiento, maxTopic: T3.encaminamiento}
+    board: {width: 7, height: 7}
+    packets:
+      count: 7
+      visibleProperties: [origin, destination, ttlInitial, destinationIp]
+    topology:
+      networks: {min: 6, max: 6}
+      cycles: {min: 2, max: 3}
+    features: {origins: true, destinations: true, routes: true, ttl: true}
+    endpoints: {allowSameNetwork: false, hidden: {probability: 0.5}}
+    routers: {degree: {max: 4}}
+    nodes:
+      allowEmptyNetworks: true
+      emptyNetworks: {max: 1}
+    routes:
+      requireUniqueShortestPath: false
+      tables: {hostGateway: default_gateway, minRequiredRoutes: 2}
     ttl:
       initialValues: [2, 3, 4, 5, 6]
       initialValueWeights: {2: 0.15, 3: 0.25, 4: 0.25, 5: 0.20, 6: 0.15}

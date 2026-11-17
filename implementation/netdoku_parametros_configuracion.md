@@ -162,9 +162,9 @@ Solo cuenta lo que el jugador ve o necesita para resolver: las pistas, los datos
 ### `packets.visibleProperties`
 
 - **Carácter:** opcional.
-- **Dominio:** lista con valores de `origin`, `destination`, `ttlInitial`.
+- **Dominio:** lista con valores de `origin`, `destination`, `ttlInitial`, `destinationIp`.
 - **Valor por defecto:** `[]`.
-- **Descripción:** propiedades que muestra la ficha de cada paquete. En la categoría Encaminamiento (v0.4) son las tres: el origen y el destino se nombran por su etiqueta y su red («equipo de usuario de Aulas»), o el destino como «difusión (192.168.1.255)». Las propiedades visibles cuentan para el bloque mínimo del nivel.
+- **Descripción:** propiedades que muestra la ficha de cada paquete. En la categoría Encaminamiento (v0.4) son las tres primeras: el origen y el destino se nombran por su etiqueta y su red («equipo de usuario de Aulas»), o el destino como «difusión (192.168.1.255)». La categoría Tabla de enrutamiento (v0.5) añade `destinationIp`, la IP del equipo de destino, que es la que los routers buscan en su tabla; ese equipo no se nombra por su IP en las pistas del nivel. Las propiedades visibles cuentan para el bloque mínimo del nivel.
 
 ### `packets.onePerRow` y `packets.onePerColumn`
 
@@ -248,7 +248,7 @@ Solo cuenta lo que el jugador ve o necesita para resolver: las pistas, los datos
 ### `features.disabledRuleSubtypes`
 
 - **Carácter:** opcional.
-- **Dominio:** lista de claves: identificadores de subtipos (`network.in_network`), formas de nombrar (`form:mask`) o particularidades del tablero (`feature:cornerRouter`, `feature:hiddenEndpoint`, `feature:transit`, `feature:broadcast`).
+- **Dominio:** lista de claves: identificadores de subtipos (`network.in_network`), formas de nombrar (`form:mask`) o particularidades del tablero (`feature:cornerRouter`, `feature:hiddenEndpoint`, `feature:transit`, `feature:broadcast`; v0.5: `feature:routingTables`, toda la categoría Tabla de enrutamiento, y `feature:tableDefault`, `feature:tableSummary` y `feature:nextHopIp`).
 - **Valor por defecto:** `[]`.
 - **Descripción:** reglas desactivadas en todo el juego, por si alguna no funciona bien con los alumnos. El generador no las usa en niveles nuevos ni en ejercicios de entrenamiento; el índice de niveles deja fuera, sin borrarlos, los que ya las usan; y el motor oculta sus fichas de ayuda y sus ejercicios. Desactivar las dos formas `privacy` y `label_privacy` quita también la mezcla de redes privadas y públicas. En la v0 la lista se lee de `levels/disabled.txt` (una clave por línea; `generator/netdoku_gen/switches.py`) y, tras editarla, se regeneran los índices con `python generator/generate.py --index`.
 
@@ -298,6 +298,7 @@ Solo cuenta lo que el jugador ve o necesita para resolver: las pistas, los datos
 - **Carácter:** opcional.
 - **Dominio:** entero mayor o igual que `0`.
 - **Valor por defecto:** `0`.
+- **Descripción:** número mínimo de routers de dos redes que se añaden al árbol generador, cada uno de los cuales cierra un ciclo en el grafo de redes. En la v0 el generador añade, con probabilidad 0,3, uno solo; la categoría Tabla de enrutamiento (v0.5) pide 2 como mínimo y 3 como máximo, porque los empates entre caminos mínimos, que son los que hacen falta para que las tablas importen, salen de los ciclos de cuatro o seis redes (con 6 redes y dos routers de más, el 98 % de los tableros tiene alguno).
 
 ### `topology.cycles.max`
 
@@ -957,7 +958,7 @@ Las rutas no se sortean paquete a paquete. Como en la asignatura, cada router de
 - **Carácter:** opcional.
 - **Dominio:** `shortest`, `default_gateway`.
 - **Valor por defecto:** `shortest`.
-- **Descripción:** primer salto de un paquete que sale de un equipo hacia otra red. Con `shortest`, el equipo envía al router de su red que está en el camino mínimo, como si tuviera la misma tabla que los routers. Con `default_gateway`, cada red tiene una **puerta de enlace por defecto** (uno de sus routers, elegido una vez por nivel) y todos sus equipos envían a ese router; es lo que se ve en la asignatura, pero la ruta completa puede dejar de ser mínima, lo que complica deducir saltos o TTL. Solo influye en redes con más de un router.
+- **Descripción:** primer salto de un paquete que sale de un equipo hacia otra red. Con `shortest`, el equipo envía al router de su red que está en el camino mínimo, como si tuviera la misma tabla que los routers. Con `default_gateway`, cada red tiene una **puerta de enlace por defecto** (uno de sus routers, elegido una vez por nivel) y todos sus equipos envían a ese router; es lo que se ve en la asignatura, pero la ruta completa puede dejar de ser mínima, lo que complica deducir saltos o TTL. Solo influye en redes con más de un router. La categoría Tabla de enrutamiento (v0.5) usa `default_gateway` y descarta los pares cuya ruta vuelve a pasar por la red de origen (la puerta de enlace no está en el camino más corto y devuelve el paquete hacia otro router de esa red), para que cada casilla corresponda a un único número de routers atravesados.
 
 ### `routes.tables.store`
 
@@ -966,12 +967,47 @@ Las rutas no se sortean paquete a paquete. Como en la asignatura, cada router de
 - **Valor por defecto:** `true`.
 - **Descripción:** guarda las tablas en el fichero de nivel (`routing.tables`) para que puedan usarlas pistas del bloque `T3.encaminamiento` (por ejemplo, «el siguiente salto de R1 hacia la red X es R2») y para comprobar la coherencia de las rutas.
 
+### `routes.tables.style`
+
+- **Carácter:** opcional.
+- **Dominio:** `full`, `default`, `summary` o `auto`.
+- **Valor por defecto:** `auto`.
+- **Descripción:** cómo se escriben las tablas en la categoría Tabla de enrutamiento (v0.5; véase el [catálogo](netdoku_catalogo_reglas.md#tablas)): una entrada por red (`full`); ruta por defecto y entradas para las redes que van por otro sitio (`default`); o, además, entradas que agrupan las redes de una zona, con entradas más específicas para las excepciones, que se resuelven con la coincidencia más larga (`summary`). Las tres dan el mismo siguiente salto para cada red del nivel. Con `auto`, el generador lo elige según la interpretación buscada (véase la [implementación](game_round_generation.md#implementación-en-la-v05-categoría-tabla-de-enrutamiento)). El nivel lo guarda en `routing.tableStyle`.
+
+### `routes.tables.nextHop`
+
+- **Carácter:** opcional.
+- **Dominio:** `name`, `ip` o `auto`.
+- **Valor por defecto:** `auto`.
+- **Descripción:** cómo se escriben el siguiente salto de cada entrada y la puerta de enlace de cada red: con el nombre del router (`R5`) o con la IP de su interfaz en la red compartida (`10.1.3.2`), que obliga a buscar qué router la tiene (coste 1). Con `auto`, según la interpretación buscada. El nivel lo guarda en `routing.nextHop`.
+
+### `routes.tables.maxEntries`
+
+- **Carácter:** opcional.
+- **Dominio:** entero positivo.
+- **Valor por defecto:** `6`.
+- **Descripción:** entradas como mucho en la tabla de un router, contando la entrega directa y la ruta por defecto, para que quepa en el panel (también en el móvil). Si una tabla tiene más, se repite el intento.
+
+### `routes.tables.minRequiredRoutes`
+
+- **Carácter:** opcional.
+- **Dominio:** entero mayor o igual que `0`.
+- **Valor por defecto:** `0` (`2` en Tabla de enrutamiento).
+- **Descripción:** paquetes como mínimo cuya ruta exige las tablas: en la parte a la que le llega el TTL no es el único camino mínimo, por un empate o por la puerta de enlace. Además, el generador comprueba que las tablas son imprescindibles: si permitiendo a esos paquetes cualquier camino mínimo el nivel se resuelve con la misma dificultad lógica o con una menor, repite el intento.
+
+### `routes.tables.requiredRouteWeight`
+
+- **Carácter:** opcional.
+- **Dominio:** número real mayor o igual que `1`.
+- **Valor por defecto:** `4`.
+- **Descripción:** al elegir el origen y el destino de un paquete, cuánto más pesan los pares cuya ruta exige las tablas mientras no se llegue a `routes.tables.minRequiredRoutes`.
+
 ### `routes.requireUniqueShortestPath`
 
 - **Carácter:** opcional.
 - **Dominio:** booleano.
 - **Valor por defecto:** `true`.
-- **Descripción:** solo se usan pares de origen y destino con un único camino mínimo en el grafo Red↔Router, para que el jugador pueda trazar la ruta sin ver las tablas de encaminamiento (v0.4). Con `false`, los empates los deciden las tablas (`routes.tables.tieBreak`), y la ruta solo se puede deducir con ellas (tablas de encaminamiento, v0.5).
+- **Descripción:** solo se usan pares de origen y destino con un único camino mínimo en el grafo Red↔Router, para que el jugador pueda trazar la ruta sin ver las tablas de encaminamiento (v0.4). Con `false`, los empates los deciden las tablas (`routes.tables.tieBreak`), y la ruta solo se puede deducir con ellas: es lo que hace la categoría Tabla de enrutamiento (v0.5).
 
 ### `routes.minHops`
 
@@ -1546,15 +1582,24 @@ Estos parámetros pueden configurarse manualmente, pero normalmente se derivan d
 ### `addressing.plan`
 
 - **Carácter:** opcional.
-- **Dominio:** `distinct`, `octet_subnets`, `bit_subnets`, `vlsm` o `auto`.
+- **Dominio:** `distinct`, `octet_subnets`, `bit_subnets`, `vlsm`, `octet_zones`, `bit_zones` o `auto`.
 - **Valor por defecto:** `auto`.
 - **Descripción:** cómo se parecen entre sí los prefijos de las redes del nivel, que determina el coste de calcular la red de una dirección (véase [coste C](netdoku_catalogo_reglas.md#coste-c-de-calcular-la-red-de-una-dirección)):
   - `distinct`: redes que se distinguen por el primer octeto (20.0.0.0/8, 45.3.0.0/16…). Son públicas: el primer octeto está entre 11 y 223, sin 127, 169, 172 ni 192.
   - `octet_subnets`: subredes de un mismo bloque con máscaras que acaban en un octeto (172.16.1.0/24, 172.16.2.0/24…).
   - `bit_subnets`: subredes de un mismo bloque con la misma máscara, que no acaba en un octeto (dos /25, cuatro /26…).
   - `vlsm`: subredes de un mismo bloque con máscaras distintas (un /24 repartido en /25, /26, /27 y /27). Exige `level.maxTopic` igual o posterior a `T3.vlsm`.
+  - `octet_zones` (v0.5, Tabla de enrutamiento): el grafo de redes se reparte en zonas conexas (`addressing.zones.count`) y cada una recibe un bloque /16 de 10.0.0.0/8, del que salen sus redes /24. Permite resumir una zona en una entrada de las tablas. C = 1, como `octet_subnets`.
+  - `bit_zones` (v0.5, Tabla de enrutamiento): como `octet_zones`, con bloques cuya máscara no acaba en un octeto (172.16.0.0/20 y 172.16.16.0/20 con redes /24, o dos /25 con redes /27). C = 2, como `bit_subnets`.
   
   Con `auto`, el generador elige el plan según `difficulty.reading` y `level.maxTopic`. Las redes nunca se solapan, y todos los prefijos son identificadores de red válidos, alineados con su máscara.
+
+### `addressing.zones.count`
+
+- **Carácter:** opcional.
+- **Dominio:** lista de enteros mayores o iguales que `2`.
+- **Valor por defecto:** `[2, 3]`.
+- **Descripción:** número de zonas de los planes `octet_zones` y `bit_zones`, sorteado entre los de la lista. Cada zona es un conjunto conexo de redes del grafo; la red de tránsito, si la hay, va en una de ellas.
 
 ### `addressing.nearBoundaryDistance`
 
@@ -1588,22 +1633,27 @@ Estos parámetros pueden configurarse manualmente, pero normalmente se derivan d
 
 Cada categoría de niveles cambia algunos valores por defecto. Los perfiles están en `categoryProfiles` de la configuración global.
 
-| Parámetro | Inicial y Direccionamiento | Encaminamiento (v0.4) |
-|---|---|---|
-| `level.maxTopic` (v0.4.5) | Direccionamiento: `T3.nat` | — |
-| `addressing.privacyMix.probability` (v0.4.5) | Direccionamiento: 0,7 | — |
-| `board.width` × `board.height` | 6 × 6 | 7 × 7 |
-| `packets.count` | 6 | 7 |
-| `topology.networks.min` / `max` | 4 / 4 | 5 / 6 |
-| `features.origins`, `destinations`, `routes`, `ttl` | `false` | `true` |
-| `endpoints.allowSameNetwork` | — | `false` (salvo los paquetes de difusión) |
-| `clues.naming.categoryFormRatio` (`auto`) | entre 0,3 y 0,7 | entre 0,2 y 0,5, sin exigir ninguna |
-| `packets.visibleProperties` | `[]` | `[origin, destination, ttlInitial]` |
-| `nodes.allowEmptyNetworks` | `false` | `true` (como mucho una red de tránsito) |
-| `ttl.initialValues` | — | `[2, 3, 4, 5, 6]`, con pesos `{2: 0.15, 3: 0.25, 4: 0.25, 5: 0.2, 6: 0.15}` |
-| `clues.categoryMinClues` | 0 | 3 |
-| `routers.degree.max` (v0.4.5) | 2 | 4 |
-| `endpoints.hidden.probability` (v0.4.5) | — | 0,5 |
+| Parámetro | Inicial y Direccionamiento | Encaminamiento (v0.4) | Tabla de enrutamiento (v0.5) |
+|---|---|---|---|
+| `level.minTopic` / `maxTopic` | Direccionamiento: — / `T3.nat` (v0.4.5) | — | `T3.encaminamiento` / `T3.encaminamiento` |
+| `addressing.privacyMix.probability` (v0.4.5) | Direccionamiento: 0,7 | — | — |
+| `board.width` × `board.height` | 6 × 6 | 7 × 7 | 7 × 7 |
+| `packets.count` | 6 | 7 | 7 |
+| `topology.networks.min` / `max` | 4 / 4 | 5 / 6 | 6 / 6 |
+| `features.origins`, `destinations`, `routes`, `ttl` | `false` | `true` | `true` |
+| `endpoints.allowSameNetwork` | — | `false` (salvo los paquetes de difusión) | como Encaminamiento |
+| `clues.naming.categoryFormRatio` (`auto`) | entre 0,3 y 0,7 | entre 0,2 y 0,5, sin exigir ninguna | como Encaminamiento |
+| `packets.visibleProperties` | `[]` | `[origin, destination, ttlInitial]` | además, `destinationIp` |
+| `nodes.allowEmptyNetworks` | `false` | `true` (como mucho una red de tránsito) | como Encaminamiento |
+| `ttl.initialValues` | — | `[2, 3, 4, 5, 6]`, con pesos `{2: 0.15, 3: 0.25, 4: 0.25, 5: 0.2, 6: 0.15}` | como Encaminamiento |
+| `clues.categoryMinClues` | 0 | 3 | 3 |
+| `routers.degree.max` (v0.4.5) | 2 | 4 | 4 |
+| `endpoints.hidden.probability` (v0.4.5) | — | 0,5 | 0,5 |
+| `topology.cycles.min` / `max` | — | — | 2 / 3 |
+| `routes.requireUniqueShortestPath` | — | `true` | `false` |
+| `routes.tables.hostGateway` | — | `shortest` | `default_gateway` |
+| `routes.tables.minRequiredRoutes` | — | 0 | 2 |
+| `addressing.plan` (`auto`) | según la interpretación | según la interpretación | según la interpretación, con `octet_zones` y `bit_zones` para las tablas `summary` |
 
 En Encaminamiento, los TTL iniciales son pequeños, como en el ejercicio «No time to die» de la asignatura, para que la resta sea sencilla y para que algunos paquetes no lleguen a su destino. Los valores reales (64, 128…) se dejan para más adelante.
 
