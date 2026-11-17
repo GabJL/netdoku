@@ -1,8 +1,8 @@
 # Versiones de Netdoku
 
-## Sin publicar
+## 0.4.8 (17 de noviembre de 2026)
 
-Versión 0.4.8: modo Entrenar y reglas que se pueden desactivar.
+Modo Entrenar y reglas que se pueden desactivar.
 
 - Entrenar, nueva opción del menú: ejercicios cortos para aprender cada pista y cada regla, ordenados por categoría (Reglas del juego, Inicial, Direccionamiento, Encaminamiento), ficha de ayuda y variante (69 variantes, 3 ejercicios de cada una). Cada uno es un tablero pequeño con un paquete por decidir y, si hacen falta, otros ya colocados. Según lo que importe en cada pista, hay que marcar las casillas donde puede estar el paquete, las que no (si son más de la mitad) o las que anula una pista que ya lo coloca («junto al servidor web, y ningún otro paquete lo estaba»: su fila, su columna y las casillas junto al servidor). Si una casilla no vale, el juego dice por qué; los fallos no cuentan. Se puede ver la explicación (la ruta y el TTL de cada paquete, el valor de cada red en las pistas que comparan dos paquetes, la red de cada dirección…) o la solución. Las reglas implícitas también tienen ejercicios: un paquete por fila y columna, filas y columnas libres, la última casilla y la fila o columna obligada. Las variantes resueltas se marcan con ✓ y cada ficha de la ayuda enlaza a sus ejercicios («Practicar»).
 - Los ejercicios no se pueden resolver sin aplicar la pista. La red que nombra no es la única distinta de las demás a simple vista (la única que no empieza por 10, la única /24…), y el total de «Llevas X de Y» no delata a qué se refiere: si la pista nombrara otra red, otro servidor web u otra red de la ruta, alguna tendría el mismo número de casillas. Los de redes privadas y públicas mezclan bloques y longitudes y usan redes públicas que parecen privadas (172.40.0.0/16, 192.169.3.0/24).
