@@ -157,6 +157,23 @@ Si el jugador se atasca, el botón **Sugerencia** le explica la siguiente deducc
 
 El razonamiento está en `engine/hints.js`, separado del dibujo. Se ha probado en todos los niveles de los lotes con partidas que colocan los paquetes en órdenes al azar: siempre encuentra una deducción, y la cadena lleva a la casilla correcta.
 
+### Entrenar (v0.4.8)
+
+Ejercicios cortos para aprender cada pista y cada regla antes de usarlas en un nivel. Se ordenan por categoría (Reglas del juego, Inicial, Direccionamiento, Encaminamiento), ficha de ayuda y variante: cada forma de una pista que se razona distinto es una variante («junto a un equipo», «junto a un servidor de un servicio», «junto a un equipo de una clase»…), con tres ejercicios.
+
+- Tablero pequeño (5×5, o 6×6 en Encaminamiento) con un paquete por decidir y, si la pista lo necesita, otros ya colocados. Sin víctima, vidas ni sugerencias.
+- Cada ejercicio tiene uno o dos pasos. Según lo que importe de la pista, el jugador marca las casillas donde puede estar el paquete, las que no (cuando las posibles son más de la mitad, para no hacerle pulsar casi todo el tablero) o, con el paquete ya colocado por una pista de casilla única, las que anula para los demás (su fila, su columna y las casillas que solo él podía ocupar).
+- Si pulsa una casilla que no vale, el juego dice por qué («Esta casilla no está junto al servidor web de Aulas», «La red Aulas no está en la ruta del paquete A») y no la marca. Los fallos no cuentan: es para aprender.
+- Botones para ver la explicación del paso (la ruta y el TTL de cada paquete, el valor de cada red en las pistas que comparan dos paquetes, la red de cada dirección…) y la solución. Un ejercicio resuelto sin ver la solución marca la variante como completada.
+- Las reglas implícitas también tienen ejercicios: un paquete por fila y columna, filas y columnas libres con tantos paquetes como filas, la última casilla libre y la fila o columna obligada.
+- Cada ficha de la ayuda enlaza a sus ejercicios («Practicar»), y cada variante, a su ficha.
+
+Los ejercicios los genera `generator/train.py` con el mismo formato que un nivel más un bloque `training` (pasos, respuesta, motivo de cada casilla y explicación como claves con parámetros, que el motor compone en cada idioma).
+
+### Reglas desactivables
+
+Cualquier pista, forma de nombrar o particularidad del tablero se puede desactivar en todo el juego (parámetro `features.disabledRuleSubtypes`, en la v0 el fichero `levels/disabled.txt`) por si alguna no funciona con los alumnos: el generador deja de usarla, los niveles y ejercicios que ya la usan salen de los índices sin borrarse, y el motor oculta su ficha de ayuda y sus ejercicios. Todo lo que se añada al juego debe poder desactivarse así.
+
 ## Organización del juego (v0.3)
 
 Una sola página con pantalla inicial y cinco apartados:

@@ -1,5 +1,16 @@
 # Versiones de Netdoku
 
+## Sin publicar
+
+Versión 0.4.8: modo Entrenar y reglas que se pueden desactivar.
+
+- Entrenar, nueva opción del menú: ejercicios cortos para aprender cada pista y cada regla, ordenados por categoría (Reglas del juego, Inicial, Direccionamiento, Encaminamiento), ficha de ayuda y variante (69 variantes, 3 ejercicios de cada una). Cada uno es un tablero pequeño con un paquete por decidir y, si hacen falta, otros ya colocados. Según lo que importe en cada pista, hay que marcar las casillas donde puede estar el paquete, las que no (si son más de la mitad) o las que anula una pista que ya lo coloca («junto al servidor web, y ningún otro paquete lo estaba»: su fila, su columna y las casillas junto al servidor). Si una casilla no vale, el juego dice por qué; los fallos no cuentan. Se puede ver la explicación (la ruta y el TTL de cada paquete, el valor de cada red en las pistas que comparan dos paquetes, la red de cada dirección…) o la solución. Las reglas implícitas también tienen ejercicios: un paquete por fila y columna, filas y columnas libres, la última casilla y la fila o columna obligada. Las variantes resueltas se marcan con ✓ y cada ficha de la ayuda enlaza a sus ejercicios («Practicar»).
+- Reglas desactivables: cualquier pista, forma de nombrar o particularidad del tablero (routers de esquina, extremos ocultos, redes de tránsito, difusión) se puede desactivar en `levels/disabled.txt`. El generador deja de usarla, los niveles y ejercicios que ya la usan salen del juego sin borrarse y su ficha de ayuda desaparece. Por ahora no hay ninguna desactivada.
+- Generador: `generator/train.py` y los módulos `training.py` y `switches.py`; `level.py` exporta por partes para reutilizarlas.
+- Sugerencias en Encaminamiento: cuando la deducción necesita la ruta o el TTL de un paquete, la sugerencia lo dice en un paso propio y resalta las casillas que descarta. La ruta: «El paquete A va por el camino con menos routers: Laboratorio → Biblioteca → Troncal → Secretaría. Solo puede estar en una red de su ruta, y no pasa por Desarrollo». El TTL: «El TTL inicial del paquete E es 4. Cada router le resta 1, y el que lo deja a 0 lo descarta: como mucho ha atravesado tres routers de su ruta, así que no llega a Investigación». Antes todo quedaba dentro de «con su ruta, su TTL, sus pistas y las filas y columnas…», sin decir qué casillas quitaba cada cosa. Sigue así con la víctima y con los paquetes de origen o destino oculto.
+- La pista que compara el TTL de dos paquetes dice ahora «En ese momento, el paquete G llevaba más TTL que el paquete D»: compara el TTL actual (inicial menos routers atravesados), no el inicial, y antes no quedaba claro.
+- En pantallas anchas, el tablero se queda a la vista al bajar por la lista de paquetes (en 7×7 son más y sus fichas más largas) y nunca es más alto que la ventana. En móvil no cambia: el tablero va encima de los paquetes y los taparía.
+
 ## 0.4.5 (16 de noviembre de 2026)
 
 Lo que se dejó fuera de la v0.4: pistas entre dos paquetes, routers de tres o cuatro redes, orígenes y destinos ocultos, y redes privadas y públicas. Los lotes pasan de 75 a 100 niveles por dificultad (375 niveles nuevos); los 25 nuevos de cada una tienen al menos una novedad, y el juego los saca antes a quien ya haya jugado los anteriores.

@@ -359,6 +359,15 @@ select, .button {
   transition: outline-color 0.15s;
 }
 
+/* Con dos o tres columnas, el tablero se queda a la vista al bajar por la lista de
+   paquetes (en 7×7 son más y sus fichas más largas). Nunca es más alto que la ventana:
+   --board-ratio (ancho / alto del tablero) lo fija el motor al dibujarlo. En móvil no,
+   porque el tablero va encima de los paquetes y los taparía. */
+@media (min-width: 861px) {
+  .board-area { position: sticky; top: 12px; }
+  .board-wrap svg { max-width: min(620px, calc((100vh - 24px) * var(--board-ratio, 1))); }
+}
+
 /* En modo anotar, el tablero se rodea de un borde de color. */
 .board-wrap.noting svg { outline-color: var(--note); }
 
@@ -1274,3 +1283,67 @@ figcaption {
   .topbar .control-label { display: none; }
   .clue-chip { white-space: normal; }
 }
+
+/* ---------- Entrenar ---------- */
+
+/* Lista de ejercicios: una tarjeta por ficha de ayuda, con sus variantes. */
+.train-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.train-group {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--cat, var(--accent));
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.train-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.train-group-head h3 { margin: 0; font-size: 1rem; }
+
+.train-variants { display: flex; flex-direction: column; gap: 6px; }
+
+.train-variant {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.train-variant:hover { border-color: var(--accent); }
+.train-variant .check { color: var(--muted); font-weight: 700; }
+.train-variant.done { border-color: var(--ok); }
+.train-variant.done .check { color: var(--ok); }
+
+.help-card .practice { display: inline-block; margin-top: 10px; text-decoration: none; }
+
+/* Ejercicio: sin vidas, sin modo anotar ni sugerencias; el recuadro del ejercicio
+   ocupa el sitio de las sugerencias. */
+#view-game.training .side-tools { display: none; }
+
+.hint-box.train-box { border-color: var(--accent); background: var(--panel); }
+.train-box h3 { color: var(--accent); }
+.train-box h4 { margin: 10px 0 4px; font-size: 0.85rem; }
+.train-box .ask { font-weight: 600; }
+.train-box .progress { margin-top: 4px; font-size: 0.85rem; color: var(--muted); }
+.train-box ul { margin: 0; padding-left: 1.2em; }
+.train-box li { margin: 0 0 5px; }

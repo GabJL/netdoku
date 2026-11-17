@@ -27,6 +27,8 @@
   const t = (key, vars) => I18n.t(key, vars);
   const dots = (n) => "●".repeat(n) + "○".repeat(5 - n);
   const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  // Nombre de una variante de entrenamiento (sus ids llevan puntos: no valen como ruta de t()).
+  const variantName = (id) => (I18n.get("train.variants") || {})[id] || id;
 
   let level = null;
   let state = null;
@@ -123,7 +125,11 @@
       asking: false,                                // pidiendo confirmación para una sugerencia
       hintStep: 0,                                  // paso de la sugerencia que se resalta
       selected: null,
+      // Entrenamiento (level.training): paso actual y casillas marcadas en él.
+      train: options.training && data.training ? newTrainState() : null,
     };
+    if (state.train) state.placed = { ...data.training.placed };
+    $("view-game").classList.toggle("training", !!state.train);
     bind();
     setMode("place");
     say(saved && !state.solved && !state.lost && Object.keys(state.placed).length ? t("game.resumed") : (options.message || ""));
@@ -178,6 +184,7 @@
 
   // Hay algo que se perdería al empezar otro nivel.
   function hasProgress() {
+    if (isTraining()) return false; // un ejercicio se deja sin perder nada
     return !!state && !isOver() && (Object.keys(state.placed).length > 0 || state.notes.size > 0
       || state.marks.size > 0 || state.lives < START_LIVES);
   }
@@ -200,9 +207,13 @@
     const n = level.clues.length;
     let meta = value ? t("game.meta", { category, dots: dots(value), tier: t(`tiers.${value}`), n }) : `${category} · ${n}`;
     if (d.reading) meta += ` (${t("game.metaDetail", { logic: d.logic, reading: d.reading })})`;
+    if (isTraining()) {
+      const tr = level.training;
+      meta = t("train.meta", { category: t(`train.categories.${tr.category}`), variant: variantName(tr.variant) });
+    }
     $("level-meta").textContent = meta;
 
-    let objective = t("game.objective", { victim: level.objective.victimPacketId });
+    let objective = isTraining() ? t("train.objective") : t("game.objective", { victim: level.objective.victimPacketId });
     if ((level.rules || {}).packetOnRoute) objective += " " + t("game.routeNote");
     if (level.packets.items.some(hasHiddenEnd)) objective += " " + t("game.hiddenNote");
     if (level.clues.some((c) => Object.values(c.naming || {}).some((f) => SIZE_FORMS.has(f)))) {
@@ -357,7 +368,8 @@
     renderBoard();
     renderLegend();
     renderPackets();
-    renderHint();
+    if (isTraining()) renderTrain();
+    else renderHint();
     renderFinal();
   }
 
@@ -397,6 +409,7 @@
     const W = margin + width * CELL + PAD;
     const H = margin + height * CELL + PAD;
     const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": t("game.board") });
+    root.style.setProperty("--board-ratio", W / H); // para que el CSS limite su altura a la ventana
 
     // Números de fila y columna, para las pistas «en la fila N».
     const num = { "font-size": 13, "font-weight": 600, fill: tv("--board-number") };
@@ -455,6 +468,7 @@
       const [r, c] = key.split(",").map(Number);
       text(root, px(c) + CELL / 2, py(r) + CELL / 2 + 10, "✕", { "font-size": 30, fill: tv("--mark") });
     }
+    if (isTraining()) drawTraining(root);
 
     // Notas: circulito del color del paquete, siempre en la misma posición de la casilla.
     const order = level.packets.items.map((p) => p.id);
@@ -735,6 +749,7 @@
   function onCellClick(r, c) {
     if (isOver()) return;
     if (longPress.suppressClick) { longPress.suppressClick = false; return; }
+    if (isTraining()) { trainClick(r, c); return; }
     if (!state.selected) {
       if (state.mode === "note") say(t("game.selectFirst"), "");
       return;
@@ -765,6 +780,7 @@
 
   function toggleMark(r, c) {
     if (isOver()) return;
+    if (isTraining()) { trainClick(r, c); return; } // en el entrenamiento, clic derecho = clic
     const key = `${r},${c}`;
     if (occupied(r, c)) return;
     if (state.marks.has(key)) {
@@ -805,7 +821,8 @@
   // Equipo de origen o de destino que se puede mostrar (null si está oculto o es una difusión).
   function endNode(p, end) {
     const e = p[end] || {};
-    if (e.hidden) return state.solved ? (p.solution || {})[end] || null : null;
+    const shown = state.solved || (state.train && state.train.finished);
+    if (e.hidden) return shown ? (p.solution || {})[end] || null : null;
     return e.node || null;
   }
 
@@ -818,9 +835,11 @@
       card.className = "packet-card";
       if (state.selected === p.id) card.classList.add("selected");
       if (focus.packets.has(p.id)) card.classList.add("hinted");
+      if (isTraining() && trainStep().packet === p.id) card.classList.add("selected");
       const placed = p.id in state.placed;
-      // Un paquete colocado se compacta; sus pistas se pueden desplegar de nuevo.
-      const open = !placed || expanded.has(p.id);
+      // Un paquete colocado se compacta; sus pistas se pueden desplegar de nuevo. En el
+      // entrenamiento, no: su ruta y su TTL suelen hacer falta.
+      const open = !placed || expanded.has(p.id) || isTraining();
       if (placed) card.classList.add("placed");
       if (!open) card.classList.add("compact");
       if (p.origin) {
@@ -832,7 +851,7 @@
       token.className = "token" + (placed ? " placed" : "");
       token.style.background = p.color;
       token.textContent = p.id;
-      if (!placed && !isOver()) token.addEventListener("pointerdown", (e) => onTokenDown(e, p.id));
+      if (!placed && !isOver() && !isTraining()) token.addEventListener("pointerdown", (e) => onTokenDown(e, p.id));
       card.appendChild(token);
 
       const title = document.createElement("div");
@@ -853,7 +872,7 @@
         where.className = "where";
         where.textContent = t("game.where", { r, c });
         title.appendChild(where);
-        if (clues.length) {
+        if (clues.length && !isTraining()) {
           const toggle = document.createElement("button");
           toggle.type = "button";
           toggle.className = "toggle";
@@ -934,7 +953,14 @@
       box.appendChild(p);
     };
 
-    if (state.solved) {
+    if (isTraining()) {
+      if (!state.train.finished) {
+        box.hidden = true;
+        return;
+      }
+      box.classList.add("solved");
+      para(t(state.train.revealed ? "train.doneRevealed" : "train.done"));
+    } else if (state.solved) {
       const attacker = level.objective.observableAnswer.attackerPacketId;
       const victim = level.objective.victimPacketId;
       const net = networkById(level.solution.victimNetwork);
@@ -1031,6 +1057,195 @@
     }
   }
 
+  // ---------- Entrenamiento ----------
+  // Un ejercicio (level.training, véase generator/netdoku_gen/training.py) enseña
+  // una pista o una regla en un tablero pequeño. En cada paso el jugador pulsa
+  // casillas: las posibles de un paquete (`possible`), las imposibles
+  // (`impossible`, con ✕) o las que quedan descartadas para los demás paquetes
+  // (`annul`, con ✕). Una casilla que no toca no se marca: se explica por qué.
+  // Los fallos no cuentan; la explicación y la solución se pueden ver siempre.
+
+  const isTraining = () => !!(state && state.train);
+  const keyOf = ([r, c]) => `${r},${c}`;
+
+  function newTrainState() {
+    return { step: 0, marks: new Set(), stepDone: false, explain: false, finished: false, revealed: false };
+  }
+
+  function trainStep() {
+    return level.training.steps[state.train.step];
+  }
+
+  function trainSets(s) {
+    return {
+      answer: new Set(s.answer.map(keyOf)),
+      extra: new Set((s.extra || []).map(keyOf)),
+      given: new Set((s.given || []).map(keyOf)),
+    };
+  }
+
+  // Los motivos y las explicaciones citan redes, equipos y routers por su
+  // identificador: aquí pasan a sus nombres en el idioma activo.
+  function trainVars(o) {
+    const v = { ...o };
+    const net = (id) => networkName(networkById(id) || { name: id });
+    for (const k of ["net", "otherNet", "reach"]) if (o[k]) v[k] = net(o[k]);
+    for (const k of ["nets", "tags", "route"]) if (Array.isArray(o[k])) v[k] = o[k].map(net);
+    if (o.node) {
+      const n = level.nodes.find((x) => x.id === o.node);
+      if (n) Object.assign(v, { node: nodeLabel(n), nodeNet: net(n.network) });
+    }
+    if (o.router) {
+      const rt = level.routers.find((x) => x.id === o.router);
+      if (rt) v.router = rt.connectedNetworks.map(net);
+    }
+    if (o.cls) {
+      v.clsKey = o.cls.service || o.cls.nodeType;
+      v.cls = t(`nodes.${v.clsKey}`);
+    }
+    return v;
+  }
+
+  const trainText = (group, o) => t(`train.${group}.${o.key}`, trainVars(o));
+
+  function trainClick(r, c) {
+    const tr = state.train;
+    if (tr.stepDone) return;
+    const busy = occupied(r, c);
+    if (busy) {
+      say(busy === "node" ? t("game.occupiedNode") : t("game.occupiedPacket", { id: busy }), "bad");
+      return;
+    }
+    const key = `${r},${c}`;
+    const s = trainStep();
+    if (tr.marks.has(key)) {
+      tr.marks.delete(key);
+      say("");
+    } else {
+      const sets = trainSets(s);
+      if (!sets.answer.has(key) && !sets.extra.has(key)) {
+        const reason = s.reasons[key];
+        say(reason ? trainText("reasons", reason) : t("train.wrong"), "bad");
+        renderBoard();
+        const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+        if (cell) cell.classList.add("wrong");
+        return;
+      }
+      tr.marks.add(key);
+      const why = s.why && s.why[key];
+      say(why ? trainText("reasons", why) : sets.answer.has(key) ? "" : t("train.extraOk"), "good");
+      if (s.answer.every((x) => tr.marks.has(keyOf(x)))) finishStep(false);
+    }
+    render();
+  }
+
+  function finishStep(revealed) {
+    const tr = state.train;
+    tr.stepDone = true;
+    tr.explain = true;
+    if (revealed) tr.revealed = true;
+    if (tr.step === level.training.steps.length - 1) {
+      tr.finished = true;
+      if (options.onSolve) options.onSolve(!tr.revealed);
+    }
+    if (!revealed) say(t(tr.finished ? "train.finished" : "train.stepDone"), "good");
+  }
+
+  function nextStep() {
+    const tr = state.train;
+    Object.assign(tr, { step: tr.step + 1, marks: new Set(), stepDone: false, explain: false });
+    say("");
+    render();
+  }
+
+  function revealStep() {
+    state.train.marks = new Set(trainStep().answer.map(keyOf));
+    say("");
+    finishStep(true);
+    render();
+  }
+
+  // En el tablero: las casillas marcadas (círculo del paquete o ✕), las posibles
+  // del paquete que da el paso (círculo discontinuo) y, con el paso resuelto, las
+  // que también valían sin hacer falta (borde discontinuo).
+  function drawTraining(root) {
+    const tr = state.train;
+    const s = trainStep();
+    const p = packetById(s.packet);
+    const sets = trainSets(s);
+    const at = (key) => key.split(",").map(Number);
+    const ring = (key, faint) => {
+      const [r, c] = at(key);
+      const cx = px(c) + CELL / 2;
+      const cy = py(r) + CELL / 2;
+      svg("circle", {
+        cx, cy, r: 21, fill: p.color, "fill-opacity": faint ? 0.18 : 0.5, stroke: p.color, "stroke-width": 3,
+        "stroke-dasharray": faint ? "6 4" : "none", "pointer-events": "none",
+      }, root);
+      text(root, cx, cy + 6, s.packet, {
+        "font-size": 17, "font-weight": 700, fill: tv("--label-ink"), stroke: tv("--label-halo"), "stroke-width": 3, "paint-order": "stroke",
+      });
+    };
+    for (const key of sets.given) ring(key, true);
+    if (tr.stepDone) {
+      for (const key of sets.extra) {
+        if (tr.marks.has(key)) continue;
+        const [r, c] = at(key);
+        svg("rect", {
+          x: px(c) + 4, y: py(r) + 4, width: CELL - 8, height: CELL - 8, rx: 6, fill: "none",
+          stroke: tv("--mark"), "stroke-width": 2.5, "stroke-dasharray": "6 4", "pointer-events": "none",
+        }, root);
+      }
+    }
+    for (const key of tr.marks) {
+      if (s.ask === "possible") {
+        ring(key, false);
+      } else {
+        const [r, c] = at(key);
+        text(root, px(c) + CELL / 2, py(r) + CELL / 2 + 10, "✕", { "font-size": 30, fill: tv("--mark") });
+      }
+    }
+  }
+
+  // Recuadro del ejercicio (en el sitio de las sugerencias): qué hay que marcar,
+  // cuántas casillas lleva, la explicación y los botones.
+  function renderTrain() {
+    const box = $("hint");
+    box.innerHTML = "";
+    box.className = "hint-box train-box";
+    const tr = state.train;
+    const steps = level.training.steps;
+    const s = trainStep();
+    const add = (tag, content, parent, className) => {
+      const e = document.createElement(tag);
+      if (content) e.textContent = content;
+      if (className) e.className = className;
+      (parent || box).appendChild(e);
+      return e;
+    };
+    add("h3", steps.length > 1 ? t("train.stepOf", { n: tr.step + 1, total: steps.length }) : t("train.task"));
+    add("p", t(`train.ask.${s.ask}`, { packet: s.packet }), box, "ask");
+    if (s.given) add("p", t("train.given", { packet: s.packet }), box, "hint-note");
+    const found = s.answer.filter((x) => tr.marks.has(keyOf(x))).length;
+    add("p", t("train.count", { n: found, total: s.answer.length }), box, "progress");
+    if (tr.explain) {
+      add("h4", t("train.explanation"));
+      const ul = add("ul");
+      for (const f of s.explain) add("li", trainText("facts", f), ul);
+      if (tr.stepDone && s.extra && s.extra.length) add("p", t("train.extraNote"), box, "hint-note");
+    }
+    const row = add("div", "", box, "hint-actions");
+    const button = (label, onClick, primary) => {
+      const b = add("button", label, row, primary ? "button primary" : "button");
+      b.type = "button";
+      b.addEventListener("click", onClick);
+    };
+    if (!tr.explain) button(t("train.explain"), () => { tr.explain = true; renderTrain(); });
+    if (!tr.stepDone) button(t("train.reveal"), revealStep);
+    else if (tr.step < steps.length - 1) button(t("train.next"), nextStep, true);
+    box.hidden = false;
+  }
+
   // ---------- Sugerencias ----------
 
   // Se puede pedir con más de una vida: cuesta una y no debe hacer perder el nivel.
@@ -1084,11 +1299,16 @@
     switch (s.t) {
       case "single":
         if (i > 0) return t("hint.singleAfter", { packet: s.packet });
-        return t((packetById(s.packet) || {}).route ? "hint.singleRoute" : "hint.single", { packet: s.packet });
+        return t(s.route ? "hint.singleRoute" : "hint.single", { packet: s.packet });
       case "line":
         return t(s.axis === "row" ? "hint.lineRow" : "hint.lineColumn", { packet: s.packet, n: s.line });
       case "annul":
         return t("hint.annul", { packet: s.packet });
+      case "route":
+      case "ttl": {
+        const name = (id) => networkName(level.networks.find((n) => n.id === id) || { name: id });
+        return t(`hint.${s.t}`, { packet: s.packet, ttl: s.ttl, route: s.route.map(name), networks: s.networks.map(name) });
+      }
       case "relation":
         // Sin casillas resaltadas: solo descarta redes posibles del extremo oculto.
         return t(!s.cells.length ? "hint.relationEnds" : s.open ? "hint.relationOpen" : "hint.relationFixed",
@@ -1124,7 +1344,7 @@
       else for (let r = 1; r <= height; r++) add(r, n);
     };
     if (s.t === "line") line(s.axis, s.line);
-    else if (s.t === "annul" || s.t === "relation") s.cells.forEach(([r, c]) => add(r, c));
+    else if (s.t === "annul" || s.t === "relation" || s.t === "route" || s.t === "ttl") s.cells.forEach(([r, c]) => add(r, c));
     else if (s.t === "subset" && s.key === "cell") s.values.forEach(([r, c]) => add(r, c));
     else if (s.t === "subset") s.values.forEach((n) => line(s.key, n));
     return [...cells.values()].filter(([r, c]) => !occupied(r, c));
@@ -1144,7 +1364,7 @@
       focus.clues.add(s.clue);
       focus.packets.add(s.packet);
       focus.packets.add(s.other);
-    } else if (s.t === "line") {
+    } else if (s.t === "line" || s.t === "route" || s.t === "ttl") {
       focus.packets.add(s.packet);
     } else if (s.t === "subset") {
       s.packets.forEach((p) => focus.packets.add(p));
@@ -1166,6 +1386,7 @@
     button.disabled = status !== "ok";
     button.title = status === "ok" || status === "over" ? t("hint.buttonTitle") : t(`hint.${status}`);
     box.innerHTML = "";
+    box.className = "hint-box";
     const add = (tag, text, parent) => {
       const e = document.createElement(tag);
       if (text) e.textContent = text;

@@ -13,6 +13,7 @@ from .routes import assign_routes, choose_hidden, choose_transit
 from .rules import HIDDEN_TYPES, KNOWLEDGE, ROUTE_FAMILIES, Context, generate_instances, uncalculated
 from .selection import Selector
 from .solver import Rules, count_solutions, initial_domains, propagate, relations_of, solved
+from .switches import features_of, forms_of, subtypes_of
 
 SCHEMA_VERSION = "0.2"
 DEFAULTS = {
@@ -44,6 +45,7 @@ DEFAULTS = {
     "hiddenMax": 2,                # endpoints.hidden.max
     "privacyProbability": 0.0,     # addressing.privacyMix.probability
     "novelties": False,            # --novelties: al menos una novedad de la v0.4.5 de su categoría
+    "disabled": (),                # claves desactivadas (levels/disabled.txt, véase switches.py)
 }
 
 # Valores que cambia cada categoría (categoryProfiles en la configuración global).
@@ -85,7 +87,7 @@ def build(seed, config=None, max_attempts=200):
     category = config.get("category", DEFAULTS["category"])
     if category not in CATEGORIES:
         raise ValueError(f"Categoría desconocida: {category}")
-    cfg = {**DEFAULTS, **CATEGORY_PROFILES.get(category, {}), **config}
+    cfg = apply_disabled({**DEFAULTS, **CATEGORY_PROFILES.get(category, {}), **config})
     rng = random.Random(seed)
     last_error = None
     for attempt in range(1, max_attempts + 1):
@@ -94,6 +96,25 @@ def build(seed, config=None, max_attempts=200):
         except RuntimeError as e:
             last_error = e
     raise RuntimeError(f"No se ha generado ningún nivel en {max_attempts} intentos: {last_error}")
+
+
+def apply_disabled(cfg):
+    """Quita de la configuración lo que esté desactivado (levels/disabled.txt): las
+    particularidades del tablero se anulan aquí; los subtipos y las formas, al elegir pistas."""
+    disabled = set(cfg.get("disabled") or ())
+    features = features_of(disabled)
+    cfg = dict(cfg)
+    if "cornerRouter" in features:
+        cfg["cornerRouters"] = 0
+    if "hiddenEndpoint" in features:
+        cfg["hiddenProbability"] = 0.0
+    if "transit" in features:
+        cfg["transitProbability"] = 0.0
+    if "broadcast" in features:
+        cfg["broadcastProbability"] = 0.0
+    if {"privacy", "label_privacy"} <= forms_of(disabled):
+        cfg["privacyProbability"] = 0.0
+    return cfg
 
 
 def _choose_plan(rng, cfg, reading):
@@ -139,9 +160,9 @@ def _attempt(rng, seed, cfg, attempt):
                                cfg["hiddenMax"])
     ctx = Context(board, nodes, packets, addressing, routes, transit, hidden)
     # Las pistas cuya única forma cuesta 1 o más no caben en Inicial ni en interpretación 1.
-    disabled = set()
+    disabled = subtypes_of(cfg["disabled"])
     if category == "inicial" or reading == 1:
-        disabled = {"network.prefix_length", "relation.more_addresses_network", "relation.higher_ttl"}
+        disabled |= {"network.prefix_length", "relation.more_addresses_network", "relation.higher_ttl"}
     pool = generate_instances(ctx, cfg["enabledRuleSubtypes"], disabled)
     victim = next(p for p in packets if p.role == "victim")
     attacker = next(p for p in packets if p.role == "attacker")
@@ -199,7 +220,7 @@ def _attempt(rng, seed, cfg, attempt):
     report = evaluate(ctx.base, ids, clues, rules, victim.id)
 
     # Formas de nombrar: después de la lógica, porque no cambian D ni A.
-    namer = Namer(rng, board, nodes, addressing, cfg["maxTopic"])
+    namer = Namer(rng, board, nodes, addressing, cfg["maxTopic"], forms_of(cfg["disabled"]))
     if category == "inicial":
         clues = namer.apply(clues, namer.plain(clues), {})
     else:
@@ -309,7 +330,7 @@ def _grouped(values):
     return {v: sorted(xs) for v, xs in sorted(groups.items())}
 
 
-def _clue_dict(c):
+def clue_dict(c):
     # `text` es el texto en español; el motor lo compone en cada idioma a partir
     # de `type`, `parameters` y `slots` (cómo se nombra cada elemento).
     # `domain` (D) y `excluded` (A, si la pista anula casillas) los usa el motor
@@ -328,7 +349,7 @@ def _clue_dict(c):
     return d
 
 
-def _router_dict(board, addressing, r):
+def router_dict(board, addressing, r):
     position = ({"kind": "corner", "cells": [one_based(c) for c in r.between]} if r.corner
                 else {"kind": "edge", "between": [one_based(c) for c in r.between]})
     return {"id": r.id, "name": "Router de " + join_names(board.network(n).name for n in r.networks),
@@ -336,6 +357,58 @@ def _router_dict(board, addressing, r):
             "interfaces": {net: str(addressing.assigned[("router", r.id, net)]) for net in r.networks},
             "position": position,
             **({} if r.corner else {"orientation": "vertical" if r.between[0][0] == r.between[1][0] else "horizontal"})}
+
+
+def board_dict(board):
+    return {
+        "width": board.width,
+        "height": board.height,
+        "coordinateSystem": {"origin": "top-left", "rowIndexStartsAt": 1, "columnIndexStartsAt": 1},
+        "networkGrid": board.grid,
+    }
+
+
+def networks_list(board, addressing, ctx):
+    return [
+        {"id": n.id, "name": n.name, "nameKey": n.name_key, "prefix": n.prefix,
+         "addresses": addressing.size(n.id),
+         **({"transit": True} if n.id == ctx.transit else {}),
+         "cellCount": len(n.cells), "cells": [one_based(c) for c in n.cells]}
+        for n in board.networks
+    ]
+
+
+def topology_dict(board):
+    return {
+        "bipartite": True,
+        "connected": True,
+        "networkNodes": [n.id for n in board.networks],
+        "routerNodes": [r.id for r in board.routers],
+        "edges": [[net, r.id] for r in board.routers for net in r.networks],
+    }
+
+
+def nodes_list(nodes, addressing):
+    return [
+        {"id": n.id, "type": n.type, **({"services": n.services} if n.services else {}),
+         "label": n.label[0].upper() + n.label[1:], "network": n.network, "position": one_based(n.cell),
+         "ip": str(addressing.assigned[("node", n.id)])}
+        for n in nodes
+    ]
+
+
+def packet_item(ctx, p):
+    """Ficha de un paquete con su solución (y, en Encaminamiento, su ruta)."""
+    board, routes = ctx.board, ctx.routes
+    return {"id": p.id, "color": p.color, "colorName": p.color_name,
+            **({"role": p.role} if p.role != "other" else {}),
+            **_route_fields(ctx, p),
+            "solution": {"position": one_based(p.cell), "network": board.network_of(p.cell),
+                         **({"routersCrossed": routes[p.id].crossed, "ttl": routes[p.id].current_ttl}
+                            if p.id in routes else {}),
+                         # El extremo oculto: se muestra en la ficha al resolver el nivel.
+                         **({ctx.hidden[p.id]: getattr(routes[p.id], ctx.hidden[p.id])}
+                            if p.id in ctx.hidden else {})}}
 
 
 def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victim_net, max_subset, report,
@@ -372,50 +445,17 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
         },
         "requirements": {"topic": topic, "knowledge": KNOWLEDGE},
         "addressing": {"plan": addressing.plan},
-        "board": {
-            "width": board.width,
-            "height": board.height,
-            "coordinateSystem": {"origin": "top-left", "rowIndexStartsAt": 1, "columnIndexStartsAt": 1},
-            "networkGrid": board.grid,
-        },
+        "board": board_dict(board),
         "rules": {"onePacketPerCell": True, "onePacketPerRow": True, "onePacketPerColumn": True,
                   **({"packetOnRoute": True} if routes else {})},
-        "networks": [
-            {"id": n.id, "name": n.name, "nameKey": n.name_key, "prefix": n.prefix,
-             "addresses": addressing.size(n.id),
-             **({"transit": True} if n.id == ctx.transit else {}),
-             "cellCount": len(n.cells), "cells": [one_based(c) for c in n.cells]}
-            for n in board.networks
-        ],
-        "routers": [_router_dict(board, addressing, r) for r in board.routers],
-        "topology": {
-            "bipartite": True,
-            "connected": True,
-            "networkNodes": [n.id for n in board.networks],
-            "routerNodes": [r.id for r in board.routers],
-            "edges": [[net, r.id] for r in board.routers for net in r.networks],
-        },
-        "nodes": [
-            {"id": n.id, "type": n.type, **({"services": n.services} if n.services else {}),
-             "label": n.label[0].upper() + n.label[1:], "network": n.network, "position": one_based(n.cell),
-             "ip": str(addressing.assigned[("node", n.id)])}
-            for n in nodes
-        ],
+        "networks": networks_list(board, addressing, ctx),
+        "routers": [router_dict(board, addressing, r) for r in board.routers],
+        "topology": topology_dict(board),
+        "nodes": nodes_list(nodes, addressing),
         "packets": {
             "victimId": victim.id,
             "attackerId": attacker.id,
-            "items": [
-                {"id": p.id, "color": p.color, "colorName": p.color_name,
-                 **({"role": p.role} if p.role != "other" else {}),
-                 **_route_fields(ctx, p),
-                 "solution": {"position": one_based(p.cell), "network": board.network_of(p.cell),
-                              **({"routersCrossed": routes[p.id].crossed, "ttl": routes[p.id].current_ttl}
-                                 if routes else {}),
-                              # El extremo oculto: se muestra en la ficha al resolver el nivel.
-                              **({ctx.hidden[p.id]: getattr(routes[p.id], ctx.hidden[p.id])}
-                                 if p.id in ctx.hidden else {})}}
-                for p in packets
-            ],
+            "items": [packet_item(ctx, p) for p in packets],
         },
         "objective": {
             "type": "identify_attacker",
@@ -424,7 +464,7 @@ def to_dict(seed, attempt, board, nodes, packets, clues, victim, attacker, victi
             "packetsInVictimNetwork": 2,
             "observableAnswer": {"attackerPacketId": attacker.id},
         },
-        "clues": [_clue_dict(c) for c in clues],
+        "clues": [clue_dict(c) for c in clues],
         "solution": {
             "placements": {p.id: one_based(p.cell) for p in packets},
             "victimNetwork": victim_net,

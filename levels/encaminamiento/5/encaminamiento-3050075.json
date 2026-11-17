@@ -3713,7 +3713,7 @@
    "id": "C8",
    "packet": "G",
    "type": "relation.higher_ttl",
-   "text": "El paquete G llevaba más TTL que el paquete D.",
+   "text": "En ese momento, el paquete G llevaba más TTL que el paquete D.",
    "parameters": {},
    "slots": {
     "compare": {

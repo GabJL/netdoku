@@ -39,10 +39,34 @@
     const free = [];
     for (let k = 0; k < W * H; k++) if (!nodeCells.has(k)) free.push(k);
     const ids = level.packets.items.map((p) => p.id);
+    const victim = level.packets.victimId || (level.objective || {}).victimPacketId;
     // Encaminamiento: cada paquete parte de las casillas de su ruta a las que le
     // llega el TTL (packets.items[].domain, regla packetOnRoute); con un extremo
     // oculto, de los estados de todas sus rutas posibles.
     const start = new Map(level.packets.items.map((p) => [p.id, Array.isArray(p.domain) ? p.domain.map(idx) : free]));
+    // Para que la sugerencia diga cuándo hacen falta la ruta y el TTL, el paquete
+    // parte de todo el tablero: el paso "route" quita las redes que no están en
+    // su ruta, y el paso "ttl", las de su ruta a las que no le llega el TTL. No
+    // con la víctima ni con un extremo oculto (parten ya de su domain).
+    const netCells = (ids) => {
+      const cells = new Set();
+      for (const id of ids) for (const cell of ((level.networks || []).find((n) => n.id === id) || {}).cells || []) cells.add(idx(cell));
+      return cells;
+    };
+    const cut = new Map();
+    for (const p of level.packets.items) {
+      const route = p.route || {};
+      const ttl = (p.ttl || {}).initial;
+      if (p.id === victim || !Array.isArray(p.domain) || !Array.isArray(route.networks) || !ttl) continue;
+      if (p.domain.some((x) => x.length > 2)) continue;
+      const onRoute = netCells(route.networks);
+      const offRoute = new Set(free.filter((k) => !onRoute.has(k)));
+      // Red r_i de la ruta: le quedan vivos i ≤ TTL − 1 routers (routes.Route.last_reachable).
+      const lost = route.networks.slice(ttl);
+      const beyond = netCells(lost);
+      cut.set(p.id, { route: route.networks, offRoute, ttl, lost, beyond });
+      start.set(p.id, [...new Set([...start.get(p.id), ...offRoute, ...beyond])]);
+    }
     const domains = new Map(ids.map((p) => [p, new Set(start.get(p).filter((x) => !nodeCells.has(x % (W * H))))]));
     const clues = level.clues.filter((c) => !c.relation).map((c) => ({
       id: c.id,
@@ -67,8 +91,7 @@
     });
     const rules = level.rules || {};
     const sim = {
-      W, H, ids, domains, clues, relations,
-      victim: level.packets.victimId || (level.objective || {}).victimPacketId,
+      W, H, ids, domains, clues, relations, cut, victim,
       placed: new Set(),
       annulled: new Set(),
       fullRows: rules.onePacketPerRow !== false && ids.length === H,
@@ -122,6 +145,15 @@
     return { drop, values: sourceValues.size };
   }
 
+  // Casillas que le quedan al paquete fuera de su ruta ("route") o en redes de
+  // su ruta a las que no le llega el TTL ("ttl").
+  function cutDrop(sim, p, kind) {
+    const cut = sim.cut.get(p);
+    if (!cut || sim.placed.has(p)) return [];
+    const cells = kind === "route" ? cut.offRoute : cut.beyond;
+    return [...sim.domains.get(p)].filter((x) => cells.has(x));
+  }
+
   // Paquetes con alguna casilla posible en una fila o columna.
   function holders(sim, axis, line) {
     const at = keyOf(sim, axis);
@@ -140,6 +172,9 @@
       }
       case "annul":
         return !sim.annulled.has(s.clue);
+      case "route":
+      case "ttl":
+        return cutDrop(sim, s.packet, s.t).length > 0;
       case "relation":
         return relationDrop(sim, sim.relations.find((r) => r.id === s.clue), s.packet, s.other).drop.length > 0;
       case "subset": {
@@ -176,6 +211,9 @@
       const { drop } = relationDrop(sim, sim.relations.find((r) => r.id === s.clue), s.packet, s.other);
       const d = sim.domains.get(s.packet);
       for (const x of drop) d.delete(x);
+    } else if (s.t === "route" || s.t === "ttl") {
+      const d = sim.domains.get(s.packet);
+      for (const x of cutDrop(sim, s.packet, s.t)) d.delete(x);
     } else if (s.t === "subset") {
       const at = keyOf(sim, s.key);
       const values = new Set(s.values);
@@ -210,6 +248,11 @@
           found.push({ t: "line", packet: h[0], axis, line, level: 2 });
         }
       }
+    }
+    // Regla packetOnRoute: el paquete está en una red de su ruta a la que le
+    // llega el TTL (nivel 1).
+    for (const p of sim.cut.keys()) {
+      for (const kind of ["route", "ttl"]) if (cutDrop(sim, p, kind).length) found.push({ t: kind, packet: p, level: 1 });
     }
     for (const clue of sim.clues) {
       if (!clue.excluded.size || sim.annulled.has(clue.id)) continue;
@@ -322,7 +365,9 @@
   function describeStep(sim, s, level, pos) {
     switch (s.t) {
       case "single":
-        return { t: "single", packet: s.packet, clues: level.clues.filter((c) => (c.packets || [c.packet]).includes(s.packet)).map((c) => c.id) };
+        // `route`: la ruta y el TTL cuentan sin decirlo (víctima o extremo oculto).
+        return { t: "single", packet: s.packet, route: !!(level.packets.items.find((p) => p.id === s.packet) || {}).route && !sim.cut.has(s.packet),
+          clues: level.clues.filter((c) => (c.packets || [c.packet]).includes(s.packet)).map((c) => c.id) };
       case "relation": {
         // Casillas que deja de tener el paquete (no las que conserva con otra red).
         const { drop } = relationDrop(sim, sim.relations.find((r) => r.id === s.clue), s.packet, s.other);
@@ -333,6 +378,17 @@
       }
       case "line":
         return { t: "line", packet: s.packet, axis: s.axis, line: s.line };
+      case "route":
+      case "ttl": {
+        // Casillas que pierde y redes en las que están (en el orden de level.networks o de la ruta).
+        const cut = sim.cut.get(s.packet);
+        const drop = cutDrop(sim, s.packet, s.t).sort((a, b) => a - b);
+        const netOf = new Map();
+        for (const n of level.networks || []) for (const [r, c] of n.cells || []) netOf.set((r - 1) * sim.W + (c - 1), n.id);
+        const hit = new Set(drop.map((x) => netOf.get(x)));
+        const order = s.t === "route" ? (level.networks || []).map((n) => n.id) : cut.lost;
+        return { t: s.t, packet: s.packet, route: cut.route, ttl: cut.ttl, networks: order.filter((n) => hit.has(n)), cells: drop.map(pos) };
+      }
       case "annul": {
         const clue = sim.clues.find((c) => c.id === s.clue);
         return { t: "annul", packet: s.packet, clue: s.clue, cells: [...clue.excluded].sort((a, b) => a - b).map(pos) };

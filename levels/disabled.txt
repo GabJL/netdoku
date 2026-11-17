@@ -1,0 +1,7 @@
+# Reglas desactivadas en todo el juego: una clave por línea (véase generator/netdoku_gen/switches.py).
+#   network.in_network       un subtipo de pista
+#   form:mask                una forma de nombrar
+#   feature:cornerRouter     una particularidad del tablero (cornerRouter, hiddenEndpoint, transit, broadcast)
+# El generador no las usa en niveles nuevos ni en ejercicios de entrenamiento. Tras editar este
+# fichero hay que regenerar los índices (python generator/generate.py --index): los niveles y los
+# ejercicios que las usan salen del índice sin borrarse, y el motor oculta sus fichas de ayuda.

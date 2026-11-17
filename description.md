@@ -198,7 +198,7 @@ Desde la v0.4.5, algunas pistas relacionan dos paquetes y aparecen en la ficha d
 - Los paquetes A y B estaban en la misma red.
 - Las redes de A y B eran vecinas: las unía un router. / Para ir de la red de A a la de B había que atravesar como mínimo dos routers.
 - A estaba en una red con más direcciones que la de B.
-- A había atravesado más routers que B. / A llevaba más TTL que B. / Al paquete A le quedaban menos routers que al B para llegar a la red de su destino.
+- A había atravesado más routers que B. / En ese momento, A llevaba más TTL que B. / Al paquete A le quedaban menos routers que al B para llegar a la red de su destino.
 - A y B habían salido de la misma red. / Iban a la misma red.
 
 ### TTL

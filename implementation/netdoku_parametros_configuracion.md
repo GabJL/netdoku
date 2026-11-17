@@ -248,8 +248,9 @@ Solo cuenta lo que el jugador ve o necesita para resolver: las pistas, los datos
 ### `features.disabledRuleSubtypes`
 
 - **Carácter:** opcional.
-- **Dominio:** lista de identificadores de subtipos.
+- **Dominio:** lista de claves: identificadores de subtipos (`network.in_network`), formas de nombrar (`form:mask`) o particularidades del tablero (`feature:cornerRouter`, `feature:hiddenEndpoint`, `feature:transit`, `feature:broadcast`).
 - **Valor por defecto:** `[]`.
+- **Descripción:** reglas desactivadas en todo el juego, por si alguna no funciona bien con los alumnos. El generador no las usa en niveles nuevos ni en ejercicios de entrenamiento; el índice de niveles deja fuera, sin borrarlos, los que ya las usan; y el motor oculta sus fichas de ayuda y sus ejercicios. Desactivar las dos formas `privacy` y `label_privacy` quita también la mezcla de redes privadas y públicas. En la v0 la lista se lee de `levels/disabled.txt` (una clave por línea; `generator/netdoku_gen/switches.py`) y, tras editarla, se regeneran los índices con `python generator/generate.py --index`.
 
 ### `features.requiredRuleSubtypes`
 

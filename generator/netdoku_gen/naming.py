@@ -73,8 +73,9 @@ class Option:
 
 
 class Namer:
-    def __init__(self, rng, board, nodes, addressing, max_topic_allowed="T3.vlsm"):
+    def __init__(self, rng, board, nodes, addressing, max_topic_allowed="T3.vlsm", disabled_forms=()):
         self.rng = rng
+        self.disabled_forms = set(disabled_forms)   # formas desactivadas (levels/disabled.txt)
         self.board = board
         self.nodes = {n.id: n for n in nodes}
         self.all_nodes = nodes
@@ -248,7 +249,7 @@ class Namer:
                  "row": lambda v: self.line_options("row", v),
                  "column": lambda v: self.line_options("column", v),
                  "view": self.view_options, "ttl": self.ttl_options, "compare": self.compare_options}[kind]
-        return [o for o in maker(value) if self._allowed(o)]
+        return [o for o in maker(value) if self._allowed(o) and o.form not in self.disabled_forms]
 
     def plain(self, clues):
         """Formas de la categoría Inicial: al azar entre las de coste 0 que no son de otra categoría."""

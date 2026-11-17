@@ -146,7 +146,7 @@ Una forma con coste solo se usa si su **cálculo es imprescindible**. Para compr
 | Forma | Ejemplo | Coste | Bloque mínimo | Conocimiento |
 |---|---|---|---|---|
 | `size_compare` | «A estaba en una red con más direcciones que la de B» | 1 | `T3.subredes` | `basic` |
-| `ttl_compare` | «A llevaba más TTL que B» | 1 | `T3.ip` | `basic` |
+| `ttl_compare` | «En ese momento, A llevaba más TTL que B» | 1 | `T3.ip` | `basic` |
 
 Son la única forma de su pista. `size_compare` cuesta lo mismo que `size_rank`: comparar dos prefijos de la leyenda sabiendo que el más corto tiene más direcciones. `ttl_compare` obliga a restar los routers atravesados del TTL inicial de cada paquete.
 
@@ -526,7 +526,7 @@ Reglas comunes de los subtipos de esta sección:
 #### `relation.higher_ttl`
 
 - **Descripción:** el TTL actual de `m` es mayor que el de `n` (categoría Encaminamiento).
-- **Plantilla textual:** «El paquete {m} llevaba más TTL que el paquete {n}.»
+- **Plantilla textual:** «En ese momento, el paquete {m} llevaba más TTL que el paquete {n}.»
 - **Formas:** `ttl_compare` (coste 1).
 - **Valores:** TTL inicial − `k`. **Relación:** el de `m` es mayor. Con TTL iniciales distintos no equivale a `more_routers_crossed`: un paquete puede haber atravesado más routers y llevar más TTL.
 - **Bloque mínimo:** `T3.ip`.

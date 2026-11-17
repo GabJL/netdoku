@@ -33,6 +33,25 @@
   // «un router», «dos routers».
   const routers = (n) => `${NUM[n] || n} router${n === 1 ? "" : "s"}`;
 
+  // Entrenar: «ningún router», «un router», «dos routers»; fila o columna; origen o destino.
+  const routers0 = (n) => (n === 0 ? "ningún router" : routers(n));
+  // «ha atravesado dos routers», «no habría atravesado ningún router».
+  const crossed = (n, verb) => (n === 0 ? `no ${verb} atravesado ningún router` : `${verb} atravesado ${routers(n)}`);
+  // «le quedan dos routers», «no le quedaría ningún router» (verb: [singular, plural]).
+  const left = (n, [one, many]) => (n === 0 ? `no le ${one} ningún router` : `le ${n === 1 ? one : many} ${routers(n)}`);
+  const axisWord = (axis) => (axis === "row" ? "fila" : "columna");
+  const endWord = (end) => (end === "origin" ? "origen" : "destino");
+  // «Aulas o Servicios», «Aulas, Servicios o Biblioteca».
+  const orJoin = (names) => (names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} o ${names[names.length - 1]}`);
+  // Qué dice la trama en cada pista de ruta vista desde la capa de enlace (forma mac_view).
+  const MAC_FACTS = {
+    "endpoint.in_origin_network": "Cada equipo que reenvía el paquete lo mete en una trama nueva con su propia MAC de origen. Si la trama la envió el propio equipo de origen, el paquete aún no ha pasado por ningún router: sigue en la red de origen.",
+    "endpoint.in_destination_network": "Una trama solo puede ir dirigida directamente a un equipo de su misma red. Si va a su equipo de destino, el paquete ya está en la red de destino.",
+    "route.last_router": "Cada router reenvía el paquete en una trama nueva con su propia MAC de origen: quien envió la trama es el último router que atravesó.",
+    "route.next_router": "La trama va dirigida a la MAC del siguiente salto, que es el siguiente router de la ruta.",
+    default: "La trama solo viaja dentro de una red: su MAC de origen es la del último equipo que reenvió el paquete y su MAC de destino, la del siguiente salto.",
+  };
+
   // Texto de una pista a partir de sus datos (tipo, parámetros y forma de nombrar
   // cada elemento). L da acceso al nivel: L.network(id), L.node(id), L.router(id),
   // L.nodeLabel(nodo).
@@ -136,7 +155,7 @@
       case "relation.more_routers_crossed":
         return `El paquete ${p} había atravesado más routers que el paquete ${q}.`;
       case "relation.higher_ttl":
-        return `El paquete ${p} llevaba más TTL que el paquete ${q}.`;
+        return `En ese momento, el paquete ${p} llevaba más TTL que el paquete ${q}.`;
       case "relation.closer_to_destination":
         return `Al paquete ${p} le quedaban menos routers que al paquete ${q} para llegar a la red de su destino.`;
       case "relation.same_origin":
@@ -236,6 +255,7 @@
         help: "Ayuda",
         about: "Sobre el juego",
         test: "Pruebas",
+        train: "Entrenar",
       },
       loadError: "No se ha podido leer la lista de niveles. Sirve la carpeta con un servidor web (véase README.md).",
       levelLoadError: "No se ha podido cargar el nivel.",
@@ -327,6 +347,20 @@
       lineRow: ({ packet, n }) => `En la fila ${n} tiene que haber un paquete y el único que puede ir en ella es ${packet}: ${packet} está en la fila ${n}.`,
       lineColumn: ({ packet, n }) => `En la columna ${n} tiene que haber un paquete y el único que puede ir en ella es ${packet}: ${packet} está en la columna ${n}.`,
       annul: ({ packet }) => `Una pista del paquete ${packet} dice que ningún otro paquete estaba junto a ese elemento: las casillas de alrededor (resaltadas) quedan descartadas para los demás.`,
+      // «no pasa por Desarrollo», «no pasa ni por Aulas ni por Servicios».
+      route: ({ packet, route, networks }) => {
+        const where = networks.length === 1 ? `por ${networks[0]}` : `ni por ${networks.slice(0, -1).join(", ni por ")} ni por ${networks[networks.length - 1]}`;
+        const path = route.length === 1 ? `El paquete ${packet} no sale de ${route[0]}`
+          : `El paquete ${packet} va por el camino con menos routers: ${route.join(" → ")}`;
+        return `${path}. Solo puede estar en una red de su ruta, y no pasa ${where}: las casillas resaltadas quedan descartadas para ${packet}.`;
+      },
+      // «no llega a Investigación», «no llega ni a Biblioteca ni a Servicios».
+      ttl: ({ packet, ttl, networks }) => {
+        const crossed = ttl <= 1 ? "no ha podido atravesar ningún router de su ruta"
+          : `como mucho ha atravesado ${routers(ttl - 1)} de su ruta`;
+        const where = networks.length === 1 ? `a ${networks[0]}` : `ni a ${networks.slice(0, -1).join(", ni a ")} ni a ${networks[networks.length - 1]}`;
+        return `El TTL inicial del paquete ${packet} es ${ttl}. Cada router le resta 1, y el que lo deja a 0 lo descarta: ${crossed}, así que no llega ${where}. Las casillas resaltadas quedan descartadas para ${packet}.`;
+      },
       relationFixed: ({ packet, other }) => `Una pista relaciona los paquetes ${packet} y ${other}. Con lo que ya sabes de ${other}, las casillas resaltadas no cumplen la pista: quedan descartadas para ${packet}.`,
       relationOpen: ({ packet, other }) => `Una pista relaciona los paquetes ${packet} y ${other}. Aunque ${other} aún tiene varias posibilidades, ninguna cumple la pista con ${packet} en las casillas resaltadas: quedan descartadas para ${packet}.`,
       relationEnds: ({ packet, other }) => `Una pista relaciona los paquetes ${packet} y ${other}. Con lo que ya sabes de ${other}, descarta alguna de las redes posibles del origen o del destino oculto de ${packet}.`,
@@ -389,6 +423,217 @@
       mark: "Marcar como validado",
       unmark: "Quitar la marca de validado",
       back: "Volver a las pruebas",
+    },
+
+    // Entrenar: ejercicios de cada pista y cada regla (véase generator/netdoku_gen/training.py).
+    // Los motivos (reasons) explican por qué una casilla no vale; los hechos (facts), cómo se
+    // resuelve el paso. Reciben las redes, equipos y routers ya con su nombre.
+    train: {
+      title: "Entrenar",
+      intro: "Ejercicios cortos para aprender cada pista y cada regla: un tablero pequeño con un paquete por decidir y, si hacen falta, otros ya colocados. Pulsa las casillas que pide el ejercicio; si eliges una que no vale, verás por qué. Los fallos no cuentan.",
+      categories: { rules: "Reglas del juego", inicial: "Inicial", direccionamiento: "Direccionamiento", encaminamiento: "Encaminamiento" },
+      categoryIntro: {
+        rules: "Lo que vale en todos los niveles: como mucho un paquete por fila y por columna, y qué casillas están junto a un equipo.",
+        inicial: "Las pistas de la categoría Inicial: redes, equipos, routers, filas y columnas.",
+        direccionamiento: "Redes y equipos nombrados por sus direcciones: prefijos, máscaras, tamaños, direcciones especiales y redes privadas.",
+        encaminamiento: "Rutas y TTL: por dónde pasa cada paquete, hasta dónde llega, las tramas de cada salto y los extremos ocultos.",
+      },
+      progress: ({ done, total }) => `✓ ${done}/${total}`,
+      openHelp: "Ver la ficha de ayuda",
+      practice: "Practicar",
+      practiceTitle: "Ejercicios de esta ficha",
+      empty: "Todavía no hay ejercicios.",
+      loadError: "No se ha podido leer la lista de ejercicios (levels/train/index.json).",
+      gameTitle: "Entrenar · {variant}",
+      meta: "{category} · {variant}",
+      objective: "Entrenamiento: no hay víctima ni vidas. Pulsa las casillas que pide el ejercicio; los fallos no cuentan.",
+      task: "Ejercicio",
+      stepOf: "Paso {n} de {total}",
+      ask: {
+        possible: "Pulsa las casillas donde puede estar el paquete {packet}.",
+        impossible: "Pulsa las casillas donde no puede estar el paquete {packet}: se marcan con ✕.",
+        annul: "Pulsa las casillas donde ya no puede ir ningún otro paquete: se marcan con ✕.",
+      },
+      given: "Los círculos discontinuos son las casillas posibles del paquete {packet}.",
+      count: ({ n, total }) => `Llevas ${n} de ${total}.`,
+      explanation: "Explicación",
+      explain: "Ver explicación",
+      reveal: "Ver solución",
+      next: "Siguiente paso",
+      stepDone: "¡Bien! Ya están todas.",
+      finished: "¡Ejercicio completado!",
+      extraOk: "También vale: esta casilla queda descartada, aunque no hacía falta marcarla.",
+      extraNote: "Las casillas con borde discontinuo también quedan descartadas, aunque no hacía falta marcarlas: comparten fila o columna con todas las casillas posibles del paquete.",
+      wrong: "Esa casilla no vale.",
+      done: "Ejercicio completado.",
+      doneRevealed: "Ejercicio terminado con la solución. Prueba otro para completarlo por tu cuenta.",
+      another: "Otro ejercicio",
+      nextVariant: "Siguiente de la lista",
+      back: "Volver a la lista",
+      variants: {
+        "rules.row_column.annul": "Un paquete colocado: su fila y su columna",
+        "rules.row_column.free": "Filas y columnas libres",
+        "rules.row_column.last": "La última casilla libre",
+        "rules.row_column.forced": "Fila o columna obligada",
+        "rules.adjacent": "Junto a un equipo: el borde de la red",
+        "inicial.in_network": "En una red",
+        "inicial.not_in_network": "No en una red",
+        "inicial.not_adjacent.node": "No junto a un equipo",
+        "inicial.not_adjacent.class": "No junto a ningún equipo de una clase",
+        "inicial.either": "En una red o en otra",
+        "inicial.node_count": "En una red con tantos equipos",
+        "inicial.contents": "La red con tantos equipos",
+        "inicial.adjacent.node": "Junto a un equipo",
+        "inicial.adjacent.service": "Junto a un servidor de un servicio",
+        "inicial.adjacent.class": "Junto a un equipo de una clase",
+        "inicial.unique_adjacent": "Junto a un equipo, y ningún otro paquete",
+        "inicial.router": "Junto a un router",
+        "inicial.row": "En una fila",
+        "inicial.column": "En una columna",
+        "inicial.aligned_node": "En la fila o columna de un equipo",
+        "inicial.aligned_router": "En la fila o columna de un router",
+        "inicial.same_network": "En la misma red que otro paquete",
+        "inicial.routers_between": "Routers entre las redes de dos paquetes",
+        "dir.prefix": "Una red por su prefijo",
+        "dir.label_prefix": "Un equipo de la red con un prefijo",
+        "dir.networks_prefix": "Un router por los prefijos que une",
+        "dir.size_rank": "La red con más o menos direcciones",
+        "dir.address_count": "La red de N direcciones",
+        "dir.mask": "La red con una máscara",
+        "dir.prefix_length": "En una red /N",
+        "dir.length_count": "En una red de N direcciones",
+        "dir.length_usable": "En una red con N direcciones asignables",
+        "dir.length_mask": "En una red con una máscara",
+        "dir.ip_member": "La red de una dirección",
+        "dir.node_ip": "Un equipo por su IP",
+        "dir.interfaces": "Un router por sus interfaces",
+        "dir.first_host": "La primera dirección asignable",
+        "dir.last_host": "La última dirección asignable",
+        "dir.broadcast": "La dirección de difusión",
+        "dir.usable_count": "La red con N direcciones asignables",
+        "dir.privacy": "La red pública o privada",
+        "dir.label_privacy": "Un equipo de la red pública o privada",
+        "dir.more_addresses": "Una red con más direcciones que la de otro paquete",
+        "enc.route": "La ruta de un paquete",
+        "enc.short_ttl": "Un TTL que no llega al destino",
+        "enc.broadcast": "Un paquete de difusión",
+        "enc.in_origin": "Aún en la red de origen",
+        "enc.in_destination": "Ya en la red de destino",
+        "enc.in_transit": "En una red de tránsito",
+        "enc.last_router": "El último router atravesado",
+        "enc.next_router": "El siguiente router",
+        "enc.mac_origin": "Trama enviada por el equipo de origen",
+        "enc.mac_last": "Trama enviada por un router",
+        "enc.mac_next": "Trama dirigida a un router",
+        "enc.mac_destination": "Trama dirigida al equipo de destino",
+        "enc.crossed": "Routers atravesados",
+        "enc.ttl_value": "El TTL actual",
+        "enc.left": "Routers que quedan",
+        "enc.range_min": "Al menos N routers",
+        "enc.range_max": "Como mucho N routers",
+        "enc.range_ttl": "Un TTL como mucho o al menos",
+        "enc.corner": "Un router en una esquina",
+        "enc.hidden_origin": "Origen oculto: quién lo envió",
+        "enc.hidden_class": "Destino oculto: a qué clase de equipo iba",
+        "enc.first_router": "Origen oculto: el primer router",
+        "enc.final_router": "Destino oculto: el último router",
+        "enc.more_routers": "Más routers que otro paquete",
+        "enc.higher_ttl": "Más TTL que otro paquete",
+        "enc.closer": "Más cerca de su destino que otro paquete",
+      },
+      reasons: {
+        rowTaken: ({ r, packet }) => `En la fila ${r} ya está el paquete ${packet}, y solo cabe un paquete por fila.`,
+        columnTaken: ({ c, packet }) => `En la columna ${c} ya está el paquete ${packet}, y solo cabe un paquete por columna.`,
+        notLine: ({ packet, r, c }) => `Esta casilla no está en la fila ${r} ni en la columna ${c} del paquete ${packet}: aquí sí podría ir otro paquete.`,
+        forced: ({ packet, other, axis, line, otherLine }) => `El paquete ${other} solo puede ir en la ${axisWord(axis)} ${otherLine}, así que ${packet} tiene que ir en la otra ${axisWord(axis)} libre, la ${line}.`,
+        canBe: ({ packet }) => `El paquete ${packet} sí puede estar en esta casilla.`,
+        open: () => "Esta casilla no queda descartada: otro paquete aún podría ir aquí.",
+        offRoute: ({ packet, net }) => `La red ${net} no está en la ruta del paquete ${packet}.`,
+        noTtl: ({ packet, net, k, ttl }) => `Para llegar a ${net}, el paquete ${packet} tendría que atravesar ${routers0(k)}, y con TTL inicial ${ttl} solo puede atravesar ${routers0(ttl - 1)}: cada router le resta 1 y lo descarta si llega a 0.`,
+        hiddenOff: ({ packet, net, end }) => `Esté donde esté su ${endWord(end)}, la ruta del paquete ${packet} no llega a ${net}.`,
+        hiddenNo: ({ packet, net, end, tags }) => `Con la pista, la red de su ${endWord(end)} es ${orJoin(tags)}, y entonces la ruta del paquete ${packet} no llega a ${net}.`,
+        notNext: ({ node, nodeNet }) => `Esta casilla no está junto al ${node} de ${nodeNet}.`,
+        notNextBorder: ({ node, net }) => `Esta casilla toca al ${node}, pero es de otra red (${net}): junto a un equipo solo cuentan las casillas de su misma red.`,
+        notNextClass: ({ cls }) => `Esta casilla no está junto a ningún ${cls}.`,
+        next: ({ node, nodeNet }) => `Esta casilla está junto al ${node} de ${nodeNet}.`,
+        nextClass: ({ cls, node, nodeNet }) => `Esta casilla está junto al ${node} de ${nodeNet}${cls === node ? "" : `, que es un ${cls}`}.`,
+        notRouter: ({ router }) => `Esta casilla no toca al router que une ${join(router)}.`,
+        row: ({ r }) => `Esta casilla está en la fila ${r}.`,
+        column: ({ c }) => `Esta casilla está en la columna ${c}.`,
+        net: ({ net, prefix }) => `Esta casilla es de la red ${net} (${prefix}).`,
+        netCount: ({ net, clsKey, count }) => `Esta casilla es de ${net}, una red ${countText({ nodeType: clsKey, count })}.`,
+        netLength: ({ net, prefix, len }) => `Esta casilla es de ${net} (${prefix}), una red /${len}.`,
+        routeAt: ({ packet, net, k, ttl }) => `En ${net}, el paquete ${packet} ${crossed(k, "habría")} y llevaría TTL ${ttl}.`,
+        routeLast: ({ packet, net, router }) => (router ? `En ${net}, el último router que habría atravesado el paquete ${packet} sería el que une ${join(router)}.`
+          : `En ${net}, el paquete ${packet} aún no habría atravesado ningún router.`),
+        routeNext: ({ packet, net, router }) => (router ? `En ${net}, el siguiente router del paquete ${packet} sería el que une ${join(router)}.`
+          : `En ${net}, el paquete ${packet} ya habría llegado a la red de su destino: no le quedaría ningún router.`),
+        routeLeft: ({ packet, net, left: n }) => `En ${net}, al paquete ${packet} ${left(n, ["quedaría", "quedarían"])} para llegar a la red de su destino.`,
+        relNet: ({ packet, other, net, otherNet }) => `Aquí el paquete ${packet} estaría en ${net}, y ${other} está en ${otherNet}.`,
+        relDistance: ({ packet, other, net, otherNet, d }) => (d === 0 ? `Aquí el paquete ${packet} estaría en ${net}, la misma red que ${other}.`
+          : `De ${net} a ${otherNet}, la red del paquete ${other}, hay que atravesar como mínimo ${routers(d)}.`),
+        relSize: ({ packet, other, net, size, otherNet, otherSize }) => (net === otherNet ? `Aquí el paquete ${packet} estaría en ${net}, la misma red que ${other} (${size} direcciones).`
+          : `Aquí el paquete ${packet} estaría en ${net}, de ${size} direcciones, y la red del paquete ${other}, ${otherNet}, tiene ${otherSize}.`),
+        relCrossed: ({ packet, other, k, otherK }) => `Aquí el paquete ${packet} ${crossed(k, "habría")}, y ${other} ${crossed(otherK, "ha")}.`,
+        relTtl: ({ packet, other, ttl, otherTtl }) => `Aquí el paquete ${packet} llevaría TTL ${ttl}, y ${other} lleva TTL ${otherTtl}.`,
+        relLeft: ({ packet, other, l, otherL }) => `Aquí al paquete ${packet} ${left(l, ["quedaría", "quedarían"])}, y a ${other} ${left(otherL, ["queda", "quedan"])}.`,
+      },
+      facts: {
+        route: ({ packet, route, ttl, reach, full }) => `Ruta del paquete ${packet}: ${route.join(" → ")}. Con TTL inicial ${ttl} puede atravesar ${routers0(ttl - 1)}: ${full ? "llega a la red de su destino" : `solo llega hasta ${reach}`}.`,
+        broadcastRoute: ({ packet, net, address }) => `El paquete ${packet} va a la dirección de difusión ${address}: no sale de ${net}, porque los routers no reenvían la difusión.`,
+        hiddenAlt: ({ end, net, route, reach, full }) => `Si su ${endWord(end)} estaba en ${net}: ruta ${route.join(" → ")}; ${full ? "llega a la red de su destino" : `con su TTL solo llega hasta ${reach}`}.`,
+        nets: ({ packet, nets }) => `Así que el paquete ${packet} puede estar en cualquier casilla libre de ${join(nets)}.`,
+        lines: ({ packet, other, r, c }) => `Además, ${packet} no puede ir en la fila ${r} ni en la columna ${c}, que son del paquete ${other}.`,
+        adjacentRule: () => "Junto a un equipo: las casillas que tocan la suya por un lado (no en diagonal) y son de su misma red.",
+        routerRule: ({ router, corner }) => `El router que une ${join(router)} está entre ${corner ? "cuatro casillas (en una esquina)" : "dos casillas"}: estar junto a él es estar en una de ellas.`,
+        transit: ({ net }) => `La red de tránsito es ${net}: no tiene equipos, solo une routers.`,
+        endpointNode: ({ packet, end, node, nodeNet }) => `El ${endWord(end)} del paquete ${packet} era el ${node} de ${nodeNet}: su ruta ${end === "origin" ? "empieza" : "termina"} en ${nodeNet}.`,
+        endpointClass: ({ packet, end, cls, nets }) => `El ${endWord(end)} del paquete ${packet} era un ${cls}: su red es ${orJoin(nets)}.`,
+        endRouter: ({ end, router, tags }) => `El ${end === "origin" ? "primer" : "último"} router de la ruta es el que une ${join(router)} solo si el ${endWord(end)} está en ${orJoin(tags)}.`,
+        pNet: ({ other, net }) => `El paquete ${other} está en ${net}.`,
+        pDistance: ({ other, net, d }) => `El paquete ${other} está en ${net}: la otra red tiene que estar a ${routers0(d)} de ella, como mínimo.`,
+        pSize: ({ other, net, size, prefix }) => `El paquete ${other} está en ${net} (${prefix}), que tiene ${size} direcciones.`,
+        pCrossed: ({ other, k }) => `El paquete ${other} ${crossed(k, "ha")}.`,
+        pTtl: ({ other, ttl0, k, ttl }) => `El paquete ${other} salió con TTL ${ttl0} y ${crossed(k, "ha")}: ahora lleva TTL ${ttl}.`,
+        pLeft: ({ other, left: n }) => `Al paquete ${other} ${left(n, ["queda", "quedan"])} para llegar a la red de su destino.`,
+        relAt: ({ other, otherNet, d, nets }) => `Redes a ${routers(d)} de ${otherNet}, la del paquete ${other}: ${join(nets)}.`,
+        relValues: ({ packet, what, nets, values }) => {
+          const pairs = nets.map((n, i) => `${n}, ${values[i]}`).join("; ");
+          if (what === "size") return `Direcciones de cada red: ${pairs}.`;
+          if (what === "crossed") return `Routers que habría atravesado el paquete ${packet} en cada red de su ruta: ${pairs}.`;
+          if (what === "ttl") return `TTL que llevaría el paquete ${packet} en cada red de su ruta: ${pairs}.`;
+          return `Routers que le quedarían al paquete ${packet} en cada red de su ruta: ${pairs}.`;
+        },
+        annulUnique: ({ node, nodeNet }) => `«Ningún otro paquete lo estaba»: ningún otro paquete puede ocupar una casilla junto al ${node} de ${nodeNet}.`,
+        annulLine: ({ packet, axis, line }) => `Todas las casillas posibles del paquete ${packet} están en la ${axisWord(axis)} ${line}: esa ${axisWord(axis)} será suya, y ningún otro paquete puede ir en ella.`,
+        rowColumn: ({ packet, r, c }) => `Como mucho hay un paquete en cada fila y en cada columna: con ${packet} en la fila ${r} y la columna ${c}, ningún otro paquete puede ir en ellas.`,
+        freeLines: ({ packet, rows, cols }) => `Filas libres: ${join(rows.map(String))}. Columnas libres: ${join(cols.map(String))}. El paquete ${packet} tiene que ir en una casilla libre donde se crucen.`,
+        forcedLine: ({ packet, other, axis, line, otherLine }) => `Quedan dos ${axisWord(axis)}s libres para dos paquetes. Por su pista, ${other} solo puede ir en la ${axisWord(axis)} ${otherLine}, así que la ${axisWord(axis)} ${line} es para ${packet}.`,
+        fPrefix: ({ prefix, net }) => `La red ${prefix} es ${net}.`,
+        fSizeRank: ({ value, net, prefix, size }) => `La red con ${value === "most" ? "más" : "menos"} direcciones es ${net} (${prefix}: ${size} direcciones). El tamaño sale del prefijo, 2^(32 − longitud), no del número de casillas.`,
+        fAddressCount: ({ net, prefix, len, size }) => `Una red /${len} tiene 2^(32 − ${len}) = ${size} direcciones: es ${net} (${prefix}).`,
+        fUsableCount: ({ net, prefix, len, size }) => `Una red /${len} tiene ${size} direcciones; sin la del identificador y la de difusión quedan ${size - 2} asignables: es ${net} (${prefix}).`,
+        fMask: ({ net, prefix, len, mask }) => `La máscara ${mask} tiene ${len} bits a 1: es la red /${len}, ${net} (${prefix}).`,
+        fPrivacy: ({ value, net, prefix }) => `${net} (${prefix}) es la única red ${privacy(value)}. Las privadas son las de 10.0.0.0/8, 172.16.0.0/12 y 192.168.0.0/16.`,
+        fContents: ({ net, clsKey, count }) => `${net} es la única red ${countText({ nodeType: clsKey, count })}.`,
+        fFirstHost: ({ address, net, prefix, id, broadcast }) => `La red ${prefix} va de ${id} (identificador) a ${broadcast} (difusión); su primera dirección asignable, ${address}, es la siguiente al identificador. Es ${net}.`,
+        fLastHost: ({ address, net, prefix, id, broadcast }) => `La red ${prefix} va de ${id} (identificador) a ${broadcast} (difusión); su última dirección asignable, ${address}, es la anterior a la de difusión. Es ${net}.`,
+        fBroadcast: ({ address, net, prefix, id }) => `La dirección de difusión es la última de la red: ${address} es la de ${prefix} (de ${id} a ${address}), ${net}.`,
+        fIpMember: ({ address, net, prefix, id, broadcast }) => `${address} está entre ${id} y ${broadcast}: pertenece a ${prefix}, que es ${net}.`,
+        fNodePrefix: ({ prefix, net }) => `La red ${prefix} es ${net}.`,
+        fNodeIp: ({ address, net, prefix, node, id, broadcast }) => `${address} está entre ${id} y ${broadcast}: pertenece a ${prefix} (${net}), así que es el ${node} de esa red.`,
+        fNodePrivacy: ({ value, net, prefix }) => `${net} (${prefix}) es la única red ${privacy(value)}. Las privadas son las de 10.0.0.0/8, 172.16.0.0/12 y 192.168.0.0/16.`,
+        fRouterPrefixes: ({ prefixes, nets }) => `${join(prefixes)} son ${join(nets)}.`,
+        fRouterIps: ({ addresses, prefixes, nets }) => `Las interfaces ${join(addresses)} pertenecen a ${join(prefixes)}: el router une ${join(nets)}.`,
+        fRouterPrivacy: ({ net, prefix, value }) => `${net} (${prefix}) es la única red ${privacy(value)}, y solo tiene un router.`,
+        fLength: ({ len, size, mask, nets }) => `/${len}: máscara ${mask}, ${size} direcciones (${size - 2} asignables). Redes /${len}: ${join(nets)}.`,
+        fAligned: ({ axis, line, node, nodeNet, router }) => (node ? `El ${node} de ${nodeNet} está en la ${axisWord(axis)} ${line}.`
+          : `El router que une ${join(router)} está en la ${axisWord(axis)} ${line}.`),
+        fMac: ({ type }) => MAC_FACTS[type] || MAC_FACTS.default,
+        fTtlValue: ({ packet, ttl0, ttl, k }) => `El paquete ${packet} salió con TTL ${ttl0} y lleva TTL ${ttl}: ha atravesado ${ttl0} − ${ttl} = ${k} ${plural(k, "router", "routers")}.`,
+        fTtlMax: ({ ttl0, bound, k }) => `Con TTL inicial ${ttl0}, un TTL de ${bound} como mucho quiere decir que ha atravesado al menos ${ttl0} − ${bound} = ${k} ${plural(k, "router", "routers")}.`,
+        fTtlMin: ({ ttl0, bound, k }) => `Con TTL inicial ${ttl0}, un TTL de al menos ${bound} quiere decir que ha atravesado como mucho ${ttl0} − ${bound} = ${k} ${plural(k, "router", "routers")}.`,
+      },
     },
 
     howto: {
@@ -674,7 +919,7 @@
           chip: "Rutas de dos paquetes",
           title: "Pistas que comparan dos paquetes",
           text: [
-            "«El paquete A había atravesado más routers que el paquete B»: cuenta los routers que lleva cada uno desde su origen. «El paquete A llevaba más TTL que el paquete B»: compara el TTL actual de los dos (TTL inicial − routers atravesados).",
+            "«El paquete A había atravesado más routers que el paquete B»: cuenta los routers que lleva cada uno desde su origen. «En ese momento, el paquete A llevaba más TTL que el paquete B»: compara el TTL actual de los dos (TTL inicial − routers atravesados).",
             "«Al paquete A le quedaban menos routers que al paquete B para llegar a la red de su destino»: compara cuántos routers le faltan a cada uno.",
             "«Los paquetes A y B habían salido de la misma red» o «iban a la misma red»: aparecen cuando el origen o el destino de alguno de los dos está oculto.",
             "Como las demás pistas entre dos paquetes, aparecen en la ficha de los dos y descartan casillas aunque ninguno esté colocado.",

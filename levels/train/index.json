@@ -1,0 +1,944 @@
+{
+ "categories": [
+  {
+   "id": "rules",
+   "groups": [
+    {
+     "id": "row_column",
+     "variants": [
+      {
+       "id": "rules.row_column.annul",
+       "keys": [],
+       "files": [
+        "train/rules.row_column.annul/rules.row_column.annul-5000000.json",
+        "train/rules.row_column.annul/rules.row_column.annul-5000001.json",
+        "train/rules.row_column.annul/rules.row_column.annul-5000002.json"
+       ]
+      },
+      {
+       "id": "rules.row_column.free",
+       "keys": [],
+       "files": [
+        "train/rules.row_column.free/rules.row_column.free-5001000.json",
+        "train/rules.row_column.free/rules.row_column.free-5001001.json",
+        "train/rules.row_column.free/rules.row_column.free-5001002.json"
+       ]
+      },
+      {
+       "id": "rules.row_column.last",
+       "keys": [],
+       "files": [
+        "train/rules.row_column.last/rules.row_column.last-5002000.json",
+        "train/rules.row_column.last/rules.row_column.last-5002001.json",
+        "train/rules.row_column.last/rules.row_column.last-5002002.json"
+       ]
+      },
+      {
+       "id": "rules.row_column.forced",
+       "keys": [
+        "network.in_network"
+       ],
+       "files": [
+        "train/rules.row_column.forced/rules.row_column.forced-5003000.json",
+        "train/rules.row_column.forced/rules.row_column.forced-5003001.json",
+        "train/rules.row_column.forced/rules.row_column.forced-5003002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "adjacent",
+     "variants": [
+      {
+       "id": "rules.adjacent",
+       "keys": [
+        "node.adjacent_to_node"
+       ],
+       "files": [
+        "train/rules.adjacent/rules.adjacent-5004000.json",
+        "train/rules.adjacent/rules.adjacent-5004001.json",
+        "train/rules.adjacent/rules.adjacent-5004002.json"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "inicial",
+   "groups": [
+    {
+     "id": "in_network",
+     "variants": [
+      {
+       "id": "inicial.in_network",
+       "keys": [
+        "network.in_network"
+       ],
+       "files": [
+        "train/inicial.in_network/inicial.in_network-5005000.json",
+        "train/inicial.in_network/inicial.in_network-5005001.json",
+        "train/inicial.in_network/inicial.in_network-5005002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "negative",
+     "variants": [
+      {
+       "id": "inicial.not_in_network",
+       "keys": [
+        "network.not_in_network"
+       ],
+       "files": [
+        "train/inicial.not_in_network/inicial.not_in_network-5006000.json",
+        "train/inicial.not_in_network/inicial.not_in_network-5006001.json",
+        "train/inicial.not_in_network/inicial.not_in_network-5006002.json"
+       ]
+      },
+      {
+       "id": "inicial.not_adjacent.node",
+       "keys": [
+        "node.not_adjacent_to_node"
+       ],
+       "files": [
+        "train/inicial.not_adjacent.node/inicial.not_adjacent.node-5007000.json",
+        "train/inicial.not_adjacent.node/inicial.not_adjacent.node-5007001.json",
+        "train/inicial.not_adjacent.node/inicial.not_adjacent.node-5007002.json"
+       ]
+      },
+      {
+       "id": "inicial.not_adjacent.class",
+       "keys": [
+        "node.not_adjacent_to_node"
+       ],
+       "files": [
+        "train/inicial.not_adjacent.class/inicial.not_adjacent.class-5008000.json",
+        "train/inicial.not_adjacent.class/inicial.not_adjacent.class-5008001.json",
+        "train/inicial.not_adjacent.class/inicial.not_adjacent.class-5008002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "either",
+     "variants": [
+      {
+       "id": "inicial.either",
+       "keys": [
+        "network.in_either_network"
+       ],
+       "files": [
+        "train/inicial.either/inicial.either-5009000.json",
+        "train/inicial.either/inicial.either-5009001.json",
+        "train/inicial.either/inicial.either-5009002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "node_count",
+     "variants": [
+      {
+       "id": "inicial.node_count",
+       "keys": [
+        "network.node_count"
+       ],
+       "files": [
+        "train/inicial.node_count/inicial.node_count-5010000.json",
+        "train/inicial.node_count/inicial.node_count-5010001.json",
+        "train/inicial.node_count/inicial.node_count-5010002.json"
+       ]
+      },
+      {
+       "id": "inicial.contents",
+       "keys": [
+        "network.in_network",
+        "form:contents"
+       ],
+       "files": [
+        "train/inicial.contents/inicial.contents-5011000.json",
+        "train/inicial.contents/inicial.contents-5011001.json",
+        "train/inicial.contents/inicial.contents-5011002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "adjacent_to_node",
+     "variants": [
+      {
+       "id": "inicial.adjacent.node",
+       "keys": [
+        "node.adjacent_to_node"
+       ],
+       "files": [
+        "train/inicial.adjacent.node/inicial.adjacent.node-5012000.json",
+        "train/inicial.adjacent.node/inicial.adjacent.node-5012001.json",
+        "train/inicial.adjacent.node/inicial.adjacent.node-5012002.json"
+       ]
+      },
+      {
+       "id": "inicial.adjacent.service",
+       "keys": [
+        "node.adjacent_to_node"
+       ],
+       "files": [
+        "train/inicial.adjacent.service/inicial.adjacent.service-5013000.json",
+        "train/inicial.adjacent.service/inicial.adjacent.service-5013001.json",
+        "train/inicial.adjacent.service/inicial.adjacent.service-5013002.json"
+       ]
+      },
+      {
+       "id": "inicial.adjacent.class",
+       "keys": [
+        "node.adjacent_to_node"
+       ],
+       "files": [
+        "train/inicial.adjacent.class/inicial.adjacent.class-5014000.json",
+        "train/inicial.adjacent.class/inicial.adjacent.class-5014001.json",
+        "train/inicial.adjacent.class/inicial.adjacent.class-5014002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "unique_adjacent",
+     "variants": [
+      {
+       "id": "inicial.unique_adjacent",
+       "keys": [
+        "node.unique_adjacent_to_node"
+       ],
+       "files": [
+        "train/inicial.unique_adjacent/inicial.unique_adjacent-5015000.json",
+        "train/inicial.unique_adjacent/inicial.unique_adjacent-5015001.json",
+        "train/inicial.unique_adjacent/inicial.unique_adjacent-5015002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "router",
+     "variants": [
+      {
+       "id": "inicial.router",
+       "keys": [
+        "router.adjacent_to_router"
+       ],
+       "files": [
+        "train/inicial.router/inicial.router-5016000.json",
+        "train/inicial.router/inicial.router-5016001.json",
+        "train/inicial.router/inicial.router-5016002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "spatial",
+     "variants": [
+      {
+       "id": "inicial.row",
+       "keys": [
+        "spatial.in_row"
+       ],
+       "files": [
+        "train/inicial.row/inicial.row-5017000.json",
+        "train/inicial.row/inicial.row-5017001.json",
+        "train/inicial.row/inicial.row-5017002.json"
+       ]
+      },
+      {
+       "id": "inicial.column",
+       "keys": [
+        "spatial.in_column"
+       ],
+       "files": [
+        "train/inicial.column/inicial.column-5018000.json",
+        "train/inicial.column/inicial.column-5018001.json",
+        "train/inicial.column/inicial.column-5018002.json"
+       ]
+      },
+      {
+       "id": "inicial.aligned_node",
+       "keys": [
+        "spatial.in_row",
+        "form:aligned_node"
+       ],
+       "files": [
+        "train/inicial.aligned_node/inicial.aligned_node-5019000.json",
+        "train/inicial.aligned_node/inicial.aligned_node-5019001.json",
+        "train/inicial.aligned_node/inicial.aligned_node-5019002.json"
+       ]
+      },
+      {
+       "id": "inicial.aligned_router",
+       "keys": [
+        "spatial.in_column",
+        "form:aligned_router"
+       ],
+       "files": [
+        "train/inicial.aligned_router/inicial.aligned_router-5020000.json",
+        "train/inicial.aligned_router/inicial.aligned_router-5020001.json",
+        "train/inicial.aligned_router/inicial.aligned_router-5020002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "relation",
+     "variants": [
+      {
+       "id": "inicial.same_network",
+       "keys": [
+        "relation.same_network"
+       ],
+       "files": [
+        "train/inicial.same_network/inicial.same_network-5021000.json",
+        "train/inicial.same_network/inicial.same_network-5021001.json",
+        "train/inicial.same_network/inicial.same_network-5021002.json"
+       ]
+      },
+      {
+       "id": "inicial.routers_between",
+       "keys": [
+        "relation.routers_between"
+       ],
+       "files": [
+        "train/inicial.routers_between/inicial.routers_between-5022000.json",
+        "train/inicial.routers_between/inicial.routers_between-5022001.json",
+        "train/inicial.routers_between/inicial.routers_between-5022002.json"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "direccionamiento",
+   "groups": [
+    {
+     "id": "named_by_address",
+     "variants": [
+      {
+       "id": "dir.prefix",
+       "keys": [
+        "network.in_network",
+        "form:prefix"
+       ],
+       "files": [
+        "train/dir.prefix/dir.prefix-5023000.json",
+        "train/dir.prefix/dir.prefix-5023001.json",
+        "train/dir.prefix/dir.prefix-5023002.json"
+       ]
+      },
+      {
+       "id": "dir.label_prefix",
+       "keys": [
+        "node.adjacent_to_node",
+        "form:label_prefix"
+       ],
+       "files": [
+        "train/dir.label_prefix/dir.label_prefix-5024000.json",
+        "train/dir.label_prefix/dir.label_prefix-5024001.json",
+        "train/dir.label_prefix/dir.label_prefix-5024002.json"
+       ]
+      },
+      {
+       "id": "dir.networks_prefix",
+       "keys": [
+        "router.adjacent_to_router",
+        "form:networks_prefix"
+       ],
+       "files": [
+        "train/dir.networks_prefix/dir.networks_prefix-5025000.json",
+        "train/dir.networks_prefix/dir.networks_prefix-5025001.json",
+        "train/dir.networks_prefix/dir.networks_prefix-5025002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "network_size",
+     "variants": [
+      {
+       "id": "dir.size_rank",
+       "keys": [
+        "network.in_network",
+        "form:size_rank"
+       ],
+       "files": [
+        "train/dir.size_rank/dir.size_rank-5026000.json",
+        "train/dir.size_rank/dir.size_rank-5026001.json",
+        "train/dir.size_rank/dir.size_rank-5026002.json"
+       ]
+      },
+      {
+       "id": "dir.address_count",
+       "keys": [
+        "network.in_network",
+        "form:address_count"
+       ],
+       "files": [
+        "train/dir.address_count/dir.address_count-5027000.json",
+        "train/dir.address_count/dir.address_count-5027001.json",
+        "train/dir.address_count/dir.address_count-5027002.json"
+       ]
+      },
+      {
+       "id": "dir.mask",
+       "keys": [
+        "network.in_network",
+        "form:mask"
+       ],
+       "files": [
+        "train/dir.mask/dir.mask-5028000.json",
+        "train/dir.mask/dir.mask-5028001.json",
+        "train/dir.mask/dir.mask-5028002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "prefix_length",
+     "variants": [
+      {
+       "id": "dir.prefix_length",
+       "keys": [
+        "network.prefix_length",
+        "form:prefix_length"
+       ],
+       "files": [
+        "train/dir.prefix_length/dir.prefix_length-5029000.json",
+        "train/dir.prefix_length/dir.prefix_length-5029001.json",
+        "train/dir.prefix_length/dir.prefix_length-5029002.json"
+       ]
+      },
+      {
+       "id": "dir.length_count",
+       "keys": [
+        "network.prefix_length",
+        "form:address_count"
+       ],
+       "files": [
+        "train/dir.length_count/dir.length_count-5030000.json",
+        "train/dir.length_count/dir.length_count-5030001.json",
+        "train/dir.length_count/dir.length_count-5030002.json"
+       ]
+      },
+      {
+       "id": "dir.length_usable",
+       "keys": [
+        "network.prefix_length",
+        "form:usable_count"
+       ],
+       "files": [
+        "train/dir.length_usable/dir.length_usable-5031000.json",
+        "train/dir.length_usable/dir.length_usable-5031001.json",
+        "train/dir.length_usable/dir.length_usable-5031002.json"
+       ]
+      },
+      {
+       "id": "dir.length_mask",
+       "keys": [
+        "network.prefix_length",
+        "form:mask"
+       ],
+       "files": [
+        "train/dir.length_mask/dir.length_mask-5032000.json",
+        "train/dir.length_mask/dir.length_mask-5032001.json",
+        "train/dir.length_mask/dir.length_mask-5032002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "ip_network",
+     "variants": [
+      {
+       "id": "dir.ip_member",
+       "keys": [
+        "network.in_network",
+        "form:ip_member"
+       ],
+       "files": [
+        "train/dir.ip_member/dir.ip_member-5033000.json",
+        "train/dir.ip_member/dir.ip_member-5033001.json",
+        "train/dir.ip_member/dir.ip_member-5033002.json"
+       ]
+      },
+      {
+       "id": "dir.node_ip",
+       "keys": [
+        "node.adjacent_to_node",
+        "form:ip"
+       ],
+       "files": [
+        "train/dir.node_ip/dir.node_ip-5034000.json",
+        "train/dir.node_ip/dir.node_ip-5034001.json",
+        "train/dir.node_ip/dir.node_ip-5034002.json"
+       ]
+      },
+      {
+       "id": "dir.interfaces",
+       "keys": [
+        "router.adjacent_to_router",
+        "form:interfaces"
+       ],
+       "files": [
+        "train/dir.interfaces/dir.interfaces-5035000.json",
+        "train/dir.interfaces/dir.interfaces-5035001.json",
+        "train/dir.interfaces/dir.interfaces-5035002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "special_addresses",
+     "variants": [
+      {
+       "id": "dir.first_host",
+       "keys": [
+        "network.in_network",
+        "form:first_host"
+       ],
+       "files": [
+        "train/dir.first_host/dir.first_host-5036000.json",
+        "train/dir.first_host/dir.first_host-5036001.json",
+        "train/dir.first_host/dir.first_host-5036002.json"
+       ]
+      },
+      {
+       "id": "dir.last_host",
+       "keys": [
+        "network.in_network",
+        "form:last_host"
+       ],
+       "files": [
+        "train/dir.last_host/dir.last_host-5037000.json",
+        "train/dir.last_host/dir.last_host-5037001.json",
+        "train/dir.last_host/dir.last_host-5037002.json"
+       ]
+      },
+      {
+       "id": "dir.broadcast",
+       "keys": [
+        "network.in_network",
+        "form:broadcast"
+       ],
+       "files": [
+        "train/dir.broadcast/dir.broadcast-5038000.json",
+        "train/dir.broadcast/dir.broadcast-5038001.json",
+        "train/dir.broadcast/dir.broadcast-5038002.json"
+       ]
+      },
+      {
+       "id": "dir.usable_count",
+       "keys": [
+        "network.in_network",
+        "form:usable_count"
+       ],
+       "files": [
+        "train/dir.usable_count/dir.usable_count-5039000.json",
+        "train/dir.usable_count/dir.usable_count-5039001.json",
+        "train/dir.usable_count/dir.usable_count-5039002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "privacy",
+     "variants": [
+      {
+       "id": "dir.privacy",
+       "keys": [
+        "network.in_network",
+        "form:privacy"
+       ],
+       "files": [
+        "train/dir.privacy/dir.privacy-5040000.json",
+        "train/dir.privacy/dir.privacy-5040001.json",
+        "train/dir.privacy/dir.privacy-5040002.json"
+       ]
+      },
+      {
+       "id": "dir.label_privacy",
+       "keys": [
+        "node.adjacent_to_node",
+        "form:label_privacy"
+       ],
+       "files": [
+        "train/dir.label_privacy/dir.label_privacy-5041000.json",
+        "train/dir.label_privacy/dir.label_privacy-5041001.json",
+        "train/dir.label_privacy/dir.label_privacy-5041002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "relation",
+     "variants": [
+      {
+       "id": "dir.more_addresses",
+       "keys": [
+        "relation.more_addresses_network",
+        "form:size_compare"
+       ],
+       "files": [
+        "train/dir.more_addresses/dir.more_addresses-5042000.json",
+        "train/dir.more_addresses/dir.more_addresses-5042001.json",
+        "train/dir.more_addresses/dir.more_addresses-5042002.json"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "encaminamiento",
+   "groups": [
+    {
+     "id": "route_trace",
+     "variants": [
+      {
+       "id": "enc.route",
+       "keys": [],
+       "files": [
+        "train/enc.route/enc.route-5043000.json",
+        "train/enc.route/enc.route-5043001.json",
+        "train/enc.route/enc.route-5043002.json"
+       ]
+      },
+      {
+       "id": "enc.broadcast",
+       "keys": [
+        "feature:broadcast"
+       ],
+       "files": [
+        "train/enc.broadcast/enc.broadcast-5045000.json",
+        "train/enc.broadcast/enc.broadcast-5045001.json",
+        "train/enc.broadcast/enc.broadcast-5045002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "ttl",
+     "variants": [
+      {
+       "id": "enc.short_ttl",
+       "keys": [],
+       "files": [
+        "train/enc.short_ttl/enc.short_ttl-5044000.json",
+        "train/enc.short_ttl/enc.short_ttl-5044001.json",
+        "train/enc.short_ttl/enc.short_ttl-5044002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "route_position",
+     "variants": [
+      {
+       "id": "enc.in_origin",
+       "keys": [
+        "endpoint.in_origin_network"
+       ],
+       "files": [
+        "train/enc.in_origin/enc.in_origin-5046000.json",
+        "train/enc.in_origin/enc.in_origin-5046001.json",
+        "train/enc.in_origin/enc.in_origin-5046002.json"
+       ]
+      },
+      {
+       "id": "enc.in_destination",
+       "keys": [
+        "endpoint.in_destination_network"
+       ],
+       "files": [
+        "train/enc.in_destination/enc.in_destination-5047000.json",
+        "train/enc.in_destination/enc.in_destination-5047001.json",
+        "train/enc.in_destination/enc.in_destination-5047002.json"
+       ]
+      },
+      {
+       "id": "enc.in_transit",
+       "keys": [
+        "route.in_transit_network",
+        "feature:transit"
+       ],
+       "files": [
+        "train/enc.in_transit/enc.in_transit-5048000.json",
+        "train/enc.in_transit/enc.in_transit-5048001.json",
+        "train/enc.in_transit/enc.in_transit-5048002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "route_router",
+     "variants": [
+      {
+       "id": "enc.last_router",
+       "keys": [
+        "route.last_router"
+       ],
+       "files": [
+        "train/enc.last_router/enc.last_router-5049000.json",
+        "train/enc.last_router/enc.last_router-5049001.json",
+        "train/enc.last_router/enc.last_router-5049002.json"
+       ]
+      },
+      {
+       "id": "enc.next_router",
+       "keys": [
+        "route.next_router"
+       ],
+       "files": [
+        "train/enc.next_router/enc.next_router-5050000.json",
+        "train/enc.next_router/enc.next_router-5050001.json",
+        "train/enc.next_router/enc.next_router-5050002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "frames",
+     "variants": [
+      {
+       "id": "enc.mac_origin",
+       "keys": [
+        "endpoint.in_origin_network",
+        "form:mac_view"
+       ],
+       "files": [
+        "train/enc.mac_origin/enc.mac_origin-5051000.json",
+        "train/enc.mac_origin/enc.mac_origin-5051001.json",
+        "train/enc.mac_origin/enc.mac_origin-5051002.json"
+       ]
+      },
+      {
+       "id": "enc.mac_last",
+       "keys": [
+        "route.last_router",
+        "form:mac_view"
+       ],
+       "files": [
+        "train/enc.mac_last/enc.mac_last-5052000.json",
+        "train/enc.mac_last/enc.mac_last-5052001.json",
+        "train/enc.mac_last/enc.mac_last-5052002.json"
+       ]
+      },
+      {
+       "id": "enc.mac_next",
+       "keys": [
+        "route.next_router",
+        "form:mac_view"
+       ],
+       "files": [
+        "train/enc.mac_next/enc.mac_next-5053000.json",
+        "train/enc.mac_next/enc.mac_next-5053001.json",
+        "train/enc.mac_next/enc.mac_next-5053002.json"
+       ]
+      },
+      {
+       "id": "enc.mac_destination",
+       "keys": [
+        "endpoint.in_destination_network",
+        "form:mac_view"
+       ],
+       "files": [
+        "train/enc.mac_destination/enc.mac_destination-5054000.json",
+        "train/enc.mac_destination/enc.mac_destination-5054001.json",
+        "train/enc.mac_destination/enc.mac_destination-5054002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "ttl_count",
+     "variants": [
+      {
+       "id": "enc.crossed",
+       "keys": [
+        "ttl.routers_crossed"
+       ],
+       "files": [
+        "train/enc.crossed/enc.crossed-5055000.json",
+        "train/enc.crossed/enc.crossed-5055001.json",
+        "train/enc.crossed/enc.crossed-5055002.json"
+       ]
+      },
+      {
+       "id": "enc.ttl_value",
+       "keys": [
+        "ttl.routers_crossed",
+        "form:ttl_value"
+       ],
+       "files": [
+        "train/enc.ttl_value/enc.ttl_value-5056000.json",
+        "train/enc.ttl_value/enc.ttl_value-5056001.json",
+        "train/enc.ttl_value/enc.ttl_value-5056002.json"
+       ]
+      },
+      {
+       "id": "enc.left",
+       "keys": [
+        "ttl.routers_left"
+       ],
+       "files": [
+        "train/enc.left/enc.left-5057000.json",
+        "train/enc.left/enc.left-5057001.json",
+        "train/enc.left/enc.left-5057002.json"
+       ]
+      },
+      {
+       "id": "enc.range_min",
+       "keys": [
+        "ttl.routers_crossed_range"
+       ],
+       "files": [
+        "train/enc.range_min/enc.range_min-5058000.json",
+        "train/enc.range_min/enc.range_min-5058001.json",
+        "train/enc.range_min/enc.range_min-5058002.json"
+       ]
+      },
+      {
+       "id": "enc.range_max",
+       "keys": [
+        "ttl.routers_crossed_range"
+       ],
+       "files": [
+        "train/enc.range_max/enc.range_max-5059000.json",
+        "train/enc.range_max/enc.range_max-5059001.json",
+        "train/enc.range_max/enc.range_max-5059002.json"
+       ]
+      },
+      {
+       "id": "enc.range_ttl",
+       "keys": [
+        "ttl.routers_crossed_range",
+        "form:ttl_value"
+       ],
+       "files": [
+        "train/enc.range_ttl/enc.range_ttl-5060000.json",
+        "train/enc.range_ttl/enc.range_ttl-5060001.json",
+        "train/enc.range_ttl/enc.range_ttl-5060002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "corner_router",
+     "variants": [
+      {
+       "id": "enc.corner",
+       "keys": [
+        "router.adjacent_to_router",
+        "feature:cornerRouter"
+       ],
+       "files": [
+        "train/enc.corner/enc.corner-5061000.json",
+        "train/enc.corner/enc.corner-5061001.json",
+        "train/enc.corner/enc.corner-5061002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "hidden_endpoint",
+     "variants": [
+      {
+       "id": "enc.hidden_origin",
+       "keys": [
+        "endpoint.origin",
+        "feature:hiddenEndpoint"
+       ],
+       "files": [
+        "train/enc.hidden_origin/enc.hidden_origin-5062000.json",
+        "train/enc.hidden_origin/enc.hidden_origin-5062001.json",
+        "train/enc.hidden_origin/enc.hidden_origin-5062002.json"
+       ]
+      },
+      {
+       "id": "enc.hidden_class",
+       "keys": [
+        "endpoint.destination_class",
+        "feature:hiddenEndpoint"
+       ],
+       "files": [
+        "train/enc.hidden_class/enc.hidden_class-5063000.json",
+        "train/enc.hidden_class/enc.hidden_class-5063001.json",
+        "train/enc.hidden_class/enc.hidden_class-5063002.json"
+       ]
+      },
+      {
+       "id": "enc.first_router",
+       "keys": [
+        "route.first_router",
+        "feature:hiddenEndpoint"
+       ],
+       "files": [
+        "train/enc.first_router/enc.first_router-5064000.json",
+        "train/enc.first_router/enc.first_router-5064001.json",
+        "train/enc.first_router/enc.first_router-5064002.json"
+       ]
+      },
+      {
+       "id": "enc.final_router",
+       "keys": [
+        "route.final_router",
+        "feature:hiddenEndpoint"
+       ],
+       "files": [
+        "train/enc.final_router/enc.final_router-5065000.json",
+        "train/enc.final_router/enc.final_router-5065001.json",
+        "train/enc.final_router/enc.final_router-5065002.json"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "route_relation",
+     "variants": [
+      {
+       "id": "enc.more_routers",
+       "keys": [
+        "relation.more_routers_crossed"
+       ],
+       "files": [
+        "train/enc.more_routers/enc.more_routers-5066000.json",
+        "train/enc.more_routers/enc.more_routers-5066001.json",
+        "train/enc.more_routers/enc.more_routers-5066002.json"
+       ]
+      },
+      {
+       "id": "enc.higher_ttl",
+       "keys": [
+        "relation.higher_ttl",
+        "form:ttl_compare"
+       ],
+       "files": [
+        "train/enc.higher_ttl/enc.higher_ttl-5067000.json",
+        "train/enc.higher_ttl/enc.higher_ttl-5067001.json",
+        "train/enc.higher_ttl/enc.higher_ttl-5067002.json"
+       ]
+      },
+      {
+       "id": "enc.closer",
+       "keys": [
+        "relation.closer_to_destination"
+       ],
+       "files": [
+        "train/enc.closer/enc.closer-5068000.json",
+        "train/enc.closer/enc.closer-5068001.json",
+        "train/enc.closer/enc.closer-5068002.json"
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

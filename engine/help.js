@@ -320,6 +320,38 @@
     return ENTRIES.find((e) => e.id === id);
   }
 
+  // ---------- Reglas desactivadas ----------
+  // levels/disabled.txt (copiado en levels/index.json → disabled) lista subtipos
+  // de pista, formas de nombrar («form:mask») y particularidades del tablero
+  // («feature:cornerRouter»). Una ficha se oculta cuando está desactivado todo lo
+  // que explica, o la particularidad sin la que no sale nunca. Las fichas
+  // básicas no se ocultan.
+
+  let disabled = new Set();
+  const ALWAYS = new Set(["how_to_play", "objective", "row_column", "icons", "route_trace", "ttl"]);
+  const REQUIRES = { corner_router: "feature:cornerRouter", hidden_endpoint: "feature:hiddenEndpoint" };
+
+  function setDisabled(keys) {
+    disabled = new Set(keys || []);
+  }
+
+  // Claves (subtipos y formas) que explica una ficha.
+  function sources(id) {
+    const keys = Object.keys(TYPE_TO_ENTRY).filter((type) => TYPE_TO_ENTRY[type] === id);
+    if (id === "adjacent") keys.push(...USES_ADJACENCY);
+    keys.push(...Object.keys(FORM_TO_ENTRY).filter((form) => FORM_TO_ENTRY[form] === id).map((f) => `form:${f}`));
+    if (id === "named_by_address") keys.push(...[...ADDRESS_FORMS].map((f) => `form:${f}`));
+    return keys;
+  }
+
+  function isEnabled(e) {
+    const id = typeof e === "string" ? e : e.id;
+    if (ALWAYS.has(id)) return true;
+    if (REQUIRES[id] && disabled.has(REQUIRES[id])) return false;
+    const keys = sources(id);
+    return !keys.length || keys.some((k) => !disabled.has(k));
+  }
+
   // Fichas que usa un nivel, en el orden del catálogo.
   function forLevel(level) {
     const ids = new Set(["how_to_play", "objective", "row_column", "icons"]);
@@ -337,7 +369,7 @@
         if (ADDRESS_FORMS.has(form)) ids.add("named_by_address");
       }
     }
-    return ENTRIES.filter((e) => ids.has(e.id));
+    return ENTRIES.filter((e) => ids.has(e.id) && isEnabled(e));
   }
 
   function el(tag, attrs, parent) {
@@ -449,5 +481,5 @@
     container.appendChild(body);
   }
 
-  window.NetdokuHelp = { CATEGORIES, ENTRIES, entry, forLevel, renderEntry };
+  window.NetdokuHelp = { CATEGORIES, ENTRIES, entry, forLevel, renderEntry, setDisabled, isEnabled };
 })();

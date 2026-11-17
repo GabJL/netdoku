@@ -25,6 +25,22 @@
       : `with exactly ${COUNT[v.count] || v.count} ${PLURAL[kind(v)]}`);
   const lengthOf = (prefix) => Number(prefix.split("/")[1]);
 
+  // Training: "no router", "one router", "two routers"; row or column; origin or destination.
+  const ROUTER_WORDS = { 1: "one", 2: "two", 3: "three", 4: "four", 5: "five" };
+  const routers0 = (n) => (n === 0 ? "no router" : `${ROUTER_WORDS[n] || n} router${n === 1 ? "" : "s"}`);
+  const axisWord = (axis) => (axis === "row" ? "row" : "column");
+  const endWord = (end) => (end === "origin" ? "origin" : "destination");
+  // "Classrooms or Services", "Classrooms, Services or Library".
+  const orJoin = (names) => (names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`);
+  // What the frame says in each route clue seen from the link layer (mac_view form).
+  const MAC_FACTS = {
+    "endpoint.in_origin_network": "Every device that forwards the packet puts it in a new frame with its own source MAC. If the frame was sent by the origin device itself, the packet has not crossed any router yet: it is still in its origin network.",
+    "endpoint.in_destination_network": "A frame can only be addressed directly to a device in its own network. If it goes to the destination device, the packet is already in its destination network.",
+    "route.last_router": "Each router forwards the packet in a new frame with its own source MAC: whoever sent the frame is the last router the packet crossed.",
+    "route.next_router": "The frame is addressed to the MAC of the next hop, which is the next router on the route.",
+    default: "A frame only travels inside one network: its source MAC is that of the last device that forwarded the packet, and its destination MAC that of the next hop.",
+  };
+
   function clue(c, L) {
     const s = c.slots || {};
     const params = c.parameters || {};
@@ -125,7 +141,7 @@
       case "relation.more_routers_crossed":
         return `Packet ${p} had crossed more routers than packet ${q}.`;
       case "relation.higher_ttl":
-        return `Packet ${p} had a higher TTL than packet ${q}.`;
+        return `At that moment, packet ${p} had a higher TTL than packet ${q}.`;
       case "relation.closer_to_destination":
         return `Packet ${p} had fewer routers left than packet ${q} to reach its destination network.`;
       case "relation.same_origin":
@@ -222,6 +238,7 @@
         help: "Help",
         about: "About",
         test: "Tests",
+        train: "Train",
       },
       loadError: "The level list could not be read. Serve the folder with a web server (see README.md).",
       levelLoadError: "The level could not be loaded.",
@@ -313,6 +330,21 @@
       lineRow: ({ packet, n }) => `Row ${n} must have a packet and the only one that can go there is ${packet}: ${packet} is in row ${n}.`,
       lineColumn: ({ packet, n }) => `Column ${n} must have a packet and the only one that can go there is ${packet}: ${packet} is in column ${n}.`,
       annul: ({ packet }) => `A clue of packet ${packet} says no other packet was next to that element: the cells around it (highlighted) are ruled out for the rest.`,
+      // "it does not go through Development", "it does not go through Classrooms or Services".
+      route: ({ packet, route, networks }) => {
+        const where = networks.length === 1 ? networks[0] : `${networks.slice(0, -1).join(", ")} or ${networks[networks.length - 1]}`;
+        const path = route.length === 1 ? `Packet ${packet} does not leave ${route[0]}`
+          : `Packet ${packet} takes the path with the fewest routers: ${route.join(" → ")}`;
+        return `${path}. It can only be in a network on its route, and it does not go through ${where}: the highlighted cells are ruled out for ${packet}.`;
+      },
+      // "it does not reach Research", "it does not reach Library or Services".
+      ttl: ({ packet, ttl, networks }) => {
+        const words = { 1: "one router", 2: "two routers", 3: "three routers", 4: "four routers", 5: "five routers" };
+        const crossed = ttl <= 1 ? "it cannot have crossed any router on its route"
+          : `it has crossed at most ${words[ttl - 1] || `${ttl - 1} routers`} on its route`;
+        const where = networks.length === 1 ? networks[0] : `${networks.slice(0, -1).join(", ")} or ${networks[networks.length - 1]}`;
+        return `The initial TTL of packet ${packet} is ${ttl}. Each router takes 1 off it, and the one that brings it to 0 drops it: ${crossed}, so it does not reach ${where}. The highlighted cells are ruled out for ${packet}.`;
+      },
       relationFixed: ({ packet, other }) => `A clue links packets ${packet} and ${other}. With what you already know about ${other}, the highlighted cells do not fit the clue: they are ruled out for ${packet}.`,
       relationOpen: ({ packet, other }) => `A clue links packets ${packet} and ${other}. Although ${other} still has several possibilities, none of them fits the clue with ${packet} in the highlighted cells: they are ruled out for ${packet}.`,
       relationEnds: ({ packet, other }) => `A clue links packets ${packet} and ${other}. With what you already know about ${other}, rule out some of the possible networks of the hidden source or destination of ${packet}.`,
@@ -375,6 +407,217 @@
       mark: "Mark as validated",
       unmark: "Remove the validated mark",
       back: "Back to the tests",
+    },
+
+    // Training: exercises for each clue and each rule (see generator/netdoku_gen/training.py).
+    // Reasons explain why a cell is not valid; facts explain how the step is solved. They get
+    // networks, devices and routers already by name.
+    train: {
+      title: "Train",
+      intro: "Short exercises to learn each clue and each rule: a small board with one packet to decide and, when needed, others already placed. Tap the cells the exercise asks for; if you pick one that is not valid, you will see why. Mistakes do not count.",
+      categories: { rules: "Game rules", inicial: "Getting started", direccionamiento: "Addressing", encaminamiento: "Routing" },
+      categoryIntro: {
+        rules: "What holds in every level: at most one packet per row and per column, and which cells are next to a device.",
+        inicial: "The clues of the Getting started category: networks, devices, routers, rows and columns.",
+        direccionamiento: "Networks and devices named by their addresses: prefixes, masks, sizes, special addresses and private networks.",
+        encaminamiento: "Routes and TTL: where each packet goes, how far it gets, the frames of each hop and hidden endpoints.",
+      },
+      progress: ({ done, total }) => `✓ ${done}/${total}`,
+      openHelp: "Open the help card",
+      practice: "Practise",
+      practiceTitle: "Exercises for this card",
+      empty: "There are no exercises yet.",
+      loadError: "Could not read the list of exercises (levels/train/index.json).",
+      gameTitle: "Train · {variant}",
+      meta: "{category} · {variant}",
+      objective: "Training: there is no victim and no lives. Tap the cells the exercise asks for; mistakes do not count.",
+      task: "Exercise",
+      stepOf: "Step {n} of {total}",
+      ask: {
+        possible: "Tap the cells where packet {packet} can be.",
+        impossible: "Tap the cells where packet {packet} cannot be: they get a ✕.",
+        annul: "Tap the cells where no other packet can go any more: they get a ✕.",
+      },
+      given: "The dashed circles are the possible cells of packet {packet}.",
+      count: ({ n, total }) => `${n} of ${total} so far.`,
+      explanation: "Explanation",
+      explain: "Show explanation",
+      reveal: "Show solution",
+      next: "Next step",
+      stepDone: "Well done! You found them all.",
+      finished: "Exercise complete!",
+      extraOk: "That works too: this cell is ruled out, although you did not need to mark it.",
+      extraNote: "The cells with a dashed border are ruled out too, although you did not need to mark them: they share a row or a column with every possible cell of the packet.",
+      wrong: "That cell is not valid.",
+      done: "Exercise complete.",
+      doneRevealed: "Exercise finished with the solution. Try another one to complete it on your own.",
+      another: "Another exercise",
+      nextVariant: "Next in the list",
+      back: "Back to the list",
+      variants: {
+        "rules.row_column.annul": "A placed packet: its row and column",
+        "rules.row_column.free": "Free rows and columns",
+        "rules.row_column.last": "The last free cell",
+        "rules.row_column.forced": "A forced row or column",
+        "rules.adjacent": "Next to a device: the network border",
+        "inicial.in_network": "In a network",
+        "inicial.not_in_network": "Not in a network",
+        "inicial.not_adjacent.node": "Not next to a device",
+        "inicial.not_adjacent.class": "Not next to any device of a kind",
+        "inicial.either": "In one network or another",
+        "inicial.node_count": "In a network with so many devices",
+        "inicial.contents": "The network with so many devices",
+        "inicial.adjacent.node": "Next to a device",
+        "inicial.adjacent.service": "Next to a server of a service",
+        "inicial.adjacent.class": "Next to a device of a kind",
+        "inicial.unique_adjacent": "Next to a device, and no other packet",
+        "inicial.router": "Next to a router",
+        "inicial.row": "In a row",
+        "inicial.column": "In a column",
+        "inicial.aligned_node": "In the row or column of a device",
+        "inicial.aligned_router": "In the row or column of a router",
+        "inicial.same_network": "In the same network as another packet",
+        "inicial.routers_between": "Routers between the networks of two packets",
+        "dir.prefix": "A network by its prefix",
+        "dir.label_prefix": "A device of the network with a prefix",
+        "dir.networks_prefix": "A router by the prefixes it joins",
+        "dir.size_rank": "The network with the most or fewest addresses",
+        "dir.address_count": "The network with N addresses",
+        "dir.mask": "The network with a mask",
+        "dir.prefix_length": "In a /N network",
+        "dir.length_count": "In a network with N addresses",
+        "dir.length_usable": "In a network with N usable addresses",
+        "dir.length_mask": "In a network with a mask",
+        "dir.ip_member": "The network of an address",
+        "dir.node_ip": "A device by its IP",
+        "dir.interfaces": "A router by its interfaces",
+        "dir.first_host": "The first usable address",
+        "dir.last_host": "The last usable address",
+        "dir.broadcast": "The broadcast address",
+        "dir.usable_count": "The network with N usable addresses",
+        "dir.privacy": "The public or private network",
+        "dir.label_privacy": "A device of the public or private network",
+        "dir.more_addresses": "A network with more addresses than another packet's",
+        "enc.route": "The route of a packet",
+        "enc.short_ttl": "A TTL that does not reach the destination",
+        "enc.broadcast": "A broadcast packet",
+        "enc.in_origin": "Still in its origin network",
+        "enc.in_destination": "Already in its destination network",
+        "enc.in_transit": "In a transit network",
+        "enc.last_router": "The last router crossed",
+        "enc.next_router": "The next router",
+        "enc.mac_origin": "A frame sent by the origin device",
+        "enc.mac_last": "A frame sent by a router",
+        "enc.mac_next": "A frame addressed to a router",
+        "enc.mac_destination": "A frame addressed to the destination device",
+        "enc.crossed": "Routers crossed",
+        "enc.ttl_value": "The current TTL",
+        "enc.left": "Routers left",
+        "enc.range_min": "At least N routers",
+        "enc.range_max": "At most N routers",
+        "enc.range_ttl": "A TTL of at most or at least",
+        "enc.corner": "A router in a corner",
+        "enc.hidden_origin": "Hidden origin: who sent it",
+        "enc.hidden_class": "Hidden destination: what kind of device",
+        "enc.first_router": "Hidden origin: the first router",
+        "enc.final_router": "Hidden destination: the last router",
+        "enc.more_routers": "More routers than another packet",
+        "enc.higher_ttl": "A higher TTL than another packet",
+        "enc.closer": "Closer to its destination than another packet",
+      },
+      reasons: {
+        rowTaken: ({ r, packet }) => `Packet ${packet} is already in row ${r}, and there is room for only one packet per row.`,
+        columnTaken: ({ c, packet }) => `Packet ${packet} is already in column ${c}, and there is room for only one packet per column.`,
+        notLine: ({ packet, r, c }) => `This cell is neither in row ${r} nor in column ${c} of packet ${packet}: another packet could still go here.`,
+        forced: ({ packet, other, axis, line, otherLine }) => `Packet ${other} can only go in ${axisWord(axis)} ${otherLine}, so ${packet} must go in the other free ${axisWord(axis)}, ${line}.`,
+        canBe: ({ packet }) => `Packet ${packet} can be in this cell.`,
+        open: () => "This cell is not ruled out: another packet could still go here.",
+        offRoute: ({ packet, net }) => `${net} is not on the route of packet ${packet}.`,
+        noTtl: ({ packet, net, k, ttl }) => `To reach ${net}, packet ${packet} would have to cross ${routers0(k)}, and with initial TTL ${ttl} it can only cross ${routers0(ttl - 1)}: each router subtracts 1 and drops it when it reaches 0.`,
+        hiddenOff: ({ packet, net, end }) => `Wherever its ${endWord(end)} is, the route of packet ${packet} does not reach ${net}.`,
+        hiddenNo: ({ packet, net, end, tags }) => `With the clue, its ${endWord(end)} network is ${orJoin(tags)}, and then the route of packet ${packet} does not reach ${net}.`,
+        notNext: ({ node, nodeNet }) => `This cell is not next to the ${node} in ${nodeNet}.`,
+        notNextBorder: ({ node, net }) => `This cell touches the ${node}, but it belongs to another network (${net}): next to a device only counts the cells of its own network.`,
+        notNextClass: ({ cls }) => `This cell is not next to any ${cls}.`,
+        next: ({ node, nodeNet }) => `This cell is next to the ${node} in ${nodeNet}.`,
+        nextClass: ({ cls, node, nodeNet }) => `This cell is next to the ${node} in ${nodeNet}${cls === node ? "" : `, which is a ${cls}`}.`,
+        notRouter: ({ router }) => `This cell does not touch the router joining ${join(router)}.`,
+        row: ({ r }) => `This cell is in row ${r}.`,
+        column: ({ c }) => `This cell is in column ${c}.`,
+        net: ({ net, prefix }) => `This cell belongs to ${net} (${prefix}).`,
+        netCount: ({ net, clsKey, count }) => `This cell belongs to ${net}, a network ${countText({ nodeType: clsKey, count })}.`,
+        netLength: ({ net, prefix, len }) => `This cell belongs to ${net} (${prefix}), a /${len} network.`,
+        routeAt: ({ packet, net, k, ttl }) => `In ${net}, packet ${packet} would have crossed ${routers0(k)} and would carry TTL ${ttl}.`,
+        routeLast: ({ packet, net, router }) => (router ? `In ${net}, the last router packet ${packet} would have crossed is the one joining ${join(router)}.`
+          : `In ${net}, packet ${packet} would not have crossed any router yet.`),
+        routeNext: ({ packet, net, router }) => (router ? `In ${net}, the next router of packet ${packet} would be the one joining ${join(router)}.`
+          : `In ${net}, packet ${packet} would already be in its destination network: no routers left.`),
+        routeLeft: ({ packet, net, left }) => `In ${net}, packet ${packet} would have ${routers0(left)} left to reach its destination network.`,
+        relNet: ({ packet, other, net, otherNet }) => `Here packet ${packet} would be in ${net}, and ${other} is in ${otherNet}.`,
+        relDistance: ({ packet, other, net, otherNet, d }) => (d === 0 ? `Here packet ${packet} would be in ${net}, the same network as ${other}.`
+          : `Going from ${net} to ${otherNet}, the network of packet ${other}, means crossing at least ${routers0(d)}.`),
+        relSize: ({ packet, other, net, size, otherNet, otherSize }) => (net === otherNet ? `Here packet ${packet} would be in ${net}, the same network as ${other} (${size} addresses).`
+          : `Here packet ${packet} would be in ${net}, with ${size} addresses, and the network of packet ${other}, ${otherNet}, has ${otherSize}.`),
+        relCrossed: ({ packet, other, k, otherK }) => `Here packet ${packet} would have crossed ${routers0(k)}, and ${other} has crossed ${routers0(otherK)}.`,
+        relTtl: ({ packet, other, ttl, otherTtl }) => `Here packet ${packet} would carry TTL ${ttl}, and ${other} carries TTL ${otherTtl}.`,
+        relLeft: ({ packet, other, l, otherL }) => `Here packet ${packet} would have ${routers0(l)} left, and ${other} has ${routers0(otherL)} left.`,
+      },
+      facts: {
+        route: ({ packet, route, ttl, reach, full }) => `Route of packet ${packet}: ${route.join(" → ")}. With initial TTL ${ttl} it can cross ${routers0(ttl - 1)}: ${full ? "it reaches its destination network" : `it only gets as far as ${reach}`}.`,
+        broadcastRoute: ({ packet, net, address }) => `Packet ${packet} goes to the broadcast address ${address}: it does not leave ${net}, because routers do not forward broadcasts.`,
+        hiddenAlt: ({ end, net, route, reach, full }) => `If its ${endWord(end)} was in ${net}: route ${route.join(" → ")}; ${full ? "it reaches its destination network" : `with its TTL it only gets as far as ${reach}`}.`,
+        nets: ({ packet, nets }) => `So packet ${packet} can be in any free cell of ${join(nets)}.`,
+        lines: ({ packet, other, r, c }) => `Also, ${packet} cannot go in row ${r} or column ${c}, which belong to packet ${other}.`,
+        adjacentRule: () => "Next to a device: the cells that share a side with its cell (not diagonally) and belong to the same network.",
+        routerRule: ({ router, corner }) => `The router joining ${join(router)} sits between ${corner ? "four cells (in a corner)" : "two cells"}: being next to it means being in one of them.`,
+        transit: ({ net }) => `The transit network is ${net}: it has no devices, it only joins routers.`,
+        endpointNode: ({ packet, end, node, nodeNet }) => `The ${endWord(end)} of packet ${packet} was the ${node} in ${nodeNet}: its route ${end === "origin" ? "starts" : "ends"} in ${nodeNet}.`,
+        endpointClass: ({ packet, end, cls, nets }) => `The ${endWord(end)} of packet ${packet} was a ${cls}: its network is ${orJoin(nets)}.`,
+        endRouter: ({ end, router, tags }) => `The ${end === "origin" ? "first" : "last"} router of the route is the one joining ${join(router)} only if the ${endWord(end)} is in ${orJoin(tags)}.`,
+        pNet: ({ other, net }) => `Packet ${other} is in ${net}.`,
+        pDistance: ({ other, net, d }) => `Packet ${other} is in ${net}: the other network must be at least ${routers0(d)} away from it.`,
+        pSize: ({ other, net, size, prefix }) => `Packet ${other} is in ${net} (${prefix}), which has ${size} addresses.`,
+        pCrossed: ({ other, k }) => `Packet ${other} has crossed ${routers0(k)}.`,
+        pTtl: ({ other, ttl0, k, ttl }) => `Packet ${other} left with TTL ${ttl0} and has crossed ${routers0(k)}: it now carries TTL ${ttl}.`,
+        pLeft: ({ other, left }) => `Packet ${other} has ${routers0(left)} left to reach its destination network.`,
+        relAt: ({ other, otherNet, d, nets }) => `Networks ${routers0(d)} away from ${otherNet}, the network of packet ${other}: ${join(nets)}.`,
+        relValues: ({ packet, what, nets, values }) => {
+          const pairs = nets.map((n, i) => `${n}, ${values[i]}`).join("; ");
+          if (what === "size") return `Addresses of each network: ${pairs}.`;
+          if (what === "crossed") return `Routers packet ${packet} would have crossed in each network of its route: ${pairs}.`;
+          if (what === "ttl") return `TTL packet ${packet} would carry in each network of its route: ${pairs}.`;
+          return `Routers packet ${packet} would have left in each network of its route: ${pairs}.`;
+        },
+        annulUnique: ({ node, nodeNet }) => `"No other packet was": no other packet can be in a cell next to the ${node} in ${nodeNet}.`,
+        annulLine: ({ packet, axis, line }) => `All the possible cells of packet ${packet} are in ${axisWord(axis)} ${line}: that ${axisWord(axis)} will be its own, and no other packet can go in it.`,
+        rowColumn: ({ packet, r, c }) => `There is at most one packet in each row and each column: with ${packet} in row ${r} and column ${c}, no other packet can go in them.`,
+        freeLines: ({ packet, rows, cols }) => `Free rows: ${join(rows.map(String))}. Free columns: ${join(cols.map(String))}. Packet ${packet} must go in a free cell where they cross.`,
+        forcedLine: ({ packet, other, axis, line, otherLine }) => `Two free ${axisWord(axis)}s are left for two packets. Because of its clue, ${other} can only go in ${axisWord(axis)} ${otherLine}, so ${axisWord(axis)} ${line} is for ${packet}.`,
+        fPrefix: ({ prefix, net }) => `Network ${prefix} is ${net}.`,
+        fSizeRank: ({ value, net, prefix, size }) => `The network with the ${value === "most" ? "most" : "fewest"} addresses is ${net} (${prefix}: ${size} addresses). Its size comes from the prefix, 2^(32 − length), not from the number of cells.`,
+        fAddressCount: ({ net, prefix, len, size }) => `A /${len} network has 2^(32 − ${len}) = ${size} addresses: it is ${net} (${prefix}).`,
+        fUsableCount: ({ net, prefix, len, size }) => `A /${len} network has ${size} addresses; without the network and broadcast addresses, ${size - 2} are usable: it is ${net} (${prefix}).`,
+        fMask: ({ net, prefix, len, mask }) => `Mask ${mask} has ${len} bits set: it is the /${len} network, ${net} (${prefix}).`,
+        fPrivacy: ({ value, net, prefix }) => `${net} (${prefix}) is the only ${privacy(value)} network. The private ones are those in 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16.`,
+        fContents: ({ net, clsKey, count }) => `${net} is the only network ${countText({ nodeType: clsKey, count })}.`,
+        fFirstHost: ({ address, net, prefix, id, broadcast }) => `Network ${prefix} goes from ${id} (network address) to ${broadcast} (broadcast); its first usable address, ${address}, comes right after the network address. It is ${net}.`,
+        fLastHost: ({ address, net, prefix, id, broadcast }) => `Network ${prefix} goes from ${id} (network address) to ${broadcast} (broadcast); its last usable address, ${address}, comes right before the broadcast address. It is ${net}.`,
+        fBroadcast: ({ address, net, prefix, id }) => `The broadcast address is the last one in the network: ${address} is that of ${prefix} (from ${id} to ${address}), ${net}.`,
+        fIpMember: ({ address, net, prefix, id, broadcast }) => `${address} lies between ${id} and ${broadcast}: it belongs to ${prefix}, which is ${net}.`,
+        fNodePrefix: ({ prefix, net }) => `Network ${prefix} is ${net}.`,
+        fNodeIp: ({ address, net, prefix, node, id, broadcast }) => `${address} lies between ${id} and ${broadcast}: it belongs to ${prefix} (${net}), so it is the ${node} of that network.`,
+        fNodePrivacy: ({ value, net, prefix }) => `${net} (${prefix}) is the only ${privacy(value)} network. The private ones are those in 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16.`,
+        fRouterPrefixes: ({ prefixes, nets }) => `${join(prefixes)} are ${join(nets)}.`,
+        fRouterIps: ({ addresses, prefixes, nets }) => `Interfaces ${join(addresses)} belong to ${join(prefixes)}: the router joins ${join(nets)}.`,
+        fRouterPrivacy: ({ net, prefix, value }) => `${net} (${prefix}) is the only ${privacy(value)} network, and it has a single router.`,
+        fLength: ({ len, size, mask, nets }) => `/${len}: mask ${mask}, ${size} addresses (${size - 2} usable). /${len} networks: ${join(nets)}.`,
+        fAligned: ({ axis, line, node, nodeNet, router }) => (node ? `The ${node} in ${nodeNet} is in ${axisWord(axis)} ${line}.`
+          : `The router joining ${join(router)} is in ${axisWord(axis)} ${line}.`),
+        fMac: ({ type }) => MAC_FACTS[type] || MAC_FACTS.default,
+        fTtlValue: ({ packet, ttl0, ttl, k }) => `Packet ${packet} left with TTL ${ttl0} and carries TTL ${ttl}: it has crossed ${ttl0} − ${ttl} = ${k} ${plural(k, "router", "routers")}.`,
+        fTtlMax: ({ ttl0, bound, k }) => `With initial TTL ${ttl0}, a TTL of at most ${bound} means it has crossed at least ${ttl0} − ${bound} = ${k} ${plural(k, "router", "routers")}.`,
+        fTtlMin: ({ ttl0, bound, k }) => `With initial TTL ${ttl0}, a TTL of at least ${bound} means it has crossed at most ${ttl0} − ${bound} = ${k} ${plural(k, "router", "routers")}.`,
+      },
     },
 
     howto: {
@@ -660,7 +903,7 @@
           chip: "Routes of two packets",
           title: "Clues comparing two packets",
           text: [
-            "«Packet A had crossed more routers than packet B»: count the routers each one has crossed since its source. «Packet A had a higher TTL than packet B»: compare their current TTLs (initial TTL − routers crossed).",
+            "«Packet A had crossed more routers than packet B»: count the routers each one has crossed since its source. «At that moment, packet A had a higher TTL than packet B»: compare their current TTLs (initial TTL − routers crossed).",
             "«Packet A had fewer routers left than packet B to reach its destination network»: compare how many routers each one still has to cross.",
             "«Packets A and B had left from the same network» or «were going to the same network»: they appear when the source or the destination of one of them is hidden.",
             "Like the other clues about two packets, they appear on both cards and rule out cells even before either packet is placed.",

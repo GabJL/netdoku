@@ -9,6 +9,13 @@ Cada lote se guarda en levels/<categoría>/<dificultad>/ y levels/index.json
 lista los ficheros de cada uno. Los lotes existentes se completan hasta el
 tamaño pedido (no se borran niveles); --replace los vacía antes.
 
+Reglas desactivadas (levels/disabled.txt, véase netdoku_gen/switches.py): los
+niveles nuevos no las usan, los lotes se rellenan contando solo los niveles que
+no las usan, y el índice deja fuera los que sí (sin borrarlos). Tras editar el
+fichero basta con regenerar los índices (el de los niveles y el de los
+ejercicios de entrenamiento, levels/train/index.json):
+    python generator/generate.py --index
+
 Para quitar niveles de los lotes:
     python generator/generate.py --retire direccionamiento-2020005,direccionamiento-2020011
 Los nombres retirados (y los que borra --replace) se apuntan en
@@ -35,11 +42,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from netdoku_gen import build  # noqa: E402
 from netdoku_gen.addressing import PLANS  # noqa: E402
 from netdoku_gen.naming import CATEGORIES  # noqa: E402
+from netdoku_gen.switches import is_active, read_disabled  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 LEVELS_DIR = ROOT / "levels"
 EXTRA_DIR = LEVELS_DIR / "extra"
 RETIRED = LEVELS_DIR / "retired.txt"
+DISABLED = LEVELS_DIR / "disabled.txt"
 DIFFICULTIES = range(1, 6)
 # Primera semilla de cada lote: categoría y dificultad no comparten semillas.
 SEED_BASE = {"inicial": 1_000_000, "direccionamiento": 2_000_000, "encaminamiento": 3_000_000}
@@ -74,20 +83,44 @@ def summary(level):
 
 # ---------- Lotes ----------
 
+def read_level(path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def active_files(folder, disabled):
+    """Niveles de un lote que no usan nada desactivado."""
+    files = sorted(folder.glob("*.json")) if folder.exists() else []
+    if not disabled:
+        return files
+    return [f for f in files if is_active(read_level(f), disabled)]
+
+
 def update_index():
-    """levels/index.json: categorías en orden y, en cada una, los ficheros de cada dificultad."""
+    """levels/index.json: categorías en orden y, en cada una, los ficheros de cada dificultad.
+
+    Deja fuera los niveles que usan algo desactivado y copia la lista de
+    desactivados para que el motor oculte también sus fichas y ejercicios.
+    """
+    disabled = read_disabled(DISABLED)
     categories = []
+    hidden = 0
     for cat in CATEGORIES:
         difficulties = {}
         for d in DIFFICULTIES:
             folder = LEVELS_DIR / cat / str(d)
-            files = sorted(folder.glob("*.json")) if folder.exists() else []
+            files = active_files(folder, disabled)
+            hidden += len(list(folder.glob("*.json"))) - len(files) if folder.exists() else 0
             if files:
                 difficulties[str(d)] = [f.relative_to(LEVELS_DIR).as_posix() for f in files]
         if difficulties:
             categories.append({"id": cat, "difficulties": difficulties})
-    (LEVELS_DIR / "index.json").write_text(json.dumps({"categories": categories}, ensure_ascii=False, indent=1),
-                                           encoding="utf-8")
+    index = {"categories": categories, "disabled": sorted(disabled)}
+    (LEVELS_DIR / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=1), encoding="utf-8")
+    if disabled:
+        print(f"Reglas desactivadas: {', '.join(sorted(disabled))}; {hidden} niveles fuera del índice")
+    if (LEVELS_DIR / "train").exists():   # los ejercicios de entrenamiento siguen la misma lista
+        import train
+        train.update_index(disabled)
 
 
 def read_retired():
@@ -120,8 +153,8 @@ def retire(names):
 
 
 def _pool_job(args):
-    seed, category, target, novelties = args
-    config = {**POOL_CONFIG, "category": category, "target": target, "novelties": novelties,
+    seed, category, target, novelties, disabled = args
+    config = {**POOL_CONFIG, "category": category, "target": target, "novelties": novelties, "disabled": disabled,
               "selectionRuns": 40 if category == "inicial" and target == 5 else 12}
     try:
         return seed, build(seed, config, max_attempts=100)
@@ -137,7 +170,9 @@ def fill_pool(category, target, size, workers, replace, novelties=False):
         for f in folder.glob("*.json"):
             f.unlink()
         record_retired(removed)
-    have = {f.stem for f in folder.glob("*.json")}
+    disabled = read_disabled(DISABLED)
+    existing = {f.stem for f in folder.glob("*.json")}
+    have = {f.stem for f in active_files(folder, disabled)}   # los que usan algo desactivado no cuentan
     retired = read_retired()
     missing = size - len(have)
     if missing <= 0:
@@ -145,8 +180,8 @@ def fill_pool(category, target, size, workers, replace, novelties=False):
         return
     base = SEED_BASE[category] + 10_000 * target
     seeds = (s for s in range(base, base + 10_000)
-             if f"{category}-{s}" not in have and f"{category}-{s}" not in retired)
-    jobs = ((s, category, target, novelties) for s in seeds)
+             if f"{category}-{s}" not in existing and f"{category}-{s}" not in retired)
+    jobs = ((s, category, target, novelties, tuple(sorted(disabled))) for s in seeds)
     made = 0
     with multiprocessing.Pool(workers) as pool:
         for seed, level in pool.imap_unordered(_pool_job, jobs):
@@ -224,7 +259,8 @@ def main():
     for seed in seeds:
         level = build(seed, {"packets": args.packets, "networks": args.networks,
                              "category": args.category or "inicial", "target": args.target,
-                             "reading": args.reading, "plan": args.plan, "novelties": args.novelties})
+                             "reading": args.reading, "plan": args.plan, "novelties": args.novelties,
+                             "disabled": read_disabled(DISABLED)})
         d = level["generation"]["difficulty"]
         reports.append(d)
         if args.stats:

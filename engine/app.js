@@ -1,14 +1,21 @@
 // Aplicación de Netdoku: menú, vistas y progresión de niveles. La partida en sí
 // está en netdoku.js (NetdokuGame). La vista se elige con el fragmento de la URL:
-// #menu, #howto, #play[/categoría], #stats, #help, #about,
-// #game/categoría/dificultad, #free (nivel cargado desde un fichero) y, de forma
-// temporal, #test y #test/semilla (niveles fijos de prueba, con clave).
+// #menu, #howto, #play[/categoría], #train[/categoría[/variante]], #stats, #help,
+// #about, #game/categoría/dificultad, #free (nivel cargado desde un fichero) y,
+// de forma temporal, #test y #test/semilla (niveles fijos de prueba, con clave).
 //
 // Cada categoría tiene cinco dificultades y cada dificultad, un lote de niveles
 // (levels/index.json). Al jugar una dificultad sale uno del lote al azar, sin
 // repetir hasta haberlos visto casi todos. Se guarda el mejor resultado de cada
 // dificultad (nunca baja) y, para abrir una dificultad, hay que haber resuelto
 // la anterior.
+//
+// Entrenar (v0.4.8): ejercicios cortos de cada pista y cada regla
+// (levels/train/index.json: categoría → ficha de ayuda → variantes). Se guarda
+// qué variantes se han completado; los fallos no cuentan.
+//
+// Las reglas desactivadas (levels/index.json → disabled) ocultan sus fichas de
+// ayuda y sus ejercicios.
 (function () {
   "use strict";
 
@@ -20,9 +27,10 @@
   const RECORD_KEY = "netdoku:record";
   const SLOT_PREFIX = "netdoku:slot:";
   const TEST_STORE = "netdoku:test";
+  const TRAIN_STORE = "netdoku:train";
   // Solo aparta a los jugadores de la vista de pruebas: no protege nada.
   const TEST_KEY = "redes";
-  const VIEWS = ["menu", "howto", "play", "stats", "help", "about", "test", "game"];
+  const VIEWS = ["menu", "howto", "play", "train", "stats", "help", "about", "test", "game"];
 
   const $ = (id) => document.getElementById(id);
   const I18n = window.NetdokuI18n;
@@ -30,8 +38,12 @@
   const t = (key, vars) => I18n.t(key, vars);
   const dots = (n) => "●".repeat(n) + "○".repeat(5 - n);
   const starText = (n) => "★".repeat(n) + "☆".repeat(MAX_STARS - n);
+  // Nombre de una variante de entrenamiento (sus ids llevan puntos: no valen como ruta de t()).
+  const variantName = (id) => (I18n.get("train.variants") || {})[id] || id;
 
   let catalog = null; // [{ id, difficulties: { "1": [ficheros relativos a levels/] } }]
+  let disabledRules = []; // claves de levels/disabled.txt
+  let trainCatalog = null; // [{ id, groups: [{ id, variants: [{ id, keys, files }] }] }]
   let route = { view: "menu" };
   let current = null; // partida abierta: { cat, d, file } o { free: true }
   let freeLevel = null;
@@ -91,6 +103,17 @@
     store.validated = store.validated.includes(seed)
       ? store.validated.filter((s) => s !== seed) : [...store.validated, seed];
     writeTest(store);
+  }
+
+  // Entrenamiento: { variante: { solved, revealed, last } } (veces completada por
+  // su cuenta, veces terminada viendo la solución y último ejercicio).
+  const trainStore = () => readJson(TRAIN_STORE, {});
+  const trainEntry = (id) => ({ solved: 0, revealed: 0, last: null, ...(trainStore()[id] || {}) });
+
+  function writeTrainEntry(id, entry) {
+    const store = trainStore();
+    store[id] = entry;
+    writeJson(TRAIN_STORE, store);
   }
 
   const finished = (progress) => !!progress && (progress.solved || progress.lost);
@@ -162,6 +185,9 @@
     if (view === "game") {
       route = { view, cat: parts[1], d: Number(parts[2]) };
       openGame(route.cat, route.d);
+    } else if (view === "train" && parts[2]) {
+      route = { view: "game", train: parts[2], cat: parts[1] };
+      openTrain(parts[1], parts[2]);
     } else if (view === "free") {
       route = { view: "game", free: true };
       openFree();
@@ -201,6 +227,7 @@
       case "help": renderHelp(); break;
       case "about": renderAbout(); break;
       case "test": renderTest(); break;
+      case "train": renderTrainList(); break;
       default: break;
     }
   }
@@ -216,7 +243,11 @@
     const known = !!cat && !!I18n.get(`categories.${cat}`);
     $("category-info").hidden = !known;
     $("new-level").hidden = !!route.free || !!route.test;
-    if (route.free) {
+    $("new-level").title = t(route.train ? "train.another" : "game.anotherLevel");
+    $("lives").hidden = !!route.train;
+    if (route.train) {
+      $("game-title").textContent = t("train.gameTitle", { variant: variantName(route.train) });
+    } else if (route.free) {
       $("game-title").textContent = known ? categoryName(cat) : "";
     } else if (route.test) {
       $("game-title").textContent = known
@@ -228,6 +259,7 @@
 
   function goBack() {
     if (route.view === "game" && route.test) go("test");
+    else if (route.view === "game" && route.train) go(`train/${route.cat}`);
     else if (route.view === "game" && !route.free && route.cat) go(`play/${route.cat}`);
     else go("menu");
   }
@@ -303,6 +335,10 @@
 
   // ↺: otro nivel de la misma dificultad.
   function newLevel(skipConfirm) {
+    if (current && current.train) {
+      openTrain(current.cat, current.train, current.file);
+      return;
+    }
     if (!current || current.free || current.test) return;
     if (!skipConfirm && window.NetdokuGame.hasProgress() && !window.confirm(t("game.confirmNew"))) return;
     pickLevel(current.cat, current.d, current.file);
@@ -342,6 +378,160 @@
       message: t("ui.freePlay"),
       actions: () => [{ label: t("ui.toMenu"), primary: true, onClick: () => go("menu") }],
     });
+  }
+
+  // ---------- Entrenamiento ----------
+
+  const isActiveVariant = (v) => !(v.keys || []).some((k) => disabledRules.includes(k));
+
+  // Categorías con sus fichas y variantes activas (las desactivadas no salen).
+  function trainCategories() {
+    return (trainCatalog || []).map((c) => ({
+      id: c.id,
+      groups: c.groups.map((g) => ({ id: g.id, variants: g.variants.filter(isActiveVariant) }))
+        .filter((g) => g.variants.length && Help.isEnabled(g.id)),
+    })).filter((c) => c.groups.length);
+  }
+
+  const variantsOf = (cat) => ((trainCategories().find((c) => c.id === cat) || { groups: [] }).groups)
+    .flatMap((g) => g.variants);
+
+  function findVariant(id) {
+    for (const c of trainCategories()) {
+      for (const v of c.groups.flatMap((g) => g.variants)) if (v.id === id) return { cat: c.id, variant: v };
+    }
+    return null;
+  }
+
+  const isTrained = (id) => trainEntry(id).solved > 0;
+
+  async function loadTrainCatalog() {
+    if (!trainCatalog) {
+      const res = await fetch(`${LEVELS}train/index.json`, { cache: "no-store" });
+      if (!res.ok) throw new Error(res.statusText);
+      trainCatalog = (await res.json()).categories || [];
+    }
+    return trainCatalog;
+  }
+
+  // Un ejercicio de la variante al azar, distinto del último que se hizo (y de `avoid`).
+  function pickTrainFile(v, avoid) {
+    const last = trainEntry(v.id).last;
+    const options = v.files.filter((f) => f !== avoid && f !== last);
+    const pool = options.length ? options : v.files;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  async function openTrain(cat, id, avoid) {
+    const ticket = ++loading;
+    let found;
+    let file;
+    let data;
+    try {
+      await loadTrainCatalog();
+      found = findVariant(id);
+      if (!found) throw new Error(id);
+      file = pickTrainFile(found.variant, avoid);
+      const res = await fetch(LEVELS + file, { cache: "no-store" });
+      if (!res.ok) throw new Error(res.statusText);
+      data = await res.json();
+    } catch (err) {
+      if (ticket !== loading) return;
+      notice(t("ui.levelLoadError"));
+      go(cat ? `train/${cat}` : "train");
+      return;
+    }
+    if (ticket !== loading) return;
+    route = { view: "game", train: id, cat: found.cat };
+    current = { train: id, cat: found.cat, file };
+    writeTrainEntry(id, { ...trainEntry(id), last: file });
+    showView("game");
+    window.NetdokuGame.start(data, {
+      training: true,
+      category: data.level.category,
+      onSolve: (clean) => {
+        const entry = trainEntry(id);
+        writeTrainEntry(id, { ...entry, solved: entry.solved + (clean ? 1 : 0), revealed: entry.revealed + (clean ? 0 : 1) });
+      },
+      actions: () => trainActions(found.cat, id),
+    });
+  }
+
+  function trainActions(cat, id) {
+    const list = variantsOf(cat);
+    const next = list[list.findIndex((v) => v.id === id) + 1];
+    const actions = [];
+    if (next) actions.push({ label: t("train.nextVariant"), primary: true, onClick: () => go(`train/${cat}/${next.id}`) });
+    actions.push({ label: t("train.another"), primary: !next, onClick: () => newLevel(true) });
+    actions.push({ label: t("train.back"), onClick: () => go(`train/${cat}`) });
+    return actions;
+  }
+
+  // Ficha de ayuda en la ventana de ayuda.
+  function openHelpEntry(id) {
+    const entry = Help.entry(id);
+    if (!entry) return;
+    const dialog = $("help-dialog");
+    const body = dialog.querySelector(".help-body");
+    body.innerHTML = "";
+    dialog.className = `help-dialog cat-${entry.category}`;
+    Help.renderEntry(body, entry);
+    dialog.showModal();
+  }
+
+  // Lista de ejercicios: pestañas por categoría y, en cada una, una tarjeta por
+  // ficha de ayuda con sus variantes.
+  async function renderTrainList() {
+    const tabs = $("train-categories");
+    const detail = $("train-detail");
+    try {
+      await loadTrainCatalog();
+    } catch (err) {
+      tabs.innerHTML = "";
+      detail.innerHTML = "";
+      el("p", { className: "error", text: t("train.loadError") }, detail);
+      return;
+    }
+    if (route.view !== "train") return;
+    tabs.innerHTML = "";
+    detail.innerHTML = "";
+    const cats = trainCategories();
+    if (!cats.length) {
+      el("p", { className: "muted", text: t("train.empty") }, detail);
+      return;
+    }
+    const cat = (cats.find((c) => c.id === route.cat) || cats[0]).id;
+    for (const c of cats) {
+      const variants = c.groups.flatMap((g) => g.variants);
+      const done = variants.filter((v) => isTrained(v.id)).length;
+      const b = el("button", { type: "button", role: "tab", className: "category-tab" }, tabs);
+      b.setAttribute("aria-selected", c.id === cat);
+      if (done === variants.length) b.classList.add("complete");
+      el("span", { className: "name", text: t(`train.categories.${c.id}`) }, b);
+      el("span", { className: "count", text: t("train.progress", { done, total: variants.length }) }, b);
+      b.addEventListener("click", () => go(`train/${c.id}`));
+    }
+    el("p", { className: "intro", text: t(`train.categoryIntro.${cat}`) }, detail);
+    const grid = el("div", { className: "train-groups" }, detail);
+    for (const g of cats.find((c) => c.id === cat).groups) {
+      const entry = Help.entry(g.id);
+      const card = el("article", { className: `train-group cat-${entry ? entry.category : "clues"}` }, grid);
+      const head = el("div", { className: "train-group-head" }, card);
+      el("h3", { text: entry ? entry.title : g.id }, head);
+      if (entry) {
+        const help = el("button", { type: "button", className: "icon-button", text: "?", title: t("train.openHelp") }, head);
+        help.setAttribute("aria-label", t("train.openHelp"));
+        help.addEventListener("click", () => openHelpEntry(g.id));
+      }
+      const list = el("div", { className: "train-variants" }, card);
+      for (const v of g.variants) {
+        const done = isTrained(v.id);
+        const b = el("button", { type: "button", className: `train-variant${done ? " done" : ""}` }, list);
+        el("span", { className: "check", text: done ? "✓" : "○" }, b);
+        el("span", { text: variantName(v.id) }, b);
+        b.addEventListener("click", () => go(`train/${cat}/${v.id}`));
+      }
+    }
   }
 
   // ---------- Pruebas (temporal) ----------
@@ -459,11 +649,27 @@
     const grid = el("div", { className: "help-grid" }, parent);
     for (const id of ids) {
       const entry = Help.entry(id);
-      if (!entry) continue;
+      if (!entry || !Help.isEnabled(entry)) continue;
       const card = el("section", { className: `help-card cat-${entry.category}`, id: `help-${entry.id}` }, grid);
       Help.renderEntry(card, entry);
+      const practice = practiceLink(entry.id);
+      if (practice) {
+        const a = el("a", { className: "button practice", href: `#${practice}`, text: t("train.practice") }, card);
+        a.title = t("train.practiceTitle");
+      }
     }
     return grid;
+  }
+
+  // Primer ejercicio sin completar de una ficha (o el primero, si están todos).
+  function practiceLink(entryId) {
+    for (const c of trainCategories()) {
+      const group = c.groups.find((g) => g.id === entryId);
+      if (!group) continue;
+      const v = group.variants.find((x) => !isTrained(x.id)) || group.variants[0];
+      return `train/${c.id}/${v.id}`;
+    }
+    return null;
   }
 
   function sectionTitle(parent, text, cat) {
@@ -502,7 +708,7 @@
     root.innerHTML = "";
     el("p", { className: "intro", text: t("help.intro") }, root);
     for (const cat of Help.CATEGORIES) {
-      const ids = Help.ENTRIES.filter((e) => e.category === cat.id).map((e) => e.id);
+      const ids = Help.ENTRIES.filter((e) => e.category === cat.id && Help.isEnabled(e)).map((e) => e.id);
       if (!ids.length) continue;
       sectionTitle(root, cat.title, cat.id);
       helpCards(root, ids);
@@ -777,9 +983,17 @@
     try {
       const res = await fetch(`${LEVELS}index.json`, { cache: "no-store" });
       if (!res.ok) throw new Error(res.statusText);
-      catalog = (await res.json()).categories || [];
+      const index = await res.json();
+      catalog = index.categories || [];
+      disabledRules = index.disabled || [];
+      Help.setDisabled(disabledRules);
     } catch (err) {
       catalog = null;
+    }
+    try {
+      await loadTrainCatalog();
+    } catch (err) {
+      trainCatalog = null; // sin ejercicios: la vista lo dice y la ayuda no enlaza a ellos
     }
     onRoute();
   }

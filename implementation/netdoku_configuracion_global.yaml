@@ -42,6 +42,9 @@ features:
   ttl: false
   enabledRuleTypes: null
   enabledRuleSubtypes: null
+  # Reglas desactivadas en todo el juego: subtipos (network.in_network), formas (form:mask) o
+  # particularidades (feature:cornerRouter, hiddenEndpoint, transit, broadcast). En la v0 se leen
+  # de levels/disabled.txt.
   disabledRuleSubtypes: []
   requiredRuleSubtypes: []
 

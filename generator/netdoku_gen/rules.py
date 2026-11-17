@@ -619,7 +619,7 @@ def _higher_ttl(ctx, p):
         return route.ttl - k
 
     def text(m, n):
-        return f"El paquete {m.id} llevaba más TTL que el paquete {n.id}."
+        return f"En ese momento, el paquete {m.id} llevaba más TTL que el paquete {n.id}."
     if p.id not in ctx.routes:
         return
     for clue in _route_relation(ctx, p, "relation.higher_ttl", ttl, lambda a, b: a > b, text):

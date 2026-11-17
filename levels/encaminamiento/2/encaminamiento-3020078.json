@@ -1807,7 +1807,7 @@
    "id": "C3",
    "packet": "B",
    "type": "relation.higher_ttl",
-   "text": "El paquete B llevaba más TTL que el paquete G.",
+   "text": "En ese momento, el paquete B llevaba más TTL que el paquete G.",
    "parameters": {},
    "slots": {
     "compare": {
