@@ -558,8 +558,10 @@
         next: ({ node, nodeNet }) => `Esta casilla está junto al ${node} de ${nodeNet}.`,
         nextClass: ({ cls, node, nodeNet }) => `Esta casilla está junto al ${node} de ${nodeNet}${cls === node ? "" : `, que es un ${cls}`}.`,
         notRouter: ({ router }) => `Esta casilla no toca al router que une ${join(router)}.`,
-        row: ({ r }) => `Esta casilla está en la fila ${r}.`,
-        column: ({ c }) => `Esta casilla está en la columna ${c}.`,
+        line: ({ packet, axis, line, here, node, nodeNet, router }) => {
+          const where = node ? `El ${node} de ${nodeNet} está` : router ? `El router que une ${join(router)} está` : `El paquete ${packet} estaba`;
+          return `${where} en la ${axisWord(axis)} ${line}, y esta casilla está en la ${axisWord(axis)} ${here}.`;
+        },
         net: ({ net, prefix }) => `Esta casilla es de la red ${net} (${prefix}).`,
         netCount: ({ net, clsKey, count }) => `Esta casilla es de ${net}, una red ${countText({ nodeType: clsKey, count })}.`,
         netLength: ({ net, prefix, len }) => `Esta casilla es de ${net} (${prefix}), una red /${len}.`,

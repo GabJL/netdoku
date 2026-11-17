@@ -1628,7 +1628,7 @@
    "id": "C2",
    "packet": "A",
    "type": "spatial.in_row",
-   "text": "El paquete A estaba en la misma fila que el servidor DNS de la red Secretaría.",
+   "text": "El paquete A estaba en la fila 2.",
    "parameters": {
     "row": 2
    },
@@ -1636,15 +1636,11 @@
     "row": {
      "kind": "row",
      "ref": 2,
-     "form": "aligned_node",
-     "value": {
-      "node": "N2",
-      "form": "label_network"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "row": "aligned_node"
+    "row": "number"
    },
    "readingCost": 0,
    "topic": "T3.dispositivos",

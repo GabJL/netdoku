@@ -28,7 +28,7 @@ import ipaddress
 import random
 from dataclasses import dataclass, field, replace
 
-from .addressing import PRIVACY_PLANS, Addressing
+from .addressing import Addressing, _private_like, is_private
 from .board import generate_board, side_neighbors
 from .content import PACKET_COLORS, Packet, class_members, place_nodes
 from .level import (SCHEMA_VERSION, board_dict, clue_dict, networks_list, nodes_list, one_based, packet_item,
@@ -91,6 +91,20 @@ class Variant:
 
 # Formas sencillas (sin coste ni categoría): no se cuentan como claves propias de la variante.
 PLAIN_FORMS = {"name", "label", "label_network", "networks", "number", "ip_view", "count"}
+# Formas que se leen tal cual en la leyenda o en el tablero (el prefijo, la longitud, un equipo de
+# esa fila): no hay nada que deducir, así que no se comprueba si el ejercicio delata la respuesta.
+READING_FORMS = {"prefix", "label_prefix", "networks_prefix", "prefix_length", "aligned_node", "aligned_router"}
+# Formas que se resuelven con las direcciones de la leyenda: la red que nombran no debe ser la única
+# distinta de las demás en algo que se ve sin aplicar la pista (primeros octetos o longitud).
+ADDRESS_FORMS = {"size_rank", "address_count", "usable_count", "mask", "ip_member", "ip", "interfaces",
+                 "first_host", "last_host", "broadcast", "privacy", "label_privacy"}
+# Pistas que dejan al paquete en una red de su ruta: el número de casillas no debe delatar cuál.
+ROUTE_POSITION_TYPES = {"ttl.routers_crossed", "ttl.routers_left", "route.last_router", "route.next_router"}
+# Rasgos de un prefijo que se ven a simple vista: los primeros uno, dos o tres octetos y la longitud.
+SURFACE_FEATURES = (lambda p: str(p.network_address).split(".")[:1],
+                    lambda p: str(p.network_address).split(".")[:2],
+                    lambda p: str(p.network_address).split(".")[:3],
+                    lambda p: p.prefixlen)
 
 
 def _has(param, value=True):
@@ -186,9 +200,9 @@ VARIANTS = [
     V("dir.usable_count", "direccionamiento", "special_addresses", "addr", "network.in_network",
       {"net": "usable_count"}, plans=("vlsm", "distinct")),
     V("dir.privacy", "direccionamiento", "privacy", "addr", "network.in_network", {"net": "privacy"},
-      plans=PRIVACY_PLANS, privacy=True),
+      privacy=True),
     V("dir.label_privacy", "direccionamiento", "privacy", "addr", "node.adjacent_to_node", {"node": "label_privacy"},
-      plans=PRIVACY_PLANS, privacy=True),
+      privacy=True),
     V("dir.more_addresses", "direccionamiento", "relation", "addr", "relation.more_addresses_network",
       {"compare": "size_compare"}, partner=True, plans=("vlsm", "distinct")),
     # Encaminamiento.
@@ -253,33 +267,38 @@ def variant(variant_id):
 
 # ---------- Construcción ----------
 
-def build_exercise(v, seed, disabled=(), max_attempts=600):
-    """Un ejercicio de la variante `v` (diccionario listo para guardar en JSON)."""
+def build_exercise(v, seed, disabled=(), max_attempts=1500):
+    """Un ejercicio de la variante `v` (diccionario listo para guardar en JSON).
+
+    En los dos primeros tercios de los intentos se descartan los ejercicios que delatan la
+    respuesta sin aplicar la pista (`_giveaway`); después se aceptan, y el motivo queda en
+    `generation.giveaway`."""
     rng = random.Random(seed)
     last = None
     for attempt in range(1, max_attempts + 1):
         try:
-            return _attempt(v, rng, seed, attempt, set(disabled))
+            return _attempt(v, rng, seed, attempt, set(disabled), strict=3 * attempt <= 2 * max_attempts)
         except (Retry, RuntimeError) as e:
             last = e
     raise RuntimeError(f"{v.id}: ningún ejercicio en {max_attempts} intentos ({last})")
 
 
-def _attempt(v, rng, seed, attempt, disabled):
+def _attempt(v, rng, seed, attempt, disabled, strict=True):
     prof = PROFILES[v.profile]
     features = features_of(disabled)
     size = prof["size"]
-    plan = rng.choice(list(v.plans or prof["plans"]))
-    privacy_mix = v.privacy and plan in PRIVACY_PLANS
+    # Redes privadas y públicas: planes propios (véase _privacy_prefixes), con el coste de `distinct`.
+    plan = "distinct" if v.privacy else rng.choice(list(v.plans or prof["plans"]))
     if prof.get("corner"):
         weights, corner = {3: 1.0}, 2
     else:
         weights = {2: 0.75, 3: 0.20, 4: 0.05}
         corner = 1 if prof["routes"] and "cornerRouter" not in features else 0
-    board = generate_board(rng, size, size, rng.choice(prof["networks"]), prof["min_size"], plan, weights, corner,
-                           privacy_mix)
+    board = generate_board(rng, size, size, rng.choice(prof["networks"]), prof["min_size"], plan, weights, corner)
     if prof.get("corner") and not any(r.corner for r in board.routers):
         raise Retry("sin router de esquina")
+    if v.privacy:
+        _set_prefixes(board, _privacy_prefixes(rng, len(board.networks)))
     addressing = Addressing(plan, board.prefixes)
     transit = None
     if prof["routes"]:
@@ -316,10 +335,55 @@ def _attempt(v, rng, seed, attempt, disabled):
             placed = {partner.id: partner.cell}
         clue = _pick_clue(v, ctx, namer, target, partner, rng)
         clues, steps = [clue], _clue_steps(v, ctx, clue, target, partner)
+        giveaway = _giveaway(ctx, clue, target, placed)
+        if giveaway and strict:
+            raise Retry(giveaway)
     _check(v, ctx, steps, placed)
     namer.assign_remaining(nodes, board.routers)
     clues = [replace(c, id=f"c{i + 1}") for i, c in enumerate(clues)]
-    return _export(v, seed, attempt, ctx, clues, steps, placed)
+    exercise = _export(v, seed, attempt, ctx, clues, steps, placed)
+    if not v.special and giveaway:
+        exercise["generation"]["giveaway"] = giveaway
+    return exercise
+
+
+def _set_prefixes(board, prefixes):
+    for net, prefix in zip(board.networks, prefixes):
+        net.prefix = str(prefix)
+        board.prefixes[net.id] = prefix
+
+
+def _privacy_prefixes(rng, count):
+    """Redes privadas y públicas para las formas `privacy`: una sola de su clase y, entre las demás,
+    bloques y longitudes variados para que no se distinga a simple vista. Las públicas se parecen
+    a menudo a las privadas (172.40.0.0/16, 192.169.3.0/24, 11.4.0.0/16)."""
+    odd_public = rng.random() < 0.5
+    for _ in range(200):
+        result = []
+        for i in range(count):
+            length = rng.choice([16, 24])
+            public = (i == 0) == odd_public
+            result.append(_lookalike_public(rng, length) if public else _private_like(rng, length))
+        if (all(is_private(x) == odd_public for x in result[1:]) and is_private(result[0]) != odd_public
+                and all(not a.overlaps(b) for i, a in enumerate(result) for b in result[i + 1:])):
+            rng.shuffle(result)
+            return result
+    raise Retry("sin plan de redes privadas y públicas")
+
+
+def _lookalike_public(rng, length):
+    """Una red pública, muchas veces con el aspecto de una privada."""
+    kind = rng.random()
+    if kind < 0.35:
+        first, second = 172, rng.choice(list(range(0, 16)) + list(range(32, 64)))
+    elif kind < 0.6:
+        first, second = 192, rng.choice([x for x in range(150, 200) if x != 168])
+    elif kind < 0.75:
+        first, second = rng.choice([9, 11, 12]), rng.randrange(256)
+    else:
+        first, second = rng.choice([x for x in range(13, 224) if x not in (127, 169, 172, 192)]), rng.randrange(256)
+    value = (first << 24) | (second << 16) | (rng.randrange(256) << 8)
+    return ipaddress.IPv4Network((value, length), strict=False)
 
 
 def _place_packets(rng, board, nodes, count):
@@ -427,6 +491,95 @@ def _blocked(placed):
                 return {"key": "columnTaken", "c": c + 1, "packet": pid}
         return None
     return reason
+
+
+def _answer_of(ctx, target, placed, domain):
+    """Casillas posibles del paquete con ese dominio: las de su ruta, fuera de las filas y columnas
+    de los paquetes colocados."""
+    taken = _blocked(placed)
+    return {x for x in _cells(domain) & _cells(ctx.base[target.id]) if not taken(x)}
+
+
+def _giveaway(ctx, clue, target, placed):
+    """Por qué el ejercicio delataría la respuesta sin aplicar la pista, o None:
+
+    - la red que nombra la pista es la única distinta de las demás en algo que se ve en la
+      leyenda (sus primeros octetos o la longitud de su prefijo) y las demás son todas iguales;
+    - el total de «Llevas X de Y» solo encaja con lo que nombra la pista: si nombrara otro
+      elemento del mismo tipo (otra red, otro servidor web, otra red de la ruta), la respuesta
+      tendría otro número de casillas."""
+    if clue.other:
+        return None
+    answer = _answer_of(ctx, target, placed, clue.domain)
+    for data in clue.slot_data.values():
+        form = data["form"]
+        if form in PLAIN_FORMS or form in READING_FORMS:
+            continue
+        if form in ADDRESS_FORMS and _odd_one_out(ctx, data):
+            return f"{form}: la red se distingue de las demás a simple vista"
+        if _count_tells(ctx, target, placed, answer, _alternatives(ctx, clue, data)):
+            return f"{form}: el número de casillas delata qué nombra la pista"
+    route = ctx.routes.get(target.id)
+    mac = any(d["form"] == "mac_view" for d in clue.slot_data.values())
+    if route and target.id not in ctx.alternatives and (
+            clue.type in ROUTE_POSITION_TYPES or (mac and clue.type.startswith("endpoint."))):
+        nets = {ctx.board.network_of(x) for x in answer}
+        others = [ctx.network_cells(n) for n in route.reachable_networks() if n not in nets]
+        if len(nets) == 1 and _count_tells(ctx, target, placed, answer, others):
+            return f"{clue.type}: el número de casillas delata la red de la ruta"
+    return None
+
+
+def _odd_one_out(ctx, data):
+    """La red (o las redes) que nombra la pista difiere de todas las demás, que son iguales entre sí,
+    en unos primeros octetos o en la longitud del prefijo."""
+    prefixes = ctx.addressing.prefixes
+    kind, ref = data["kind"], data["ref"]
+    if kind == "network":
+        named = {ref}
+    elif kind == "node":
+        named = {ctx.node(ref).network}
+    elif kind == "length":
+        named = {n for n, p in prefixes.items() if p.prefixlen == ref}
+    else:
+        return False   # un router une dos redes: no hay una distinta
+    mine = [prefixes[n] for n in named]
+    others = [p for n, p in prefixes.items() if n not in named]
+    if len(others) < 2 or len(others) <= len(mine):
+        return False
+    for feature in SURFACE_FEATURES:
+        values = {str(feature(p)) for p in others}
+        if len(values) == 1 and not values & {str(feature(p)) for p in mine}:
+            return True
+    return False
+
+
+def _alternatives(ctx, clue, data):
+    """Dominios que tendría la pista si nombrara otro elemento del mismo tipo."""
+    kind, ref, t = data["kind"], data["ref"], clue.type
+    free = ctx.free_cells
+    if kind == "network" and t in ("network.in_network", "network.not_in_network"):
+        doms = [ctx.network_cells(n.id) for n in ctx.board.networks if n.id != ref]
+        return doms if t == "network.in_network" else [free - d for d in doms]
+    if kind == "node" and t in ("node.adjacent_to_node", "node.unique_adjacent_to_node", "node.not_adjacent_to_node"):
+        label = ctx.node(ref).label
+        doms = [ctx.adj[m.id] for m in ctx.nodes if m.id != ref and m.label == label]
+        return doms if t != "node.not_adjacent_to_node" else [free - d for d in doms]
+    if kind == "router" and t == "router.adjacent_to_router":
+        corner = ctx.router(ref).corner
+        return [frozenset(c for c in r.between if c in free) for r in ctx.board.routers
+                if r.id != ref and r.corner == corner]
+    if kind == "length" and t == "network.prefix_length":
+        prefixes = ctx.addressing.prefixes
+        lengths = {p.prefixlen for p in prefixes.values()} - {ref}
+        return [ctx.network_cells(*[n for n, p in prefixes.items() if p.prefixlen == k]) for k in lengths]
+    return []
+
+
+def _count_tells(ctx, target, placed, answer, alternatives):
+    """Ninguna alternativa con casillas da el mismo número de casillas que la respuesta."""
+    counts = {len(_answer_of(ctx, target, placed, d)) for d in alternatives} - {0}
+    return bool(counts) and len(answer) not in counts
 
 
 def _clue_steps(v, ctx, clue, target, partner):
@@ -571,10 +724,17 @@ def _clue_reason(ctx, clue, target, partner, x):
         return {"key": "nextClass", "cls": _cls(params), "node": near.id}
     if t == "router.adjacent_to_router":
         return {"key": "notRouter", "router": params["routerId"]}
-    if t == "spatial.in_row":
-        return {"key": "row", "r": x[0] + 1}
-    if t == "spatial.in_column":
-        return {"key": "column", "c": x[1] + 1}
+    if t in ("spatial.in_row", "spatial.in_column"):
+        # La fila o columna de la pista y, si la nombra un equipo o un router, quién está en ella.
+        axis = t.split("_")[-1]
+        reason = {"key": "line", "packet": target.id, "axis": axis, "line": params[axis],
+                  "here": x[0] + 1 if axis == "row" else x[1] + 1}
+        value = clue.slot_data.get(axis, {}).get("value") or {}
+        if "node" in value:
+            reason["node"] = value["node"]
+        elif "router" in value:
+            reason["router"] = value["router"]
+        return reason
     if t.split(".")[0] in ROUTE_FAMILIES:
         if target.id in ctx.alternatives:
             # Con las redes del extremo que deja la pista, la ruta no pasa por aquí o no llega el TTL.

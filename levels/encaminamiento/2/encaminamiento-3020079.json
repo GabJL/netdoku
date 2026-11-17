@@ -2395,7 +2395,7 @@
    "id": "C6",
    "packet": "F",
    "type": "spatial.in_row",
-   "text": "El paquete F estaba en la misma fila que el equipo de usuario de la red Invitados.",
+   "text": "El paquete F estaba en la fila 7.",
    "parameters": {
     "row": 7
    },
@@ -2403,15 +2403,11 @@
     "row": {
      "kind": "row",
      "ref": 7,
-     "form": "aligned_node",
-     "value": {
-      "node": "N9",
-      "form": "label_network"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "row": "aligned_node"
+    "row": "number"
    },
    "readingCost": 0,
    "topic": "T3.dispositivos",

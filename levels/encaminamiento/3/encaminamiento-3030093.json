@@ -2457,7 +2457,7 @@
    "id": "C4",
    "packet": "D",
    "type": "spatial.in_row",
-   "text": "El paquete D estaba en la misma fila que el equipo de usuario de la red 172.27.39.32/27.",
+   "text": "El paquete D estaba en la fila 2.",
    "parameters": {
     "row": 2
    },
@@ -2465,18 +2465,14 @@
     "row": {
      "kind": "row",
      "ref": 2,
-     "form": "aligned_node",
-     "value": {
-      "node": "N4",
-      "form": "label_prefix"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "row": "aligned_node"
+    "row": "number"
    },
    "readingCost": 0,
-   "topic": "T3.ip",
+   "topic": "T3.dispositivos",
    "domain": [
     [
      2,

@@ -649,7 +649,7 @@
    "id": "C3",
    "packet": "C",
    "type": "spatial.in_row",
-   "text": "El paquete C estaba en la misma fila que el servidor DNS de la red 172.29.150.0/26.",
+   "text": "El paquete C estaba en la fila 2.",
    "parameters": {
     "row": 2
    },
@@ -657,18 +657,14 @@
     "row": {
      "kind": "row",
      "ref": 2,
-     "form": "aligned_node",
-     "value": {
-      "node": "N3",
-      "form": "label_prefix"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "row": "aligned_node"
+    "row": "number"
    },
    "readingCost": 0,
-   "topic": "T3.ip",
+   "topic": "T3.dispositivos",
    "domain": [
     [
      2,

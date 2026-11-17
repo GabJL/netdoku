@@ -847,7 +847,7 @@
    "id": "C5",
    "packet": "D",
    "type": "spatial.in_row",
-   "text": "El paquete D estaba en la misma fila que el servidor de ficheros de la red 10.207.71.0/24.",
+   "text": "El paquete D estaba en la fila 2.",
    "parameters": {
     "row": 2
    },
@@ -855,18 +855,14 @@
     "row": {
      "kind": "row",
      "ref": 2,
-     "form": "aligned_node",
-     "value": {
-      "node": "N2",
-      "form": "label_prefix"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "row": "aligned_node"
+    "row": "number"
    },
    "readingCost": 0,
-   "topic": "T3.ip",
+   "topic": "T3.dispositivos",
    "domain": [
     [
      2,

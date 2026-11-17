@@ -644,7 +644,7 @@
    "id": "C2",
    "packet": "B",
    "type": "spatial.in_row",
-   "text": "El paquete B estaba en la misma fila que el equipo de usuario de la red Laboratorio.",
+   "text": "El paquete B estaba en la fila 3.",
    "parameters": {
     "row": 3
    },
@@ -652,15 +652,11 @@
     "row": {
      "kind": "row",
      "ref": 3,
-     "form": "aligned_node",
-     "value": {
-      "node": "N4",
-      "form": "label_network"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "row": "aligned_node"
+    "row": "number"
    },
    "readingCost": 0,
    "topic": "T3.dispositivos",

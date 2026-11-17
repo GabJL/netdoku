@@ -1583,7 +1583,7 @@
    "id": "C4",
    "packet": "C",
    "type": "spatial.in_column",
-   "text": "El paquete C estaba en la misma columna que el equipo de usuario de la red 79.110.0.0/16.",
+   "text": "El paquete C estaba en la columna 3.",
    "parameters": {
     "column": 3
    },
@@ -1591,18 +1591,14 @@
     "column": {
      "kind": "column",
      "ref": 3,
-     "form": "aligned_node",
-     "value": {
-      "node": "N8",
-      "form": "label_prefix"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "column": "aligned_node"
+    "column": "number"
    },
    "readingCost": 0,
-   "topic": "T3.ip",
+   "topic": "T3.dispositivos",
    "domain": [
     [
      1,

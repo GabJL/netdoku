@@ -2382,7 +2382,7 @@
    "id": "C7",
    "packet": "F",
    "type": "spatial.in_column",
-   "text": "El paquete F estaba en la misma columna que el equipo de usuario de la red 23.69.17.0/24.",
+   "text": "El paquete F estaba en la columna 1.",
    "parameters": {
     "column": 1
    },
@@ -2390,18 +2390,14 @@
     "column": {
      "kind": "column",
      "ref": 1,
-     "form": "aligned_node",
-     "value": {
-      "node": "N1",
-      "form": "label_prefix"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "column": "aligned_node"
+    "column": "number"
    },
    "readingCost": 0,
-   "topic": "T3.ip",
+   "topic": "T3.dispositivos",
    "domain": [
     [
      2,

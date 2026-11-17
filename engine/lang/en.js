@@ -542,8 +542,10 @@
         next: ({ node, nodeNet }) => `This cell is next to the ${node} in ${nodeNet}.`,
         nextClass: ({ cls, node, nodeNet }) => `This cell is next to the ${node} in ${nodeNet}${cls === node ? "" : `, which is a ${cls}`}.`,
         notRouter: ({ router }) => `This cell does not touch the router joining ${join(router)}.`,
-        row: ({ r }) => `This cell is in row ${r}.`,
-        column: ({ c }) => `This cell is in column ${c}.`,
+        line: ({ packet, axis, line, here, node, nodeNet, router }) => {
+          const where = node ? `The ${node} in ${nodeNet} is` : router ? `The router joining ${join(router)} is` : `Packet ${packet} was`;
+          return `${where} in ${axisWord(axis)} ${line}, and this cell is in ${axisWord(axis)} ${here}.`;
+        },
         net: ({ net, prefix }) => `This cell belongs to ${net} (${prefix}).`,
         netCount: ({ net, clsKey, count }) => `This cell belongs to ${net}, a network ${countText({ nodeType: clsKey, count })}.`,
         netLength: ({ net, prefix, len }) => `This cell belongs to ${net} (${prefix}), a /${len} network.`,

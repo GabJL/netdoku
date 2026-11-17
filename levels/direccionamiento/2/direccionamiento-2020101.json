@@ -1182,7 +1182,7 @@
    "id": "C4",
    "packet": "B",
    "type": "spatial.in_column",
-   "text": "El paquete B estaba en la misma columna que el equipo de usuario de la red 10.0.0.0/16.",
+   "text": "El paquete B estaba en la columna 4.",
    "parameters": {
     "column": 4
    },
@@ -1190,18 +1190,14 @@
     "column": {
      "kind": "column",
      "ref": 4,
-     "form": "aligned_node",
-     "value": {
-      "node": "N5",
-      "form": "label_prefix"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "column": "aligned_node"
+    "column": "number"
    },
    "readingCost": 0,
-   "topic": "T3.ip",
+   "topic": "T3.dispositivos",
    "domain": [
     [
      1,

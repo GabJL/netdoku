@@ -1306,7 +1306,7 @@
    "id": "C6",
    "packet": "D",
    "type": "spatial.in_row",
-   "text": "El paquete D estaba en la misma fila que el equipo de usuario de la red Biblioteca.",
+   "text": "El paquete D estaba en la fila 6.",
    "parameters": {
     "row": 6
    },
@@ -1314,15 +1314,11 @@
     "row": {
      "kind": "row",
      "ref": 6,
-     "form": "aligned_node",
-     "value": {
-      "node": "N5",
-      "form": "label_network"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "row": "aligned_node"
+    "row": "number"
    },
    "readingCost": 0,
    "topic": "T3.dispositivos",

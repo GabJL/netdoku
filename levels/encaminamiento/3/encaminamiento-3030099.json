@@ -3388,7 +3388,7 @@
    "id": "C4",
    "packet": "B",
    "type": "spatial.in_row",
-   "text": "El paquete B estaba en la misma fila que el equipo de usuario de la red 192.168.224.224/27.",
+   "text": "El paquete B estaba en la fila 1.",
    "parameters": {
     "row": 1
    },
@@ -3396,18 +3396,14 @@
     "row": {
      "kind": "row",
      "ref": 1,
-     "form": "aligned_node",
-     "value": {
-      "node": "N1",
-      "form": "label_prefix"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "row": "aligned_node"
+    "row": "number"
    },
    "readingCost": 0,
-   "topic": "T3.ip",
+   "topic": "T3.dispositivos",
    "domain": [
     [
      1,

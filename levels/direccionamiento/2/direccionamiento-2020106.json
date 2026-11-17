@@ -868,7 +868,7 @@
    "id": "C2",
    "packet": "B",
    "type": "spatial.in_row",
-   "text": "El paquete B estaba en la misma fila que el servidor de correo de la red 10.212.86.0/24.",
+   "text": "El paquete B estaba en la fila 5.",
    "parameters": {
     "row": 5
    },
@@ -876,18 +876,14 @@
     "row": {
      "kind": "row",
      "ref": 5,
-     "form": "aligned_node",
-     "value": {
-      "node": "N7",
-      "form": "label_prefix"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "row": "aligned_node"
+    "row": "number"
    },
    "readingCost": 0,
-   "topic": "T3.ip",
+   "topic": "T3.dispositivos",
    "domain": [
     [
      5,

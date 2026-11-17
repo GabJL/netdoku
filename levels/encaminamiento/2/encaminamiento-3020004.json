@@ -1982,7 +1982,7 @@
    "id": "C4",
    "packet": "C",
    "type": "spatial.in_row",
-   "text": "El paquete C estaba en la misma fila que el equipo de usuario de la red Secretaría.",
+   "text": "El paquete C estaba en la fila 1.",
    "parameters": {
     "row": 1
    },
@@ -1990,15 +1990,11 @@
     "row": {
      "kind": "row",
      "ref": 1,
-     "form": "aligned_node",
-     "value": {
-      "node": "N2",
-      "form": "label_network"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "row": "aligned_node"
+    "row": "number"
    },
    "readingCost": 0,
    "topic": "T3.dispositivos",

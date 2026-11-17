@@ -153,9 +153,15 @@ class Namer:
         if len(same_label) == 1:
             # Único en el tablero: nombrar su red o su dirección no aportaría nada.
             return [Option("label", f"al {node.label}", 0, "T3.dispositivos", False)]
-        opts = [Option("label_network", f"al {node.label} de la red {net.name}", 0, "T3.dispositivos", False),
-                Option("label_prefix", f"al {node.label} de la red {net.prefix}", 0, "T3.ip", True)]
-        privacy = self.addr.privacy_rank(node.network)
+        opts = []
+        if sum(1 for n in same_label if n.network == node.network) > 1:
+            # Hay otro igual en su red: «el equipo de usuario de la red Aulas» sería ambiguo,
+            # así que solo se puede nombrar por su dirección.
+            privacy = None
+        else:
+            opts = [Option("label_network", f"al {node.label} de la red {net.name}", 0, "T3.dispositivos", False),
+                    Option("label_prefix", f"al {node.label} de la red {net.prefix}", 0, "T3.ip", True)]
+            privacy = self.addr.privacy_rank(node.network)
         if privacy:
             words = "pública" if privacy == "public" else "privada"
             opts.append(Option("label_privacy", f"al {node.label} de la red {words}", self.addr.privacy_cost(),

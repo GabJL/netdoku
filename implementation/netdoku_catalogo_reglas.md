@@ -150,7 +150,7 @@ Una forma con coste solo se usa si su **cálculo es imprescindible**. Para compr
 
 Son la única forma de su pista. `size_compare` cuesta lo mismo que `size_rank`: comparar dos prefijos de la leyenda sabiendo que el más corto tiene más direcciones. `ttl_compare` obliga a restar los routers atravesados del TTL inicial de cada paquete.
 
-`aligned_node` y `aligned_router` nombran la fila (o la columna) por un elemento que está en ella. Un router de borde está en una sola fila si separa dos casillas de esa fila (borde vertical) y en una sola columna si separa dos casillas de esa columna (borde horizontal); solo se usa en ese caso. El equipo o el router se nombran con formas de coste 0, así que no añaden cálculo.
+`aligned_node` y `aligned_router` nombran la fila (o la columna) por un elemento que está en ella. Un router de borde está en una sola fila si separa dos casillas de esa fila (borde vertical) y en una sola columna si separa dos casillas de esa columna (borde horizontal); solo se usa en ese caso. El equipo o el router se nombran con formas de coste 0, así que no añaden cálculo. El equipo tiene que poder nombrarse sin ambigüedad: si hay otro de la misma clase en su red, «el equipo de usuario de Aulas» podría ser cualquiera de los dos y no se usa (hasta el 17-11-2026 sí se usaba; 54 niveles de los lotes lo tenían y se pasaron a `number`).
 
 **Equipos:**
 

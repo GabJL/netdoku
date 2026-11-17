@@ -1942,7 +1942,7 @@
    "id": "C4",
    "packet": "C",
    "type": "spatial.in_column",
-   "text": "El paquete C estaba en la misma columna que el servidor DNS de la red Administración.",
+   "text": "El paquete C estaba en la columna 4.",
    "parameters": {
     "column": 4
    },
@@ -1950,15 +1950,11 @@
     "column": {
      "kind": "column",
      "ref": 4,
-     "form": "aligned_node",
-     "value": {
-      "node": "N1",
-      "form": "label_network"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "column": "aligned_node"
+    "column": "number"
    },
    "readingCost": 0,
    "topic": "T3.dispositivos",

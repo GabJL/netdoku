@@ -1,4 +1,5 @@
 # Niveles retirados de los lotes: generate.py no vuelve a usar estos nombres.
+direccionamiento-2010086
 direccionamiento-2020005
 direccionamiento-2020007
 direccionamiento-2020008

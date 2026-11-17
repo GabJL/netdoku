@@ -684,7 +684,7 @@
    "id": "C2",
    "packet": "A",
    "type": "spatial.in_row",
-   "text": "El paquete A estaba en la misma fila que el servidor DNS de la red 100.74.158.0/24.",
+   "text": "El paquete A estaba en la fila 4.",
    "parameters": {
     "row": 4
    },
@@ -692,18 +692,14 @@
     "row": {
      "kind": "row",
      "ref": 4,
-     "form": "aligned_node",
-     "value": {
-      "node": "N5",
-      "form": "label_prefix"
-     }
+     "form": "number"
     }
    },
    "naming": {
-    "row": "aligned_node"
+    "row": "number"
    },
    "readingCost": 0,
-   "topic": "T3.ip",
+   "topic": "T3.dispositivos",
    "domain": [
     [
      4,
